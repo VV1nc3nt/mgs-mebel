@@ -5,13 +5,14 @@ PR → CI (GitHub Actions) → merge в `main` → сборка Docker-обра�
 
 ## Сервер (staging)
 - Чистый VPS (Ubuntu LTS, ≥ 2 ГБ RAM), Docker + Compose plugin, пользователь `deploy` (в группе docker), вход только по SSH-ключу, ufw: 22, 80, 443.
+- Домен задаётся переменной `SITE_DOMAIN` в `/opt/mgs/.env` и используется в `Caddyfile`: поддомен клиента (`staging.<домен>`) или `staging.<ip-через-дефис>.sslip.io`, пока DNS недоступен.
 - Каталог `/opt/mgs`: `compose.yml`, `Caddyfile`, `.env` (только на сервере, в git не попадает), `backups/`.
 - Сервисы Compose:
   - `caddy` — reverse proxy, автоматический HTTPS, Basic Auth на весь сайт (включая /admin), заголовок `X-Robots-Tag: noindex, nofollow`.
-  - `app` — образ `ghcr.io/<owner>/<repo>:<tag>`, порт 3000 только во внутренней сети.
+  - `app` — образ `ghcr.io/<owner>/<repo>:<tag>`, порт 3000 только во внутренней сети, том `media` для загруженных файлов.
   - `postgres` — официальный образ, volume `pgdata`, порт наружу не публикуется.
-- Файлы (media) — отдельный бакет Yandex Object Storage для staging.
-- Бэкап: cron `pg_dump` раз в сутки в `/opt/mgs/backups`, хранить 7 последних.
+- Файлы (media): по умолчанию на диске — Docker-том `media`. Если в `.env` задан `S3_BUCKET` (+ `S3_ENDPOINT`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`) — Payload пишет в S3 (Yandex Object Storage или своё S3, напр. Garage). Выбор для прода — позже, код должен поддерживать оба режима.
+- Бэкап: cron раз в сутки в `/opt/mgs/backups` — `pg_dump` и архив тома `media` (если файлы на диске), хранить 7 последних.
 
 ## Приложение
 - `next.config`: `output: 'standalone'`.
@@ -27,7 +28,7 @@ PR → CI (GitHub Actions) → merge в `main` → сборка Docker-обра�
   2. SSH на сервер: запомнить текущий тег, `docker compose pull app && docker compose up -d app`;
   3. проверить `/healthz` (до 60 с); при провале — вернуть предыдущий тег и уронить job.
 - Секреты Environment `staging`: `SSH_HOST`, `SSH_USER`, `SSH_KEY`, `SSH_KNOWN_HOSTS`. Переменные: `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_YMAPS_KEY`.
-- Runtime-секреты (`DATABASE_URL`, `PAYLOAD_SECRET`, `S3_*`, логин/хэш Basic Auth) живут только в `/opt/mgs/.env`.
+- Runtime-секреты (`DATABASE_URL`, `PAYLOAD_SECRET`, `SITE_DOMAIN`, `S3_*` (опционально), логин/хэш Basic Auth) живут только в `/opt/mgs/.env`.
 
 ## Git-процесс
 - Работа в ветках `feat/*`, `fix/*`, `chore/*` → PR в `main`. Прямой push в `main` запрещён (branch protection: обязательный зелёный CI).
