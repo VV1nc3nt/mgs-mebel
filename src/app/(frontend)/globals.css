@@ -1,0 +1,250 @@
+@import 'tailwindcss';
+
+@theme {
+  /* Breakpoints: only md (tablet) and xl (desktop) */
+  --breakpoint-*: initial;
+  --breakpoint-md: 768px;
+  --breakpoint-xl: 1280px;
+
+  /* Colors: project palette only */
+  --color-*: initial;
+  --color-black: #000000;
+  --color-bg: #141413;
+  --color-bg-outer: #0b0b0a;
+  --color-surface: #1d1d1c;
+  --color-surface-2: #1a1a19;
+  --color-surface-3: #262624;
+  --color-border: #262624;
+  --color-border-strong: #33332f;
+  --color-divider: #2a2a28;
+  --color-text: #f4f4f1;
+  --color-text-2: #cfcfca;
+  --color-text-3: #9c9c97;
+  --color-text-4: #7d7d78;
+  --color-text-5: #5d5d59;
+  --color-article: #e2e2dd;
+  --color-accent: #c9d730;
+  --color-accent-hover: #d4e13f;
+  --color-on-accent: #141413;
+  --color-map-bg: #1a1b1c;
+  --color-pin: #6a6c6f;
+
+  /* Font */
+  --font-sans: var(--font-manrope), system-ui, sans-serif;
+
+  /* Typography: mobile size by default, -md / -xl for tablet / desktop */
+  --text-h1: 2.5rem;
+  --text-h1--line-height: 1;
+  --text-h1--letter-spacing: -0.035em;
+  --text-h1--font-weight: 700;
+  --text-h1-md: 4rem;
+  --text-h1-md--line-height: 1;
+  --text-h1-md--letter-spacing: -0.035em;
+  --text-h1-md--font-weight: 700;
+  --text-h1-xl: 6rem;
+  --text-h1-xl--line-height: 1;
+  --text-h1-xl--letter-spacing: -0.035em;
+  --text-h1-xl--font-weight: 700;
+
+  --text-h2: 2rem;
+  --text-h2--line-height: 1.05;
+  --text-h2--letter-spacing: -0.035em;
+  --text-h2--font-weight: 700;
+  --text-h2-md: 2.75rem;
+  --text-h2-md--line-height: 1.05;
+  --text-h2-md--letter-spacing: -0.035em;
+  --text-h2-md--font-weight: 700;
+  --text-h2-xl: 3.5rem;
+  --text-h2-xl--line-height: 1.05;
+  --text-h2-xl--letter-spacing: -0.035em;
+  --text-h2-xl--font-weight: 700;
+
+  --text-h3: 1.625rem;
+  --text-h3--line-height: 1.1;
+  --text-h3--letter-spacing: -0.025em;
+  --text-h3--font-weight: 700;
+
+  --text-menu: 1.625rem;
+  --text-menu--line-height: 1;
+  --text-menu--letter-spacing: -0.03em;
+  --text-menu--font-weight: 700;
+  --text-menu-md: 2.75rem;
+  --text-menu-md--line-height: 1;
+  --text-menu-md--letter-spacing: -0.03em;
+  --text-menu-md--font-weight: 700;
+  --text-menu-xl: 3.5rem;
+  --text-menu-xl--line-height: 1;
+  --text-menu-xl--letter-spacing: -0.03em;
+  --text-menu-xl--font-weight: 700;
+
+  --text-lead: 1.25rem;
+  --text-lead--line-height: 1.35;
+  --text-lead--letter-spacing: -0.01em;
+  --text-lead--font-weight: 600;
+
+  --text-stat: 2.125rem;
+  --text-stat--line-height: 1;
+  --text-stat--letter-spacing: -0.04em;
+  --text-stat--font-weight: 300;
+
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.55;
+  --text-body-s: 0.875rem;
+  --text-body-s--line-height: 1.45;
+  --text-body-xs: 0.8125rem;
+  --text-body-xs--line-height: 1.45;
+
+  --text-button: 0.9375rem;
+  --text-button--line-height: 1;
+  --text-button--font-weight: 700;
+  --text-button-s: 0.875rem;
+  --text-button-s--line-height: 1;
+  --text-button-s--font-weight: 700;
+
+  --text-label: 0.75rem;
+  --text-label--line-height: 1;
+  --text-label--letter-spacing: 0.14em;
+  --text-label--font-weight: 600;
+
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.3;
+  --text-caption--font-weight: 600;
+  --text-caption-s: 0.6875rem;
+  --text-caption-s--line-height: 1.3;
+  --text-caption-s--font-weight: 600;
+
+  --text-logo: 1.75rem;
+  --text-logo--line-height: 1;
+  --text-logo--letter-spacing: -0.03em;
+  --text-logo--font-weight: 800;
+  --text-logo-sub: 0.5625rem;
+  --text-logo-sub--line-height: 1;
+  --text-logo-sub--letter-spacing: 0.7em;
+  --text-logo-sub--font-weight: 600;
+
+  /* Article (/news/[slug]) */
+  --text-article-title: 2.375rem;
+  --text-article-title--line-height: 1;
+  --text-article-title--letter-spacing: -0.035em;
+  --text-article-title--font-weight: 700;
+  --text-article-title-md: 3.5rem;
+  --text-article-title-md--line-height: 1;
+  --text-article-title-md--letter-spacing: -0.035em;
+  --text-article-title-md--font-weight: 700;
+  --text-article-title-xl: 5rem;
+  --text-article-title-xl--line-height: 1;
+  --text-article-title-xl--letter-spacing: -0.035em;
+  --text-article-title-xl--font-weight: 700;
+  --text-article-lead: 1.125rem;
+  --text-article-lead--line-height: 1.45;
+  --text-article-lead-md: 1.375rem;
+  --text-article-lead-md--line-height: 1.45;
+  --text-article-h2: 1.875rem;
+  --text-article-h2--line-height: 1.1;
+  --text-article-h2--font-weight: 700;
+  --text-article-body: 1.0625rem;
+  --text-article-body--line-height: 1.7;
+  --text-article-body-md: 1.125rem;
+  --text-article-body-md--line-height: 1.7;
+
+  /* Spacing */
+  --spacing-gutter: 20px;
+  --spacing-gutter-md: 32px;
+  --spacing-gutter-xl: 64px;
+  --spacing-section: 80px;
+  --spacing-section-xl: 128px;
+  --spacing-heading: 20px;
+
+  /* Containers */
+  --container-page: 1600px;
+  --container-article: 760px;
+
+  /* Radii (pill buttons use rounded-full) */
+  --radius-thumb: 14px;
+  --radius-thumb-lg: 18px;
+  --radius-card: 20px;
+  --radius-media: 24px;
+  --radius-footer: 28px;
+
+  /* Shadows */
+  --shadow-dock: 0 10px 30px rgb(0 0 0 / 0.35);
+
+  /* Easing */
+  --ease-menu: cubic-bezier(0.7, 0, 0.2, 1);
+  --ease-soft: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Media overlays: text on photo/video always sits on one of these */
+@utility bg-overlay-hero {
+  background-image: linear-gradient(
+    180deg,
+    rgb(20 20 19 / 0.75) 0%,
+    rgb(20 20 19 / 0.35) 22%,
+    rgb(20 20 19 / 0.6) 50%,
+    var(--color-bg) 90%
+  );
+}
+
+@utility bg-overlay-card {
+  background-image: linear-gradient(
+    180deg,
+    rgb(20 20 19 / 0.25) 0%,
+    rgb(20 20 19 / 0.5) 30%,
+    rgb(20 20 19 / 0.97) 100%
+  );
+}
+
+@utility bg-overlay-work {
+  background-image: linear-gradient(
+    180deg,
+    rgb(20 20 19 / 0.2) 0%,
+    rgb(20 20 19 / 0.3) 50%,
+    rgb(20 20 19 / 0.9) 100%
+  );
+}
+
+@utility bg-overlay-viewer {
+  background-image: linear-gradient(
+    180deg,
+    rgb(0 0 0 / 0.55) 0%,
+    rgb(0 0 0 / 0) 18%,
+    rgb(0 0 0 / 0) 50%,
+    rgb(0 0 0 / 0.85) 100%
+  );
+}
+
+/* Glass */
+@utility glass-dock {
+  background-color: rgb(29 29 28 / 0.72);
+  border: 1px solid rgb(244 244 241 / 0.08);
+  backdrop-filter: blur(20px) saturate(1.4);
+}
+
+@utility glass-sticky {
+  background-color: rgb(20 20 19 / 0.88);
+  backdrop-filter: blur(20px);
+}
+
+@layer base {
+  html {
+    background-color: var(--color-bg-outer);
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}

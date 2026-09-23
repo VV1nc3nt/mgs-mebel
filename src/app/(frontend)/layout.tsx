@@ -1,16 +1,20 @@
+import type { Metadata } from 'next'
 import React from 'react'
-import './styles.css'
 
-export const metadata = {
-  description: 'A blank template using Payload in a Next.js app.',
-  title: 'Payload Blank Template',
+import { manrope } from './fonts'
+import './globals.css'
+
+export const metadata: Metadata = {
+  title: {
+    default: 'MGS MEBEL',
+    template: '%s — MGS MEBEL',
+  },
+  description: 'MGS MEBEL — мебельная фабрика',
 }
 
-export default async function RootLayout(props: { children: React.ReactNode }) {
-  const { children } = props
-
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="ru" className={manrope.variable}>
       <body>
         <main>{children}</main>
       </body>
