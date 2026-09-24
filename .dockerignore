@@ -1,0 +1,13 @@
+# Whitelist: only what the image build needs.
+*
+
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!.npmrc
+!next.config.ts
+!tsconfig.json
+!postcss.config.mjs
+!eslint.config.mjs
+!src/
+!public/
