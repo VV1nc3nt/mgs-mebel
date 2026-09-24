@@ -1,0 +1,14 @@
+# Staging: automatic HTTPS, whole site (including /admin and /healthz) behind Basic Auth, no indexing.
+# On the server this file lives in /opt/mgs/caddy/Caddyfile.
+
+{$SITE_DOMAIN} {
+	encode zstd gzip
+
+	header X-Robots-Tag "noindex, nofollow"
+
+	basic_auth {
+		{$BASIC_AUTH_USER} {$BASIC_AUTH_HASH}
+	}
+
+	reverse_proxy app:3000
+}
