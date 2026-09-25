@@ -41,6 +41,8 @@ afterAll(async () => {
       slug: 'settings',
       data: {
         contacts: settingsBefore.contacts,
+        messengers: settingsBefore.messengers,
+        designerManager: settingsBefore.designerManager,
         technical: { consultantWidgetCode: settingsBefore.technical?.consultantWidgetCode ?? null },
       },
     })
@@ -127,6 +129,33 @@ describe('settings.technical', () => {
         slug: 'settings',
         data: { contacts: { email: 'x@test.local' } },
         ...as(users.content),
+      }),
+    ).rejects.toThrow()
+  })
+})
+
+describe('settings links', () => {
+  const setMessengers = (messengers: Record<string, string>) =>
+    payload.updateGlobal({ slug: 'settings', data: { messengers } })
+
+  it('accepts https links and wa.me for WhatsApp', async () => {
+    await expect(
+      setMessengers({
+        max: 'https://max.ru/join/abc',
+        whatsapp: 'https://wa.me/79270963555',
+        telegram: 'https://t.me/mgsmebel_official',
+      }),
+    ).resolves.toBeTruthy()
+  })
+
+  it('rejects http, garbage and non-wa.me WhatsApp links', async () => {
+    await expect(setMessengers({ telegram: 'http://t.me/x' })).rejects.toThrow()
+    await expect(setMessengers({ max: 'max.ru/join' })).rejects.toThrow()
+    await expect(setMessengers({ whatsapp: 'https://example.com/79270963555' })).rejects.toThrow()
+    await expect(
+      payload.updateGlobal({
+        slug: 'settings',
+        data: { designerManager: { whatsapp: 'http://wa.me/79957839428' } },
       }),
     ).rejects.toThrow()
   })

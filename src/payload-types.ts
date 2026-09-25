@@ -1396,6 +1396,9 @@ export interface Setting {
   };
   messengers?: {
     max?: string | null;
+    /**
+     * https://wa.me/79001234567
+     */
     whatsapp?: string | null;
     telegram?: string | null;
   };
@@ -1405,6 +1408,9 @@ export interface Setting {
     position?: string | null;
     phone?: string | null;
     max?: string | null;
+    /**
+     * https://wa.me/79001234567
+     */
     whatsapp?: string | null;
     telegram?: string | null;
   };

@@ -1,15 +1,49 @@
 import type { Field, GlobalConfig } from 'payload'
 
-import { publicRead, salonEditors, technicalFieldRead, technicalFieldUpdate } from '@/access'
+import {
+  hasRole,
+  publicRead,
+  salonEditors,
+  technicalFieldRead,
+  technicalFieldUpdate,
+} from '@/access'
 import { imageField } from '@/fields/media'
+
+const httpsUrl = (value: string | null | undefined, host?: string): string | true => {
+  if (!value) return true
+  try {
+    const url = new URL(value)
+    if (url.protocol !== 'https:') return 'Ссылка должна начинаться с https://'
+    if (host && url.hostname !== host) return `Ссылка должна вести на https://${host}/…`
+    return true
+  } catch {
+    return 'Некорректная ссылка'
+  }
+}
 
 const messengerFields = (): Field[] => [
   {
     type: 'row',
     fields: [
-      { name: 'max', type: 'text', label: 'MAX (ссылка)' },
-      { name: 'whatsapp', type: 'text', label: 'WhatsApp (ссылка)' },
-      { name: 'telegram', type: 'text', label: 'Telegram (ссылка)' },
+      {
+        name: 'max',
+        type: 'text',
+        label: 'MAX (ссылка)',
+        validate: (value: string | null | undefined) => httpsUrl(value),
+      },
+      {
+        name: 'whatsapp',
+        type: 'text',
+        label: 'WhatsApp (ссылка)',
+        admin: { description: 'https://wa.me/79001234567' },
+        validate: (value: string | null | undefined) => httpsUrl(value, 'wa.me'),
+      },
+      {
+        name: 'telegram',
+        type: 'text',
+        label: 'Telegram (ссылка)',
+        validate: (value: string | null | undefined) => httpsUrl(value),
+      },
     ],
   },
 ]
@@ -56,6 +90,10 @@ export const Settings: GlobalConfig = {
         {
           name: 'technical',
           label: 'Технические',
+          // Hidden from roles without read access to its only field.
+          admin: {
+            condition: (_data, _siblingData, { user }) => hasRole(user, 'developer', 'admin'),
+          },
           fields: [
             {
               name: 'consultantWidgetCode',
