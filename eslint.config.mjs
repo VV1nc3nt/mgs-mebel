@@ -30,6 +30,7 @@ const eslintConfig = [
       'src/app/(payload)/admin/importMap.js',
       'src/payload-types.ts',
       'src/payload-generated-schema.ts',
+      'src/migrations/',
     ],
   },
 ]
