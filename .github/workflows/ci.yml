@@ -31,6 +31,14 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+
+      # Production builds use the committed import map and types: fail if they are stale.
+      - name: Check generated Payload files
+        run: |
+          pnpm payload generate:importmap
+          pnpm generate:types
+          git diff --exit-code -- 'src/app/(payload)/admin/importMap.js' src/payload-types.ts
+
       - run: pnpm lint
       - run: pnpm tsc --noEmit
       # No database here: the build must not need one.
