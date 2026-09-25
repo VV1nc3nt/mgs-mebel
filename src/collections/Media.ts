@@ -1,6 +1,7 @@
 import path from 'path'
 import { APIError, type CollectionConfig } from 'payload'
 
+import { preventDeletingUsedMedia } from './mediaUsage'
 import { mediaDeleters, mediaUpdaters, anyRole, publicRead } from '@/access'
 
 const MB = 1024 * 1024
@@ -26,6 +27,7 @@ export const Media: CollectionConfig = {
     delete: mediaDeleters,
   },
   hooks: {
+    beforeDelete: [preventDeletingUsedMedia],
     beforeOperation: [
       ({ args, operation, req }) => {
         if ((operation === 'create' || operation === 'update') && req.file) {
