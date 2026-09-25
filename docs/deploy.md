@@ -19,10 +19,11 @@ PR → CI (GitHub Actions) → merge в `main` → сборка Docker-обра�
 - Сборка не требует доступа к БД: страницы, читающие Payload, рендерятся на запрос; запросы в `lib/queries.ts` кэшируются с тегами (`unstable_cache` или `'use cache'` + `cacheTag` — по версии Next), хуки Payload вызывают `revalidateTag`.
 - Миграции применяются при старте приложения (`prodMigrations` в адаптере `db-postgres`, миграции из `src/migrations`).
 - Healthcheck: `GET /healthz` → 200, делает лёгкий запрос к БД.
+- Загрузка файлов: до 100 МБ на файл (PDF каталогов); лимиты по типам — в коллекции `media` (изображения 20 МБ, видео 60 МБ, PDF 100 МБ). Caddy пропускает тело запроса до 110 МБ.
 - `NEXT_PUBLIC_*` вшиваются при сборке → передаются как build args из GitHub Environment `staging`.
 
 ## GitHub Actions
-- `ci.yml` — на `pull_request` и push в `main`: `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm tsc --noEmit`, `pnpm build`; отдельная job с сервисом `postgres`: `pnpm payload migrate` на пустой БД.
+- `ci.yml` — на `pull_request` и push в `main`: `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm tsc --noEmit`, `pnpm build`; отдельная job с сервисом `postgres`: `pnpm payload migrate` на пустой БД, `migrate:status`, проверка дрейфа схемы (`migrate:create drift_check --skip-empty` не должен создать файл) и `pnpm test:int`.
 - `deploy-staging.yml` — на push в `main` после успешного CI, `environment: staging`, `concurrency: staging`:
   1. build + push образа с тегами `<sha>` и `staging` (кэш слоёв `type=gha`);
   2. SSH на сервер (`deploy/deploy.sh`): бэкап (`backup.sh`), синхронизация `compose.yml`/`Caddyfile`/`backup.sh` через `/opt/mgs/.incoming` + `mv` (изменился `compose.yml` → `docker compose up -d` всех сервисов, изменился `Caddyfile` → `caddy reload`), запомнить текущий `APP_TAG`, `docker compose pull app && docker compose up -d app`;
