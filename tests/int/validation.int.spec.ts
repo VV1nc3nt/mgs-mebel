@@ -53,16 +53,19 @@ describe('news video block', () => {
   it('rejects links outside the whitelist and plain http', async () => {
     await expect(createNews(videoBlock({ embedUrl: 'https://vimeo.com/123' }))).rejects.toThrow()
     await expect(
+      createNews(videoBlock({ embedUrl: 'https://www.youtube.com/watch?v=abc' })),
+    ).rejects.toThrow()
+    await expect(
       createNews(videoBlock({ embedUrl: 'http://rutube.ru/video/abc/' })),
     ).rejects.toThrow()
   })
 
-  it('accepts RuTube, YouTube and a video file', async () => {
+  it('accepts RuTube, VK Video and a video file', async () => {
     await expect(
       createNews(videoBlock({ embedUrl: 'https://rutube.ru/video/abc/' })),
     ).resolves.toBeTruthy()
     await expect(
-      createNews(videoBlock({ embedUrl: 'https://www.youtube.com/watch?v=abc' })),
+      createNews(videoBlock({ embedUrl: 'https://vkvideo.ru/video-1_2' })),
     ).resolves.toBeTruthy()
     await expect(createNews(videoBlock({ file: video.id }))).resolves.toBeTruthy()
   })
