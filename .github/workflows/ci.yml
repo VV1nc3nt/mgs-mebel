@@ -45,7 +45,7 @@ jobs:
       - run: pnpm build
 
   migrate:
-    name: Migrations on empty DB
+    name: Migrations, schema drift, integration tests
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -74,3 +74,17 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm payload migrate
+      - run: pnpm payload migrate:status
+
+      # migrate:create diffs the config against the latest snapshot in src/migrations:
+      # a new file means the schema changed without a migration.
+      - name: Check schema drift
+        run: |
+          pnpm payload migrate:create drift_check --skip-empty
+          if [ -n "$(git status --porcelain -- src/migrations)" ]; then
+            git status --porcelain -- src/migrations
+            echo "::error::Schema differs from migrations. Run: pnpm payload migrate:create <name>"
+            exit 1
+          fi
+
+      - run: pnpm test:int

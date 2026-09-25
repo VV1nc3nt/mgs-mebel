@@ -1,0 +1,96 @@
+import type { CollectionConfig, NumberFieldSingleValidation } from 'payload'
+import { number as validateNumber } from 'payload/shared'
+
+import { publicRead, salonEditors } from '@/access'
+import { imageField, videoField } from '@/fields/media'
+
+type Location = { lat?: number | null; lng?: number | null }
+
+const isSet = (value: unknown) => typeof value === 'number' && !Number.isNaN(value)
+
+/** Latitude and longitude are filled together or not at all. */
+const bothOrNone: NumberFieldSingleValidation = (value, args) => {
+  const base = validateNumber(value, args)
+  if (base !== true) return base
+  const { lat, lng } = (args.siblingData ?? {}) as Location
+  return isSet(lat) === isSet(lng) ? true : 'Укажите обе координаты: широту и долготу'
+}
+
+export const Salons: CollectionConfig = {
+  slug: 'salons',
+  labels: { singular: 'Салон', plural: 'Салоны' },
+  admin: {
+    group: 'Контент',
+    useAsTitle: 'name',
+    defaultColumns: ['name', 'address', 'phone', 'order'],
+  },
+  defaultSort: 'order',
+  access: {
+    read: publicRead,
+    create: salonEditors,
+    update: salonEditors,
+    delete: salonEditors,
+  },
+  fields: [
+    { name: 'name', type: 'text', label: 'Название', required: true },
+    { name: 'address', type: 'text', label: 'Адрес', required: true },
+    {
+      type: 'row',
+      fields: [
+        { name: 'phone', type: 'text', label: 'Телефон' },
+        { name: 'metro', type: 'text', label: 'Метро' },
+        { name: 'hours', type: 'text', label: 'Часы работы' },
+      ],
+    },
+    {
+      name: 'location',
+      type: 'group',
+      label: 'Координаты',
+      admin: {
+        description:
+          'Без координат салон не показывается на карте. Заполните оба поля или ни одного.',
+      },
+      fields: [
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'lat',
+              type: 'number',
+              label: 'Широта',
+              min: -90,
+              max: 90,
+              validate: bothOrNone,
+            },
+            {
+              name: 'lng',
+              type: 'number',
+              label: 'Долгота',
+              min: -180,
+              max: 180,
+              validate: bothOrNone,
+            },
+          ],
+        },
+      ],
+    },
+    videoField('reviewVideo', {
+      label: 'Видеообзор',
+      admin: { description: 'Фоновое видео карточки «Обзор салонов». Необязательно.' },
+    }),
+    imageField('poster', {
+      label: 'Постер обзора',
+      admin: { description: 'Карточка в «Обзоре салонов» выводится, если задан постер.' },
+      extraValidate: (value, { siblingData }) =>
+        (siblingData as { reviewVideo?: unknown })?.reviewVideo && !value
+          ? 'Постер обязателен, если есть видеообзор'
+          : true,
+    }),
+    {
+      name: 'order',
+      type: 'number',
+      label: 'Порядок',
+      admin: { position: 'sidebar', description: 'Меньше — выше.' },
+    },
+  ],
+}

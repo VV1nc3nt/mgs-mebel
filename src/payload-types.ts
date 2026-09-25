@@ -67,8 +67,12 @@ export interface Config {
   };
   blocks: {};
   collections: {
-    users: User;
+    projects: Project;
+    news: News;
+    salons: Salon;
+    catalogs: Catalog;
     media: Media;
+    users: User;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -76,8 +80,12 @@ export interface Config {
   };
   collectionsJoins: {};
   collectionsSelect: {
-    users: UsersSelect<false> | UsersSelect<true>;
+    projects: ProjectsSelect<false> | ProjectsSelect<true>;
+    news: NewsSelect<false> | NewsSelect<true>;
+    salons: SalonsSelect<false> | SalonsSelect<true>;
+    catalogs: CatalogsSelect<false> | CatalogsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
+    users: UsersSelect<false> | UsersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -87,8 +95,30 @@ export interface Config {
     defaultIDType: number;
   };
   fallbackLocale: null;
-  globals: {};
-  globalsSelect: {};
+  globals: {
+    home: Home;
+    about: About;
+    salonsPage: SalonsPage;
+    worksPage: WorksPage;
+    catalogsPage: CatalogsPage;
+    designers: Designer;
+    newsPage: NewsPage;
+    stats: Stat;
+    layout: Layout;
+    settings: Setting;
+  };
+  globalsSelect: {
+    home: HomeSelect<false> | HomeSelect<true>;
+    about: AboutSelect<false> | AboutSelect<true>;
+    salonsPage: SalonsPageSelect<false> | SalonsPageSelect<true>;
+    worksPage: WorksPageSelect<false> | WorksPageSelect<true>;
+    catalogsPage: CatalogsPageSelect<false> | CatalogsPageSelect<true>;
+    designers: DesignersSelect<false> | DesignersSelect<true>;
+    newsPage: NewsPageSelect<false> | NewsPageSelect<true>;
+    stats: StatsSelect<false> | StatsSelect<true>;
+    layout: LayoutSelect<false> | LayoutSelect<true>;
+    settings: SettingsSelect<false> | SettingsSelect<true>;
+  };
   locale: null;
   widgets: {
     collections: CollectionsWidget;
@@ -119,29 +149,55 @@ export interface UserAuthOperations {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "users".
+ * via the `definition` "projects".
  */
-export interface User {
+export interface Project {
   id: number;
+  title: string;
+  /**
+   * When enabled, the slug will auto-generate from the title field on save and autosave.
+   */
+  generateSlug?: boolean | null;
+  slug: string;
+  category: 'complex' | 'kitchens' | 'hallways' | 'bedrooms' | 'bathrooms' | 'wardrobes' | 'livingrooms';
+  /**
+   * Например, ЖК «Остров»
+   */
+  place?: string | null;
+  area?: number | null;
+  /**
+   * Например, 4 недели
+   */
+  duration?: string | null;
+  description?: string | null;
+  /**
+   * В видео-проекте первый кадр — видео, дальше фото. Видео допускается только первым.
+   */
+  slides: {
+    type: 'photo' | 'video';
+    file: number | Media;
+    poster?: (number | null) | Media;
+    /**
+     * Необязательно: иначе берётся из файла.
+     */
+    duration?: number | null;
+    id?: string | null;
+  }[];
+  featured?: boolean | null;
+  /**
+   * Меньше — выше.
+   */
+  order?: number | null;
+  meta?: {
+    title?: string | null;
+    description?: string | null;
+    /**
+     * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
+     */
+    image?: (number | null) | Media;
+  };
   updatedAt: string;
   createdAt: string;
-  email: string;
-  resetPasswordToken?: string | null;
-  resetPasswordExpiration?: string | null;
-  salt?: string | null;
-  hash?: string | null;
-  resetPasswordRequestedAt?: string | null;
-  loginAttempts?: number | null;
-  lockUntil?: string | null;
-  sessions?:
-    | {
-        id: string;
-        createdAt?: string | null;
-        expiresAt: string;
-      }[]
-    | null;
-  password?: string | null;
-  collection: 'users';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -149,7 +205,10 @@ export interface User {
  */
 export interface Media {
   id: number;
-  alt: string;
+  /**
+   * Описание изображения для незрячих и поисковиков. Обязательно для изображений.
+   */
+  alt?: string | null;
   prefix?: string | null;
   _objectKey?: string | null;
   updatedAt: string;
@@ -192,6 +251,223 @@ export interface Media {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "news".
+ */
+export interface News {
+  id: number;
+  title: string;
+  /**
+   * When enabled, the slug will auto-generate from the title field on save and autosave.
+   */
+  generateSlug?: boolean | null;
+  slug: string;
+  type: 'news' | 'new';
+  date: string;
+  lead?: string | null;
+  cover: number | Media;
+  /**
+   * Считается автоматически: слова / 180.
+   */
+  readingTime?: number | null;
+  body?:
+    (NewsParagraphBlock | NewsHeadingBlock | NewsListBlock | NewsQuoteBlock | NewsMediaBlock | NewsVideoBlock)[] | null;
+  meta?: {
+    title?: string | null;
+    description?: string | null;
+    /**
+     * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
+     */
+    image?: (number | null) | Media;
+  };
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "NewsParagraphBlock".
+ */
+export interface NewsParagraphBlock {
+  text: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  };
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'paragraph';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "NewsHeadingBlock".
+ */
+export interface NewsHeadingBlock {
+  text: string;
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'heading';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "NewsListBlock".
+ */
+export interface NewsListBlock {
+  items: {
+    text: string;
+    id?: string | null;
+  }[];
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'list';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "NewsQuoteBlock".
+ */
+export interface NewsQuoteBlock {
+  text: string;
+  author?: string | null;
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'quote';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "NewsMediaBlock".
+ */
+export interface NewsMediaBlock {
+  /**
+   * 1 фото — картинка в тексте, 2 и больше — слайдер.
+   */
+  photos: (number | Media)[];
+  caption?: string | null;
+  /**
+   * По умолчанию: одно фото — 3:2 (16:9 при «на всю ширину»), слайдер — 4:5.
+   */
+  ratio?: ('3x2' | '4x5' | '1x1' | '16x9') | null;
+  wide?: boolean | null;
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'media';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "NewsVideoBlock".
+ */
+export interface NewsVideoBlock {
+  /**
+   * Файл MP4/WebM или ссылка ниже — что-то одно.
+   */
+  file?: (number | null) | Media;
+  /**
+   * RuTube, VK Видео или YouTube.
+   */
+  embedUrl?: string | null;
+  poster: number | Media;
+  /**
+   * Например, 1:24
+   */
+  duration?: string | null;
+  vertical?: boolean | null;
+  wide?: boolean | null;
+  caption?: string | null;
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'video';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "salons".
+ */
+export interface Salon {
+  id: number;
+  name: string;
+  address: string;
+  phone?: string | null;
+  metro?: string | null;
+  hours?: string | null;
+  /**
+   * Без координат салон не показывается на карте. Заполните оба поля или ни одного.
+   */
+  location?: {
+    lat?: number | null;
+    lng?: number | null;
+  };
+  /**
+   * Фоновое видео карточки «Обзор салонов». Необязательно.
+   */
+  reviewVideo?: (number | null) | Media;
+  /**
+   * Карточка в «Обзоре салонов» выводится, если задан постер.
+   */
+  poster?: (number | null) | Media;
+  /**
+   * Меньше — выше.
+   */
+  order?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "catalogs".
+ */
+export interface Catalog {
+  id: number;
+  title: string;
+  category: 'kitchens' | 'wardrobes' | 'facades' | 'bathrooms' | 'tables';
+  cover: number | Media;
+  /**
+   * Размер файла на сайте берётся из загруженного PDF.
+   */
+  pdf: number | Media;
+  pages?: number | null;
+  /**
+   * Меньше — выше.
+   */
+  order?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "users".
+ */
+export interface User {
+  id: number;
+  role: 'developer' | 'admin' | 'manager' | 'content';
+  updatedAt: string;
+  createdAt: string;
+  email: string;
+  resetPasswordToken?: string | null;
+  resetPasswordExpiration?: string | null;
+  salt?: string | null;
+  hash?: string | null;
+  resetPasswordRequestedAt?: string | null;
+  loginAttempts?: number | null;
+  lockUntil?: string | null;
+  sessions?:
+    | {
+        id: string;
+        createdAt?: string | null;
+        expiresAt: string;
+      }[]
+    | null;
+  password?: string | null;
+  collection: 'users';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -215,12 +491,28 @@ export interface PayloadLockedDocument {
   id: number;
   document?:
     | ({
-        relationTo: 'users';
-        value: number | User;
+        relationTo: 'projects';
+        value: number | Project;
+      } | null)
+    | ({
+        relationTo: 'news';
+        value: number | News;
+      } | null)
+    | ({
+        relationTo: 'salons';
+        value: number | Salon;
+      } | null)
+    | ({
+        relationTo: 'catalogs';
+        value: number | Catalog;
       } | null)
     | ({
         relationTo: 'media';
         value: number | Media;
+      } | null)
+    | ({
+        relationTo: 'users';
+        value: number | User;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -266,26 +558,176 @@ export interface PayloadMigration {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "users_select".
+ * via the `definition` "projects_select".
  */
-export interface UsersSelect<T extends boolean = true> {
-  updatedAt?: T;
-  createdAt?: T;
-  email?: T;
-  resetPasswordToken?: T;
-  resetPasswordExpiration?: T;
-  salt?: T;
-  hash?: T;
-  resetPasswordRequestedAt?: T;
-  loginAttempts?: T;
-  lockUntil?: T;
-  sessions?:
+export interface ProjectsSelect<T extends boolean = true> {
+  title?: T;
+  generateSlug?: T;
+  slug?: T;
+  category?: T;
+  place?: T;
+  area?: T;
+  duration?: T;
+  description?: T;
+  slides?:
     | T
     | {
+        type?: T;
+        file?: T;
+        poster?: T;
+        duration?: T;
         id?: T;
-        createdAt?: T;
-        expiresAt?: T;
       };
+  featured?: T;
+  order?: T;
+  meta?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        image?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "news_select".
+ */
+export interface NewsSelect<T extends boolean = true> {
+  title?: T;
+  generateSlug?: T;
+  slug?: T;
+  type?: T;
+  date?: T;
+  lead?: T;
+  cover?: T;
+  readingTime?: T;
+  body?:
+    | T
+    | {
+        paragraph?: T | NewsParagraphBlockSelect<T>;
+        heading?: T | NewsHeadingBlockSelect<T>;
+        list?: T | NewsListBlockSelect<T>;
+        quote?: T | NewsQuoteBlockSelect<T>;
+        media?: T | NewsMediaBlockSelect<T>;
+        video?: T | NewsVideoBlockSelect<T>;
+      };
+  meta?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        image?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "NewsParagraphBlock_select".
+ */
+export interface NewsParagraphBlockSelect<T extends boolean = true> {
+  text?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "NewsHeadingBlock_select".
+ */
+export interface NewsHeadingBlockSelect<T extends boolean = true> {
+  text?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "NewsListBlock_select".
+ */
+export interface NewsListBlockSelect<T extends boolean = true> {
+  items?:
+    | T
+    | {
+        text?: T;
+        id?: T;
+      };
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "NewsQuoteBlock_select".
+ */
+export interface NewsQuoteBlockSelect<T extends boolean = true> {
+  text?: T;
+  author?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "NewsMediaBlock_select".
+ */
+export interface NewsMediaBlockSelect<T extends boolean = true> {
+  photos?: T;
+  caption?: T;
+  ratio?: T;
+  wide?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "NewsVideoBlock_select".
+ */
+export interface NewsVideoBlockSelect<T extends boolean = true> {
+  file?: T;
+  embedUrl?: T;
+  poster?: T;
+  duration?: T;
+  vertical?: T;
+  wide?: T;
+  caption?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "salons_select".
+ */
+export interface SalonsSelect<T extends boolean = true> {
+  name?: T;
+  address?: T;
+  phone?: T;
+  metro?: T;
+  hours?: T;
+  location?:
+    | T
+    | {
+        lat?: T;
+        lng?: T;
+      };
+  reviewVideo?: T;
+  poster?: T;
+  order?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "catalogs_select".
+ */
+export interface CatalogsSelect<T extends boolean = true> {
+  title?: T;
+  category?: T;
+  cover?: T;
+  pdf?: T;
+  pages?: T;
+  order?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -343,6 +785,30 @@ export interface MediaSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "users_select".
+ */
+export interface UsersSelect<T extends boolean = true> {
+  role?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  email?: T;
+  resetPasswordToken?: T;
+  resetPasswordExpiration?: T;
+  salt?: T;
+  hash?: T;
+  resetPasswordRequestedAt?: T;
+  loginAttempts?: T;
+  lockUntil?: T;
+  sessions?:
+    | T
+    | {
+        id?: T;
+        createdAt?: T;
+        expiresAt?: T;
+      };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv_select".
  */
 export interface PayloadKvSelect<T extends boolean = true> {
@@ -380,6 +846,1039 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
   batch?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "home".
+ */
+export interface Home {
+  id: number;
+  hero: {
+    /**
+     * Без «#» — он добавляется автоматически.
+     */
+    label?: string | null;
+    title: string;
+    /**
+     * Абзацы разделяются пустой строкой.
+     */
+    text?: string | null;
+    ctaLabel?: string | null;
+    /**
+     * MP4 или WebM, 8–15 с, до 5 МБ, без звука. Необязательно.
+     */
+    video?: (number | null) | Media;
+    /**
+     * Показывается до загрузки видео и вместо него (экономия трафика, reduced motion).
+     */
+    poster: number | Media;
+  };
+  history: {
+    /**
+     * Без «#» — он добавляется автоматически.
+     */
+    label?: string | null;
+    photoMain: number | Media;
+    /**
+     * Например, 2001
+     */
+    yearValue?: string | null;
+    yearCaption?: string | null;
+    photoSecondary?: (number | null) | Media;
+    lead?: string | null;
+    /**
+     * Абзацы разделяются пустой строкой.
+     */
+    text?: string | null;
+    values?:
+      | {
+          label: string;
+          id?: string | null;
+        }[]
+      | null;
+    linkLabel?: string | null;
+  };
+  news?: {
+    /**
+     * Без «#» — он добавляется автоматически.
+     */
+    label?: string | null;
+    title?: string | null;
+  };
+  salons?: {
+    /**
+     * Без «#» — он добавляется автоматически.
+     */
+    label?: string | null;
+    title?: string | null;
+  };
+  works?: {
+    /**
+     * Без «#» — он добавляется автоматически.
+     */
+    label?: string | null;
+    title?: string | null;
+    buttonLabel?: string | null;
+  };
+  meta?: {
+    title?: string | null;
+    description?: string | null;
+    /**
+     * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
+     */
+    image?: (number | null) | Media;
+  };
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "about".
+ */
+export interface About {
+  id: number;
+  hero: {
+    /**
+     * Без «#» — он добавляется автоматически.
+     */
+    label?: string | null;
+    title: string;
+    /**
+     * Абзацы разделяются пустой строкой.
+     */
+    text?: string | null;
+    /**
+     * MP4 или WebM, 8–15 с, до 5 МБ, без звука. Необязательно.
+     */
+    video?: (number | null) | Media;
+    /**
+     * Показывается до загрузки видео и вместо него (экономия трафика, reduced motion).
+     */
+    poster: number | Media;
+  };
+  history: {
+    /**
+     * Без «#» — он добавляется автоматически.
+     */
+    label?: string | null;
+    photoMain: number | Media;
+    /**
+     * Например, 2001
+     */
+    yearValue?: string | null;
+    yearCaption?: string | null;
+    photoSecondary?: (number | null) | Media;
+    lead?: string | null;
+    /**
+     * Абзацы разделяются пустой строкой.
+     */
+    text?: string | null;
+    values?:
+      | {
+          label: string;
+          id?: string | null;
+        }[]
+      | null;
+  };
+  mission: {
+    /**
+     * Без «#» — он добавляется автоматически.
+     */
+    label?: string | null;
+    title?: string | null;
+    /**
+     * MP4 или WebM, 8–15 с, до 5 МБ, без звука. Необязательно.
+     */
+    video?: (number | null) | Media;
+    /**
+     * Показывается до загрузки видео и вместо него (экономия трафика, reduced motion).
+     */
+    poster: number | Media;
+  };
+  hardware?: {
+    /**
+     * Без «#» — он добавляется автоматически.
+     */
+    label?: string | null;
+    title?: string | null;
+    /**
+     * Абзацы разделяются пустой строкой.
+     */
+    text?: string | null;
+    /**
+     * Например, 10
+     */
+    warrantyValue?: string | null;
+    /**
+     * Например, лет
+     */
+    warrantyUnit?: string | null;
+    warrantyText?: string | null;
+    items?:
+      | {
+          photo: number | Media;
+          title: string;
+          id?: string | null;
+        }[]
+      | null;
+    /**
+     * Например, QUALITY
+     */
+    qualityWord?: string | null;
+  };
+  exhibitions?: {
+    /**
+     * Без «#» — он добавляется автоматически.
+     */
+    label?: string | null;
+    title?: string | null;
+    /**
+     * Абзацы разделяются пустой строкой.
+     */
+    text?: string | null;
+    items?:
+      | {
+          /**
+           * 19.02.2026 или 2025
+           */
+          date: string;
+          title: string;
+          text?: string | null;
+          /**
+           * MP4 или WebM, 8–15 с, до 5 МБ, без звука. Необязательно.
+           */
+          video?: (number | null) | Media;
+          /**
+           * Показывается до загрузки видео и вместо него (экономия трафика, reduced motion).
+           */
+          poster: number | Media;
+          id?: string | null;
+        }[]
+      | null;
+  };
+  meta?: {
+    title?: string | null;
+    description?: string | null;
+    /**
+     * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
+     */
+    image?: (number | null) | Media;
+  };
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "salonsPage".
+ */
+export interface SalonsPage {
+  id: number;
+  hero: {
+    /**
+     * Без «#» — он добавляется автоматически.
+     */
+    label?: string | null;
+    title: string;
+    lead?: string | null;
+  };
+  map?: {
+    /**
+     * После числа салонов, например «в Москве и области».
+     */
+    listCaption?: string | null;
+    /**
+     * Используется и на Главной.
+     */
+    cardCtaLabel?: string | null;
+  };
+  reviews?: {
+    /**
+     * Без «#» — он добавляется автоматически.
+     */
+    label?: string | null;
+    title?: string | null;
+  };
+  meta?: {
+    title?: string | null;
+    description?: string | null;
+    /**
+     * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
+     */
+    image?: (number | null) | Media;
+  };
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "worksPage".
+ */
+export interface WorksPage {
+  id: number;
+  hero: {
+    /**
+     * Без «#» — он добавляется автоматически.
+     */
+    label?: string | null;
+    title: string;
+  };
+  viewer?: {
+    /**
+     * Например, «Хочу такой же проект»
+     */
+    ctaLabel?: string | null;
+  };
+  meta?: {
+    title?: string | null;
+    description?: string | null;
+    /**
+     * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
+     */
+    image?: (number | null) | Media;
+  };
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "catalogsPage".
+ */
+export interface CatalogsPage {
+  id: number;
+  hero: {
+    /**
+     * Без «#» — он добавляется автоматически.
+     */
+    label?: string | null;
+    title: string;
+    lead?: string | null;
+  };
+  meta?: {
+    title?: string | null;
+    description?: string | null;
+    /**
+     * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
+     */
+    image?: (number | null) | Media;
+  };
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "designers".
+ */
+export interface Designer {
+  id: number;
+  hero: {
+    /**
+     * Без «#» — он добавляется автоматически.
+     */
+    label?: string | null;
+    /**
+     * Перенос строки сохраняется.
+     */
+    title: string;
+    /**
+     * Абзацы разделяются пустой строкой.
+     */
+    text?: string | null;
+    audiences?:
+      | {
+          label: string;
+          id?: string | null;
+        }[]
+      | null;
+    /**
+     * MP4 или WebM, 8–15 с, до 5 МБ, без звука. Необязательно.
+     */
+    video?: (number | null) | Media;
+    /**
+     * Показывается до загрузки видео и вместо него (экономия трафика, reduced motion).
+     */
+    poster: number | Media;
+  };
+  capabilities?: {
+    /**
+     * Без «#» — он добавляется автоматически.
+     */
+    label?: string | null;
+    title?: string | null;
+    /**
+     * Номер 01–04 проставляется автоматически.
+     */
+    items?:
+      | {
+          photo: number | Media;
+          title: string;
+          text?: string | null;
+          id?: string | null;
+        }[]
+      | null;
+  };
+  project: {
+    /**
+     * Без «#» — он добавляется автоматически.
+     */
+    label?: string | null;
+    title?: string | null;
+    /**
+     * MP4 или WebM, 8–15 с, до 5 МБ, без звука. Необязательно.
+     */
+    video?: (number | null) | Media;
+    /**
+     * Показывается до загрузки видео и вместо него (экономия трафика, reduced motion).
+     */
+    poster: number | Media;
+    caption?: string | null;
+    subcaption?: string | null;
+  };
+  cooperation?: {
+    /**
+     * Без «#» — он добавляется автоматически.
+     */
+    label?: string | null;
+    title?: string | null;
+    messengersLabel?: string | null;
+  };
+  meta?: {
+    title?: string | null;
+    description?: string | null;
+    /**
+     * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
+     */
+    image?: (number | null) | Media;
+  };
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "newsPage".
+ */
+export interface NewsPage {
+  id: number;
+  hero: {
+    /**
+     * Без «#» — он добавляется автоматически.
+     */
+    label?: string | null;
+    title: string;
+  };
+  articleCta?: {
+    title?: string | null;
+    text?: string | null;
+    primaryLabel?: string | null;
+    secondaryLabel?: string | null;
+  };
+  related?: {
+    title?: string | null;
+  };
+  meta?: {
+    title?: string | null;
+    description?: string | null;
+    /**
+     * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
+     */
+    image?: (number | null) | Media;
+  };
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * Блок статистики на Главной и странице «О нас».
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "stats".
+ */
+export interface Stat {
+  id: number;
+  items?:
+    | {
+        /**
+         * Например, 1000+
+         */
+        value: string;
+        label: string;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "layout".
+ */
+export interface Layout {
+  id: number;
+  header?: {
+    /**
+     * Например, «Рассчитать проект»
+     */
+    ctaLabel?: string | null;
+  };
+  nav: {
+    about: {
+      label: string;
+      /**
+       * Если пусто — как в меню.
+       */
+      shortLabel?: string | null;
+    };
+    salons: {
+      label: string;
+      /**
+       * Если пусто — как в меню.
+       */
+      shortLabel?: string | null;
+    };
+    works: {
+      label: string;
+      /**
+       * Если пусто — как в меню.
+       */
+      shortLabel?: string | null;
+    };
+    catalogs: {
+      label: string;
+      /**
+       * Если пусто — как в меню.
+       */
+      shortLabel?: string | null;
+    };
+    designers: {
+      label: string;
+      /**
+       * Если пусто — как в меню.
+       */
+      shortLabel?: string | null;
+    };
+    news: {
+      label: string;
+      /**
+       * Если пусто — как в меню.
+       */
+      shortLabel?: string | null;
+    };
+  };
+  menu?: {
+    hotlineLabel?: string | null;
+    messengersLabel?: string | null;
+  };
+  dock: {
+    askLabel: string;
+  };
+  footer?: {
+    sloganText?: string | null;
+    /**
+     * Выделяется лаймовым, например «для жизни»
+     */
+    sloganAccent?: string | null;
+    hotlineLabel?: string | null;
+    /**
+     * «© год» добавляется автоматически.
+     */
+    copyright?: string | null;
+  };
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "settings".
+ */
+export interface Setting {
+  id: number;
+  contacts: {
+    hotlinePhone: string;
+    email?: string | null;
+  };
+  messengers?: {
+    max?: string | null;
+    /**
+     * https://wa.me/79001234567
+     */
+    whatsapp?: string | null;
+    telegram?: string | null;
+  };
+  designerManager?: {
+    photo?: (number | null) | Media;
+    name?: string | null;
+    position?: string | null;
+    phone?: string | null;
+    max?: string | null;
+    /**
+     * https://wa.me/79001234567
+     */
+    whatsapp?: string | null;
+    telegram?: string | null;
+  };
+  technical?: {
+    /**
+     * Вставляется на все страницы сайта.
+     */
+    consultantWidgetCode?: string | null;
+  };
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "home_select".
+ */
+export interface HomeSelect<T extends boolean = true> {
+  hero?:
+    | T
+    | {
+        label?: T;
+        title?: T;
+        text?: T;
+        ctaLabel?: T;
+        video?: T;
+        poster?: T;
+      };
+  history?:
+    | T
+    | {
+        label?: T;
+        photoMain?: T;
+        yearValue?: T;
+        yearCaption?: T;
+        photoSecondary?: T;
+        lead?: T;
+        text?: T;
+        values?:
+          | T
+          | {
+              label?: T;
+              id?: T;
+            };
+        linkLabel?: T;
+      };
+  news?:
+    | T
+    | {
+        label?: T;
+        title?: T;
+      };
+  salons?:
+    | T
+    | {
+        label?: T;
+        title?: T;
+      };
+  works?:
+    | T
+    | {
+        label?: T;
+        title?: T;
+        buttonLabel?: T;
+      };
+  meta?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        image?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "about_select".
+ */
+export interface AboutSelect<T extends boolean = true> {
+  hero?:
+    | T
+    | {
+        label?: T;
+        title?: T;
+        text?: T;
+        video?: T;
+        poster?: T;
+      };
+  history?:
+    | T
+    | {
+        label?: T;
+        photoMain?: T;
+        yearValue?: T;
+        yearCaption?: T;
+        photoSecondary?: T;
+        lead?: T;
+        text?: T;
+        values?:
+          | T
+          | {
+              label?: T;
+              id?: T;
+            };
+      };
+  mission?:
+    | T
+    | {
+        label?: T;
+        title?: T;
+        video?: T;
+        poster?: T;
+      };
+  hardware?:
+    | T
+    | {
+        label?: T;
+        title?: T;
+        text?: T;
+        warrantyValue?: T;
+        warrantyUnit?: T;
+        warrantyText?: T;
+        items?:
+          | T
+          | {
+              photo?: T;
+              title?: T;
+              id?: T;
+            };
+        qualityWord?: T;
+      };
+  exhibitions?:
+    | T
+    | {
+        label?: T;
+        title?: T;
+        text?: T;
+        items?:
+          | T
+          | {
+              date?: T;
+              title?: T;
+              text?: T;
+              video?: T;
+              poster?: T;
+              id?: T;
+            };
+      };
+  meta?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        image?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "salonsPage_select".
+ */
+export interface SalonsPageSelect<T extends boolean = true> {
+  hero?:
+    | T
+    | {
+        label?: T;
+        title?: T;
+        lead?: T;
+      };
+  map?:
+    | T
+    | {
+        listCaption?: T;
+        cardCtaLabel?: T;
+      };
+  reviews?:
+    | T
+    | {
+        label?: T;
+        title?: T;
+      };
+  meta?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        image?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "worksPage_select".
+ */
+export interface WorksPageSelect<T extends boolean = true> {
+  hero?:
+    | T
+    | {
+        label?: T;
+        title?: T;
+      };
+  viewer?:
+    | T
+    | {
+        ctaLabel?: T;
+      };
+  meta?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        image?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "catalogsPage_select".
+ */
+export interface CatalogsPageSelect<T extends boolean = true> {
+  hero?:
+    | T
+    | {
+        label?: T;
+        title?: T;
+        lead?: T;
+      };
+  meta?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        image?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "designers_select".
+ */
+export interface DesignersSelect<T extends boolean = true> {
+  hero?:
+    | T
+    | {
+        label?: T;
+        title?: T;
+        text?: T;
+        audiences?:
+          | T
+          | {
+              label?: T;
+              id?: T;
+            };
+        video?: T;
+        poster?: T;
+      };
+  capabilities?:
+    | T
+    | {
+        label?: T;
+        title?: T;
+        items?:
+          | T
+          | {
+              photo?: T;
+              title?: T;
+              text?: T;
+              id?: T;
+            };
+      };
+  project?:
+    | T
+    | {
+        label?: T;
+        title?: T;
+        video?: T;
+        poster?: T;
+        caption?: T;
+        subcaption?: T;
+      };
+  cooperation?:
+    | T
+    | {
+        label?: T;
+        title?: T;
+        messengersLabel?: T;
+      };
+  meta?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        image?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "newsPage_select".
+ */
+export interface NewsPageSelect<T extends boolean = true> {
+  hero?:
+    | T
+    | {
+        label?: T;
+        title?: T;
+      };
+  articleCta?:
+    | T
+    | {
+        title?: T;
+        text?: T;
+        primaryLabel?: T;
+        secondaryLabel?: T;
+      };
+  related?:
+    | T
+    | {
+        title?: T;
+      };
+  meta?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        image?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "stats_select".
+ */
+export interface StatsSelect<T extends boolean = true> {
+  items?:
+    | T
+    | {
+        value?: T;
+        label?: T;
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "layout_select".
+ */
+export interface LayoutSelect<T extends boolean = true> {
+  header?:
+    | T
+    | {
+        ctaLabel?: T;
+      };
+  nav?:
+    | T
+    | {
+        about?:
+          | T
+          | {
+              label?: T;
+              shortLabel?: T;
+            };
+        salons?:
+          | T
+          | {
+              label?: T;
+              shortLabel?: T;
+            };
+        works?:
+          | T
+          | {
+              label?: T;
+              shortLabel?: T;
+            };
+        catalogs?:
+          | T
+          | {
+              label?: T;
+              shortLabel?: T;
+            };
+        designers?:
+          | T
+          | {
+              label?: T;
+              shortLabel?: T;
+            };
+        news?:
+          | T
+          | {
+              label?: T;
+              shortLabel?: T;
+            };
+      };
+  menu?:
+    | T
+    | {
+        hotlineLabel?: T;
+        messengersLabel?: T;
+      };
+  dock?:
+    | T
+    | {
+        askLabel?: T;
+      };
+  footer?:
+    | T
+    | {
+        sloganText?: T;
+        sloganAccent?: T;
+        hotlineLabel?: T;
+        copyright?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "settings_select".
+ */
+export interface SettingsSelect<T extends boolean = true> {
+  contacts?:
+    | T
+    | {
+        hotlinePhone?: T;
+        email?: T;
+      };
+  messengers?:
+    | T
+    | {
+        max?: T;
+        whatsapp?: T;
+        telegram?: T;
+      };
+  designerManager?:
+    | T
+    | {
+        photo?: T;
+        name?: T;
+        position?: T;
+        phone?: T;
+        max?: T;
+        whatsapp?: T;
+        telegram?: T;
+      };
+  technical?:
+    | T
+    | {
+        consultantWidgetCode?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
