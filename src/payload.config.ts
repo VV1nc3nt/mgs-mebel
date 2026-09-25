@@ -1,17 +1,38 @@
 import { postgresAdapter } from '@payloadcms/db-postgres'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
+import { seoPlugin } from '@payloadcms/plugin-seo'
 import { s3Storage } from '@payloadcms/storage-s3'
+import { ru } from '@payloadcms/translations/languages/ru'
+import os from 'os'
 import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
 import sharp from 'sharp'
 
-import { Users } from './collections/Users'
+import { Catalogs } from './collections/Catalogs'
 import { Media } from './collections/Media'
+import { News } from './collections/News'
+import { Projects } from './collections/Projects'
+import { Salons } from './collections/Salons'
+import { Users } from './collections/Users'
+import { About } from './globals/About'
+import { CatalogsPage } from './globals/CatalogsPage'
+import { Designers } from './globals/Designers'
+import { Home } from './globals/Home'
+import { Layout } from './globals/Layout'
+import { NewsPage } from './globals/NewsPage'
+import { SalonsPage } from './globals/SalonsPage'
+import { Settings } from './globals/Settings'
+import { Stats } from './globals/Stats'
+import { WorksPage } from './globals/WorksPage'
 import { migrations } from './migrations'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
+
+const MB = 1024 * 1024
+
+const pageGlobals = [Home, About, SalonsPage, WorksPage, CatalogsPage, Designers, NewsPage]
 
 export default buildConfig({
   admin: {
@@ -20,7 +41,20 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Users, Media],
+  i18n: {
+    supportedLanguages: { ru },
+    fallbackLanguage: 'ru',
+  },
+  collections: [Projects, News, Salons, Catalogs, Media, Users],
+  globals: [...pageGlobals, Stats, Layout, Settings],
+  // Payload defaults are 20 MB per file / 50 MB per request; catalog PDFs are larger.
+  // Per-type limits live in collections/Media.ts. Temp files keep large uploads out of RAM.
+  upload: {
+    limits: { fileSize: 100 * MB },
+    requestSizeLimit: 105 * MB,
+    useTempFiles: true,
+    tempFileDir: os.tmpdir(),
+  },
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {
@@ -34,6 +68,17 @@ export default buildConfig({
   }),
   sharp,
   plugins: [
+    seoPlugin({
+      collections: ['projects', 'news'],
+      globals: pageGlobals.map((g) => g.slug),
+      uploadsCollection: 'media',
+      tabbedUI: true,
+      generateTitle: ({ doc }) => {
+        const title = doc?.title ?? doc?.hero?.title
+        return title ? `${String(title).replace(/\s+/g, ' ')} — MGS MEBEL` : 'MGS MEBEL'
+      },
+      generateDescription: ({ doc }) => doc?.lead ?? doc?.hero?.lead ?? doc?.hero?.text ?? '',
+    }),
     // Media goes to S3 only when S3_BUCKET is set; otherwise files stay on disk (Media.upload.staticDir).
     s3Storage({
       enabled: Boolean(process.env.S3_BUCKET),

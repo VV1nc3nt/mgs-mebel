@@ -10,5 +10,10 @@
 		{$BASIC_AUTH_USER} {$BASIC_AUTH_HASH}
 	}
 
+	# Uploads: catalog PDFs up to 100 MB (the app enforces per-type limits).
+	request_body {
+		max_size 110MB
+	}
+
 	reverse_proxy app:3000
 }
