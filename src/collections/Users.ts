@@ -110,7 +110,8 @@ export const Users: CollectionConfig = {
           ? options
           : options.filter((o) => (typeof o === 'string' ? o : o.value) !== 'developer'),
       access: {
-        update: ({ req: { user }, id }) => hasRole(user, 'developer', 'admin') && user?.id !== id,
+        update: ({ req: { user }, id }) =>
+          hasRole(user, 'developer', 'admin') && String(user?.id) !== String(id),
       },
       admin: { position: 'sidebar' },
     },
