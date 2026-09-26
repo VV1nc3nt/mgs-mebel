@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runs on the server from .github/workflows/deploy-staging.yml:
 #   bash /opt/mgs/.incoming/deploy.sh <image-tag>
-# The workflow uploads compose.yml, Caddyfile, backup.sh and this script to /opt/mgs/.incoming.
+# The workflow uploads compose.yml, Caddyfile, backup.sh, seed.sh and this script to /opt/mgs/.incoming.
 # Steps: backup → sync configs → roll out the new tag → health check → roll back on failure.
 # /opt/mgs/.env is never overwritten; only its APP_TAG line is updated.
 set -euo pipefail
@@ -47,8 +47,9 @@ if ! cmp -s "$INCOMING/Caddyfile" caddy/Caddyfile; then
   mv "$INCOMING/Caddyfile" caddy/Caddyfile
   caddy_changed=true
 fi
-chmod 755 "$INCOMING/backup.sh"
+chmod 755 "$INCOMING/backup.sh" "$INCOMING/seed.sh"
 mv "$INCOMING/backup.sh" backup.sh
+mv "$INCOMING/seed.sh" seed.sh
 echo "compose.yml changed: $compose_changed, Caddyfile changed: $caddy_changed"
 
 # 3. Roll out.

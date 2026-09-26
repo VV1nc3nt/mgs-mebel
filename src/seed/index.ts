@@ -1,12 +1,12 @@
 import { ValidationError, type GlobalSlug, type Payload } from 'payload'
 
-import { catalogPdfs, catalogs } from './data/catalogs'
+import { catalogs } from './data/catalogs'
 import { globals } from './data/globals'
 import { news } from './data/news'
 import { projects } from './data/projects'
 import { salons } from './data/salons'
 import type { MediaId } from './data/types'
-import { photos, videos, type SeedFile } from './manifest'
+import { seedFiles } from './files'
 import { upsertMedia } from './media'
 import { SeedStats } from './stats'
 import { seedOptions, upsertDoc, upsertGlobal } from './upsert'
@@ -17,7 +17,7 @@ export type SeedOptions = {
   log?: (line: string) => void
 }
 
-export const seedFiles: SeedFile[] = [...photos, ...videos, ...catalogPdfs]
+export { seedFiles }
 
 /** Keys of seed documents, taken from the data itself (ids are irrelevant here). */
 const seedKeys = () => {

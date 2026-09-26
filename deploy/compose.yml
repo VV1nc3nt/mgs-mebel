@@ -56,6 +56,32 @@ services:
       retries: 3
     logging: *logging
 
+  # Demo content, run only by seed.sh: `docker compose --profile seed run --rm seed`.
+  # Image of the same commit as app (built by the "Seed staging" workflow); files come only from ./seed-cache.
+  seed:
+    profiles: [seed]
+    image: ${APP_IMAGE:-ghcr.io/vv1nc3nt/mgs-mebel}:seed-${APP_TAG:-staging}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET:?PAYLOAD_SECRET is required}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_REGION: ${S3_REGION:-}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+      MEDIA_DIR: /app/media
+      ENABLE_DEMO_SEED: ${ENABLE_DEMO_SEED:-}
+      SEED_OFFLINE: 'true'
+      SEED_CACHE_DIR: /seed-cache
+      SEED_RESET: ${SEED_RESET:-false}
+    volumes:
+      - media:/app/media
+      - ./seed-cache:/seed-cache:ro
+    logging: *logging
+
   postgres:
     image: postgres:17-alpine
     restart: unless-stopped

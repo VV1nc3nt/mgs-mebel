@@ -71,6 +71,6 @@ jobs:
         run: |
           SSH="ssh -i $HOME/.ssh/id_deploy -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes $SSH_USER@$SSH_HOST"
           # Upload configs and the deploy script to a temp dir; deploy.sh moves them into place.
-          tar -czf - -C deploy compose.yml Caddyfile backup.sh deploy.sh \
+          tar -czf - -C deploy compose.yml Caddyfile backup.sh seed.sh deploy.sh \
             | $SSH 'rm -rf /opt/mgs/.incoming && mkdir -p /opt/mgs/.incoming && tar -xzf - -C /opt/mgs/.incoming'
           $SSH "bash /opt/mgs/.incoming/deploy.sh '$SHA'"

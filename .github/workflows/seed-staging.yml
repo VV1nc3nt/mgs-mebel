@@ -1,0 +1,123 @@
+name: Seed staging
+
+# Manual only. Demo content for the app version that is running on staging (APP_TAG in /opt/mgs/.env).
+# The server cannot reach the stock sites, so the runner fills the seed cache and uploads it;
+# /opt/mgs/seed.sh then checks the cache, makes a backup and runs the seed image offline.
+on:
+  workflow_dispatch:
+    inputs:
+      reset:
+        description: 'Delete the demo content instead of creating it'
+        type: boolean
+        default: false
+      skip_fetch:
+        description: 'Do not upload the cache (already uploaded with deploy/seed-upload.sh)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  packages: write
+
+# Same group as deploy-staging.yml: a seed never overlaps a deploy.
+concurrency:
+  group: staging
+  cancel-in-progress: false
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://staging.tmprl.ru
+    env:
+      IMAGE: ghcr.io/vv1nc3nt/mgs-mebel
+    steps:
+      - name: Configure SSH
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # Host alias for ssh and rsync below.
+          printf 'Host staging\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/id_deploy\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n' \
+            "$SSH_HOST" "$SSH_USER" > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+
+      - name: Read APP_TAG from the server
+        run: |
+          tag=$(ssh staging "grep '^APP_TAG=' /opt/mgs/.env | tail -n 1 | cut -d= -f2-")
+          if [[ ! "$tag" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::APP_TAG='$tag' on the server is not a commit sha. Deploy the app first (Deploy staging)."
+            exit 1
+          fi
+          echo "APP_TAG=$tag" >> "$GITHUB_ENV"
+          echo "Running app version: $tag"
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.APP_TAG }}
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Reads the deploy-staging layer cache (default scope), writes its own scope so the deploy cache stays intact.
+      - name: Build and push seed image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: seed
+          push: true
+          tags: ${{ env.IMAGE }}:seed-${{ env.APP_TAG }}
+          build-args: |
+            NEXT_PUBLIC_SITE_URL=${{ vars.NEXT_PUBLIC_SITE_URL }}
+            NEXT_PUBLIC_YMAPS_KEY=${{ vars.NEXT_PUBLIC_YMAPS_KEY }}
+          cache-from: |
+            type=gha
+            type=gha,scope=seed
+          cache-to: type=gha,mode=max,scope=seed
+
+      - name: Restore seed cache
+        if: ${{ !inputs.reset && !inputs.skip_fetch }}
+        uses: actions/cache@v6
+        with:
+          path: .seed-cache
+          key: seed-cache-${{ hashFiles('src/seed/manifest.ts', 'src/seed/data/catalogs.ts', 'src/seed/pdf.ts') }}
+
+      # The seed image of this commit fills the cache: same manifest, no second pnpm install.
+      - name: Fetch seed files
+        if: ${{ !inputs.reset && !inputs.skip_fetch }}
+        timeout-minutes: 15
+        run: |
+          mkdir -p .seed-cache
+          chmod 777 .seed-cache
+          if ! docker run --rm -e SEED_CACHE_DIR=/seed-cache -v "$PWD/.seed-cache:/seed-cache" \
+            "$IMAGE:seed-$APP_TAG" pnpm seed:fetch; then
+            echo "::error::Стоки недоступны с раннера (403/таймаут) → deploy/seed-upload.sh с Mac, затем workflow с skip_fetch: true"
+            exit 1
+          fi
+
+      - name: Upload seed cache to the server
+        if: ${{ !inputs.reset && !inputs.skip_fetch }}
+        run: |
+          # The seed container runs as uid 1001 and mounts the cache read-only: files must be world-readable.
+          rsync -rt --delete --chmod=D755,F644 --exclude '*.part' --stats \
+            .seed-cache/ staging:/opt/mgs/seed-cache/
+
+      - name: Run seed on the server
+        env:
+          SEED_RESET: ${{ inputs.reset }}
+        # SEED_RESET is expanded here on purpose: the input is a boolean (true / false).
+        run: |
+          # shellcheck disable=SC2029
+          ssh staging "SEED_RESET=$SEED_RESET /opt/mgs/seed.sh"

@@ -52,3 +52,20 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=3 \
   CMD wget -qO- http://127.0.0.1:3000/healthz >/dev/null || exit 1
 
 CMD ["node", "server.js"]
+
+# Demo content for staging: `docker compose --profile seed run seed` (deploy/seed.sh, docs/deploy.md).
+# Built only by the "Seed staging" workflow, never deployed as the app. Needs the full source and
+# dev dependencies (payload run, tsx), hence FROM builder.
+# NODE_ENV=production: Payload applies prodMigrations instead of pushing a dev schema.
+# verify_deps_before_run=false: dependencies are frozen in the image; otherwise pnpm tries to
+# reinstall them (and fails as uid 1001) before running a script.
+FROM builder AS seed
+ENV NODE_ENV=production \
+    HOME=/tmp \
+    COREPACK_HOME=/opt/corepack \
+    pnpm_config_verify_deps_before_run=false
+# pnpm 12 downloads its native binary on first run: do it now, so uid 1001 runs pnpm offline.
+RUN corepack install && pnpm --version && chmod -R a+rX /opt/corepack
+# Same uid/gid as `nextjs` in the runner: files in the media volume keep one owner.
+USER 1001:1001
+CMD ["pnpm", "seed"]
