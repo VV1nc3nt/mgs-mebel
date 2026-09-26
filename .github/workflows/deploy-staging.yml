@@ -40,19 +40,36 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push image
+      # Build and load locally first: the image is checked before anything is pushed.
+      - name: Build image
         uses: docker/build-push-action@v7
         with:
           context: .
-          push: true
-          tags: |
-            ${{ env.IMAGE }}:${{ env.SHA }}
-            ${{ env.IMAGE }}:staging
+          target: runner
+          load: true
+          tags: ${{ env.IMAGE }}:${{ env.SHA }}
           build-args: |
             NEXT_PUBLIC_SITE_URL=${{ vars.NEXT_PUBLIC_SITE_URL }}
             NEXT_PUBLIC_YMAPS_KEY=${{ vars.NEXT_PUBLIC_YMAPS_KEY }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # Guard against shipping another stage (e.g. seed) as the app.
+      - name: Check that the image starts the server
+        run: |
+          cmd=$(docker image inspect --format '{{json .Config.Cmd}}' "$IMAGE:$SHA")
+          echo "Config.Cmd: $cmd"
+          if [[ "$cmd" != '["node","server.js"]' ]]; then
+            echo "::error::App image must run [\"node\",\"server.js\"], got $cmd. Check the Dockerfile target."
+            exit 1
+          fi
+
+      # Push exactly the image that passed the check.
+      - name: Push image
+        run: |
+          docker tag "$IMAGE:$SHA" "$IMAGE:staging"
+          docker push "$IMAGE:$SHA"
+          docker push "$IMAGE:staging"
 
       - name: Configure SSH
         env:
