@@ -101,11 +101,11 @@ export const VideoBlock: Block = {
       name: 'embedUrl',
       type: 'text',
       label: 'Ссылка на видео',
-      admin: { description: 'RuTube, VK Видео или YouTube.' },
+      admin: { description: 'RuTube или VK Видео.' },
       validate: (value: string | null | undefined) =>
         !value || isAllowedEmbedUrl(value)
           ? true
-          : 'Поддерживаются только ссылки https на RuTube, VK Видео и YouTube',
+          : 'Поддерживаются только ссылки https на RuTube и VK Видео',
     },
     imageField('poster', { label: 'Постер', required: true }),
     {

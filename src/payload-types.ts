@@ -370,7 +370,7 @@ export interface NewsVideoBlock {
    */
   file?: (number | null) | Media;
   /**
-   * RuTube, VK Видео или YouTube.
+   * RuTube или VK Видео.
    */
   embedUrl?: string | null;
   poster: number | Media;

@@ -1,15 +1,5 @@
-/** Hosts allowed in the news video block `embedUrl`. */
-export const EMBED_HOSTS = [
-  'youtube.com',
-  'www.youtube.com',
-  'm.youtube.com',
-  'youtu.be',
-  'youtube-nocookie.com',
-  'www.youtube-nocookie.com',
-  'rutube.ru',
-  'vk.com',
-  'vkvideo.ru',
-] as const
+/** Hosts allowed in the news video block `embedUrl`: RuTube and VK Video only. */
+export const EMBED_HOSTS = ['rutube.ru', 'vk.com', 'vkvideo.ru'] as const
 
 export const isAllowedEmbedUrl = (value: string): boolean => {
   try {
