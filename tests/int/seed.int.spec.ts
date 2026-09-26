@@ -1,5 +1,10 @@
+import fs from 'fs/promises'
+import os from 'os'
+import path from 'path'
 import type { Payload } from 'payload'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+
+import { ensureCached, missingFiles } from '@/seed/cache'
 
 import { catalogs } from '@/seed/data/catalogs'
 import { globals } from '@/seed/data/globals'
@@ -8,7 +13,7 @@ import { projects } from '@/seed/data/projects'
 import { salons } from '@/seed/data/salons'
 import type { MediaId } from '@/seed/data/types'
 import { isSame } from '@/seed/compare'
-import { isLocalDatabaseUrl } from '@/seed/guard'
+import { isLocalDatabaseUrl, isSeedAllowed } from '@/seed/guard'
 import { seedFiles } from '@/seed/index'
 import { placeholderPdf } from '@/seed/pdf'
 import { seoDescription, seoTitle } from '@/seed/seo'
@@ -24,6 +29,57 @@ describe('seed guard', () => {
     expect(isLocalDatabaseUrl('postgres://mgs:mgs@postgres:5432/mgs')).toBe(false)
     expect(isLocalDatabaseUrl(undefined)).toBe(false)
     expect(isLocalDatabaseUrl('not a url')).toBe(false)
+  })
+
+  it('allows a remote database only with ENABLE_DEMO_SEED=true', () => {
+    const local = 'postgres://mgs:mgs@localhost:5432/mgs'
+    const staging = 'postgres://mgs:mgs@postgres:5432/mgs'
+    expect(isSeedAllowed({ DATABASE_URL: local })).toBe(true)
+    expect(isSeedAllowed({ DATABASE_URL: staging, ENABLE_DEMO_SEED: 'true' })).toBe(true)
+    expect(isSeedAllowed({ DATABASE_URL: staging })).toBe(false)
+    expect(isSeedAllowed({ DATABASE_URL: staging, ENABLE_DEMO_SEED: 'false' })).toBe(false)
+    expect(isSeedAllowed({ DATABASE_URL: staging, ENABLE_DEMO_SEED: '1' })).toBe(false)
+    expect(isSeedAllowed({ DATABASE_URL: staging, ENABLE_DEMO_SEED: 'TRUE' })).toBe(false)
+    expect(isSeedAllowed({})).toBe(false)
+  })
+})
+
+describe('seed cache, offline', () => {
+  let dir: string
+  const [present, absent] = seedFiles.filter((file) => file.kind === 'image')
+
+  beforeAll(async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mgs-seed-cache-'))
+    await fs.writeFile(path.join(dir, present.filename), 'x')
+    await fs.writeFile(path.join(dir, absent.filename), '')
+    vi.stubEnv('SEED_CACHE_DIR', dir)
+    vi.stubEnv('SEED_OFFLINE', 'true')
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  afterAll(async () => {
+    vi.unstubAllEnvs()
+    await fs.rm(dir, { recursive: true, force: true })
+  })
+
+  it('lists missing and empty files', async () => {
+    expect(await missingFiles([present, absent], dir)).toEqual([absent])
+  })
+
+  it('takes cached files and fails on missing ones without network', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+    expect(await ensureCached(present, () => {})).toBe(path.join(dir, present.filename))
+    await expect(ensureCached(absent, () => {})).rejects.toThrow(absent.filename)
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('does not generate placeholder PDFs into the cache', async () => {
+    const pdf = seedFiles.find((file) => file.kind === 'pdf')!
+    await expect(ensureCached(pdf, () => {})).rejects.toThrow(pdf.filename)
+    expect(await missingFiles([pdf], dir)).toEqual([pdf])
   })
 })
 

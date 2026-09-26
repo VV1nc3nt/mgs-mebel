@@ -1,53 +1,10 @@
 import { spawnSync } from 'child_process'
-import fs from 'fs/promises'
-import path from 'path'
 import type { Payload } from 'payload'
 
+import { ensureCached } from './cache'
 import type { SeedFile } from './manifest'
-import { placeholderPdf } from './pdf'
 import type { SeedStats } from './stats'
 import { seedOptions } from './upsert'
-
-export const cacheDir = () => path.resolve(process.env.SEED_CACHE_DIR || '.seed-cache')
-
-const exists = (file: string) =>
-  fs.stat(file).then(
-    (stat) => stat.size > 0,
-    () => false,
-  )
-
-const download = async (url: string, target: string) => {
-  for (let attempt = 1; ; attempt++) {
-    try {
-      const response = await fetch(url)
-      if (!response.ok) throw new Error(`HTTP ${response.status}`)
-      const part = `${target}.part`
-      await fs.writeFile(part, Buffer.from(await response.arrayBuffer()))
-      await fs.rename(part, target)
-      return
-    } catch (error) {
-      if (attempt >= 3) throw new Error(`Не удалось скачать ${url}: ${(error as Error).message}`)
-    }
-  }
-}
-
-/** Local copy of a seed file: downloaded (or generated) once, then taken from the cache. */
-export const ensureCached = async (
-  file: SeedFile,
-  log: (line: string) => void,
-): Promise<string> => {
-  const dir = cacheDir()
-  await fs.mkdir(dir, { recursive: true })
-  const target = path.join(dir, file.filename)
-  if (await exists(target)) return target
-  if (file.pdfTitle) {
-    await fs.writeFile(target, placeholderPdf(file.pdfTitle))
-  } else {
-    log(`  скачиваю ${file.key}: ${file.url}`)
-    await download(file.url, target)
-  }
-  return target
-}
 
 /** Background videos must be silent (README §7). Checked only when ffprobe is installed. */
 const warnIfAudio = (file: SeedFile, filePath: string, log: (line: string) => void) => {

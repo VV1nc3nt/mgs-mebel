@@ -8,5 +8,7 @@ export default defineConfig({
     environment: 'node',
     setupFiles: ['./vitest.setup.ts'],
     include: ['tests/int/**/*.int.spec.ts'],
+    // Integration tests share one database and its globals: run files one at a time.
+    fileParallelism: false,
   },
 })

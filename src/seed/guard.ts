@@ -9,3 +9,10 @@ export const isLocalDatabaseUrl = (value: string | undefined): boolean => {
     return false
   }
 }
+
+/**
+ * Seed runs against a local database, or anywhere the server owner has set ENABLE_DEMO_SEED=true
+ * (staging only; production never has the flag).
+ */
+export const isSeedAllowed = (env: Record<string, string | undefined>): boolean =>
+  isLocalDatabaseUrl(env.DATABASE_URL) || env.ENABLE_DEMO_SEED === 'true'

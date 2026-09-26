@@ -6,7 +6,7 @@ PR → CI (GitHub Actions) → merge в `main` → сборка Docker-обра�
 ## Сервер (staging)
 - Чистый VPS (Ubuntu LTS, ≥ 2 ГБ RAM), Docker + Compose plugin, пользователь `deploy` (в группе docker), вход только по SSH-ключу, ufw: 22, 80, 443.
 - Домен задаётся переменной `SITE_DOMAIN` в `/opt/mgs/.env` и используется в `Caddyfile`: поддомен клиента (`staging.<домен>`) или `staging.<ip-через-дефис>.sslip.io`, пока DNS недоступен.
-- Каталог `/opt/mgs`: `compose.yml`, `caddy/Caddyfile`, `backup.sh`, `.env` (только на сервере, в git не попадает), `backups/`. `compose.yml`, `Caddyfile` и `backup.sh` берутся из `deploy/` и обновляются при каждом деплое; `.env` деплой не перезаписывает (меняет только строку `APP_TAG`).
+- Каталог `/opt/mgs`: `compose.yml`, `caddy/Caddyfile`, `backup.sh`, `seed.sh`, `.env` (только на сервере, в git не попадает), `backups/`, `seed-cache/` и `logs/` (демо-данные, см. ниже). `compose.yml`, `Caddyfile`, `backup.sh` и `seed.sh` берутся из `deploy/` и обновляются при каждом деплое; `.env` деплой не перезаписывает (меняет только строку `APP_TAG`).
 - Сервисы Compose:
   - `caddy` — reverse proxy, автоматический HTTPS, Basic Auth на весь сайт (включая /admin), заголовок `X-Robots-Tag: noindex, nofollow`.
   - `app` — образ `ghcr.io/<owner>/<repo>:<tag>`, порт 3000 только во внутренней сети, том `media` для загруженных файлов.
@@ -28,6 +28,7 @@ PR → CI (GitHub Actions) → merge в `main` → сборка Docker-обра�
   1. build + push образа с тегами `<sha>` и `staging` (кэш слоёв `type=gha`);
   2. SSH на сервер (`deploy/deploy.sh`): бэкап (`backup.sh`), синхронизация `compose.yml`/`Caddyfile`/`backup.sh` через `/opt/mgs/.incoming` + `mv` (изменился `compose.yml` → `docker compose up -d` всех сервисов, изменился `Caddyfile` → `caddy reload`), запомнить текущий `APP_TAG`, `docker compose pull app && docker compose up -d app`;
   3. проверить `/healthz` изнутри контейнера (`docker compose exec -T app wget …`) и что `https://<SITE_DOMAIN>/` отвечает 401 (Basic Auth) — до 60 с; при провале — вернуть предыдущий тег и уронить job. Если предыдущего тега нет (первый деплой или `staging`), откатываться некуда — job падает, новая версия остаётся.
+- `seed-staging.yml` — «Seed staging», только ручной запуск (`workflow_dispatch`), та же `concurrency: staging` — не пересекается с деплоем. Демо-данные, см. «Демо-данные на staging».
 - Секреты Environment `staging`: `SSH_HOST`, `SSH_USER`, `SSH_KEY`, `SSH_KNOWN_HOSTS`. Переменные: `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_YMAPS_KEY`.
 - Runtime-секреты (`DATABASE_URL`, `PAYLOAD_SECRET`, `SITE_DOMAIN`, `S3_*` (опционально), логин/хэш Basic Auth) живут только в `/opt/mgs/.env`.
 
@@ -84,6 +85,51 @@ PR → CI (GitHub Actions) → merge в `main` → сборка Docker-обра�
 - Ручной откат: поставить в `/opt/mgs/.env` нужный `APP_TAG=<sha>` и выполнить `docker compose up -d app`.
 - Восстановление БД: `docker compose exec -T postgres sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists' < backups/db-<дата>.dump`.
 - Восстановление media: `docker compose run --rm --no-deps -T --entrypoint tar app -xzf - -C /app/media < backups/media-<дата>.tar.gz`.
+
+## Демо-данные на staging
+
+Демо-контент (салоны, работы, новости, каталоги, глобалы страниц, стоковые медиа из `src/seed/manifest.ts`) нужен, чтобы на staging работал весь функционал. **На проде `ENABLE_DEMO_SEED` не задаётся** — seed там невозможен: `seed.sh` и сам seed отказывают без флага, а seed-образ собирается только этим workflow для staging.
+
+Как устроено:
+- Seed запускается отдельным образом `ghcr.io/vv1nc3nt/mgs-mebel:seed-<APP_TAG>` (стадия `seed` в `Dockerfile`), собранным из **того же коммита**, что работающий `app`. Прод-образ (`runner`) от этого не меняется.
+- С сервера стоки недоступны (Unsplash — таймаут, Pexels — 403), поэтому seed на сервере работает **только из кэша** `/opt/mgs/seed-cache` (`SEED_OFFLINE=true`, каталог смонтирован в контейнер только на чтение). Кэш заполняет раннер GitHub (`pnpm seed:fetch`) или, запасной путь, Mac владельца (`deploy/seed-upload.sh`).
+- `seed.sh`: проверяет флаг и `APP_TAG` → `pull` seed-образа → проверка полноты кэша (`pnpm seed:check`, список файлов — из манифеста в образе) — **до бэкапа** → `./backup.sh` → `docker compose --profile seed run --rm seed` → сводка счётчиков. Полный лог — `/opt/mgs/logs/seed-<дата>.log`.
+- Без `--profile seed` сервис `seed` не запускается (`docker compose up` его не трогает).
+- Каждый запуск делает бэкап; `backup.sh` хранит 7 последних дампов и 7 архивов media, общих с ежедневным cron (с демо-медиа архив ≈ 60 МБ).
+
+### Включить (один раз, на сервере от deploy)
+```bash
+grep -q '^ENABLE_DEMO_SEED=' /opt/mgs/.env || echo 'ENABLE_DEMO_SEED=true' >> /opt/mgs/.env
+command -v rsync   # нужен для загрузки кэша; если нет — от root: apt install -y rsync
+```
+
+### Запуск
+GitHub → Actions → **Seed staging** → Run workflow:
+- **обычный** (`reset: false`, `skip_fetch: false`): создать или обновить демо-данные. Повторный запуск ничего не дублирует: записи ищутся по slug / названию, файлы — по имени.
+- **reset** (`reset: true`): удаляет **только seed-записи коллекций** (работы, новости, каталоги, салоны) и их медиа. **Глобалы (страницы, настройки, layout, stats) и файлы, которые они используют, остаются** — список оставленных файлов есть в логе. Кэш при reset не загружается и не проверяется.
+- **пересоздать** = запуск с `reset: true`, затем обычный запуск.
+
+Workflow читает `APP_TAG` из `/opt/mgs/.env`, собирает seed-образ этого коммита (если тега `seed-<APP_TAG>` ещё нет), удаляет старые seed-образы в GHCR — остаются два последних `seed-*`, образы приложения не трогаются (если шаг падает с ошибкой доступа: настройки пакета → Manage Actions access → репозиторию `mgs-mebel` роль Admin), скачивает кэш на раннере (`actions/cache` по хешу манифеста), загружает его через `rsync` в `/opt/mgs/seed-cache` и запускает `/opt/mgs/seed.sh`.
+
+Вручную на сервере (кэш уже загружен): `/opt/mgs/seed.sh` или `SEED_RESET=true /opt/mgs/seed.sh`.
+
+### Запасной путь: стоки недоступны и с раннера
+Шаг «Fetch seed files» падает с сообщением «Стоки недоступны с раннера». Тогда на Mac владельца, в корне репозитория:
+```bash
+pnpm seed:fetch            # скачать кэш в .seed-cache (≈ 51 МБ)
+deploy/seed-upload.sh      # проверить кэш и rsync в deploy@5.180.174.123:/opt/mgs/seed-cache (ключ ~/.ssh/mgs_deploy)
+```
+Затем Actions → Seed staging с `skip_fetch: true`. Хост и ключ переопределяются: `SEED_HOST=deploy@<IP> SSH_KEY_PATH=<ключ> deploy/seed-upload.sh`.
+
+### Ошибки
+- `ENABLE_DEMO_SEED=true is not set` — флаг не включён (см. выше).
+- `APP_TAG='staging' … is not a commit sha` — приложение ещё не деплоилось workflow; дождаться «Deploy staging».
+- `В кэше /seed-cache не хватает N файлов: …` — кэш неполный; бэкап и БД не тронуты. Перезапустить workflow без `skip_fetch` или загрузить кэш через `seed-upload.sh`.
+- `rsync: command not found` — поставить rsync на сервере.
+- Seed упал посередине — повторный запуск безопасен (идемпотентен). Если данные испорчены — откат из бэкапа, сделанного перед этим запуском.
+
+### Откат из бэкапа
+Бэкап перед seed — самые свежие `backups/db-<дата>.dump` и `backups/media-<дата>.tar.gz` (время в имени — сразу перед строкой `==> Seed` в выводе). Восстановление — командами из «Эксплуатации»: `pg_restore` для БД и `tar` для тома `media`, затем `docker compose restart app`. `tar` не удаляет файлы, добавленные seed после бэкапа; чтобы том был точной копией, перед распаковкой очистить его: `docker compose run --rm --no-deps -T --entrypoint sh app -c 'rm -rf /app/media/*'`.
 
 ## Git-процесс
 - Работа в ветках `feat/*`, `fix/*`, `chore/*` → PR в `main`. Прямой push в `main` запрещён (branch protection: обязательный зелёный CI).
