@@ -71,13 +71,26 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # One seed image per commit: re-pushing the same tag would leave the old version untagged in GHCR.
+      - name: Check for an existing seed image
+        id: existing
+        run: |
+          if docker buildx imagetools inspect "$IMAGE:seed-$APP_TAG" >/dev/null 2>&1; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "$IMAGE:seed-$APP_TAG already exists, build skipped"
+          fi
+
       # Reads the deploy-staging layer cache (default scope), writes its own scope so the deploy cache stays intact.
+      # No attestations: the tag then points at the image itself, and deleting the tagged version frees its layers.
       - name: Build and push seed image
+        if: ${{ steps.existing.outputs.found != 'true' }}
         uses: docker/build-push-action@v7
         with:
           context: .
           target: seed
           push: true
+          provenance: false
+          sbom: false
           tags: ${{ env.IMAGE }}:seed-${{ env.APP_TAG }}
           build-args: |
             NEXT_PUBLIC_SITE_URL=${{ vars.NEXT_PUBLIC_SITE_URL }}
@@ -86,6 +99,32 @@ jobs:
             type=gha
             type=gha,scope=seed
           cache-to: type=gha,mode=max,scope=seed
+
+      # Seed images are ~2 GB: keep the two newest seed-* versions. Versions with any other tag
+      # (app images <sha>, staging) and untagged versions are never touched.
+      - name: Delete old seed images
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSIONS: /users/${{ github.repository_owner }}/packages/container/mgs-mebel/versions
+        run: |
+          set -o pipefail
+          if ! list=$(gh api --paginate "$VERSIONS" --jq '.[]
+              | select((.metadata.container.tags | length) > 0
+                  and all(.metadata.container.tags[]; startswith("seed-")))
+              | [.created_at, .id, (.metadata.container.tags | join(","))] | @tsv'); then
+            echo "::error::Cannot list package versions. Package settings → Manage Actions access → repository mgs-mebel: role Admin."
+            exit 1
+          fi
+          old=$(sort -r <<<"$list" | tail -n +3)
+          if [[ -z "$old" ]]; then
+            echo "Nothing to delete: $(grep -c . <<<"$list") seed image(s)"
+            exit 0
+          fi
+          while IFS=$'\t' read -r created id tags; do
+            echo "Deleting $tags ($created)"
+            gh api -X DELETE "$VERSIONS/$id"
+          done <<<"$old"
 
       - name: Restore seed cache
         if: ${{ !inputs.reset && !inputs.skip_fetch }}
