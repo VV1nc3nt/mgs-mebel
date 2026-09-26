@@ -47,6 +47,8 @@ describe('seed manifest and data', () => {
   it('has unique document keys', () => {
     const slugs = projects(id).map((doc) => doc.slug)
     expect(new Set(slugs).size).toBe(slugs.length)
+    const titles = projects(id).map((doc) => doc.meta?.title)
+    expect(new Set(titles).size).toBe(titles.length)
     const newsSlugs = news(id).map((doc) => doc.slug)
     expect(new Set(newsSlugs).size).toBe(newsSlugs.length)
   })
@@ -68,7 +70,8 @@ describe('seed manifest and data', () => {
 describe('seoTitle / seoDescription', () => {
   it('adds the brand and drops it when the title gets too long', () => {
     expect(seoTitle('Каталоги продукции')).toBe('Каталоги продукции — MGS MEBEL')
-    expect(seoTitle('Мы — MGS MEBEL', 'start')).toBe('MGS MEBEL — Мы — MGS MEBEL')
+    expect(seoTitle('Салоны', 'start')).toBe('MGS MEBEL — Салоны')
+    expect(seoTitle('Мы — MGS MEBEL', 'start')).toBe('Мы — MGS MEBEL')
     expect(seoTitle('Ваш дизайн.\nНаши возможности.')).toBe(
       'Ваш дизайн. Наши возможности. — MGS MEBEL',
     )

@@ -4,9 +4,13 @@ const DESCRIPTION_MAX = 160
 
 const squash = (value: string) => value.replace(/\s+/g, ' ').trim()
 
-/** «{title} — MGS MEBEL» (or «MGS MEBEL — {title}»); the bare title if the full one is too long. */
+/**
+ * «{title} — MGS MEBEL» (or «MGS MEBEL — {title}»); the bare title if it already
+ * names the brand or the full one is too long.
+ */
 export const seoTitle = (title: string, brand: 'end' | 'start' = 'end'): string => {
   const text = squash(title)
+  if (text.toUpperCase().includes(BRAND)) return text
   const full = brand === 'end' ? `${text} — ${BRAND}` : `${BRAND} — ${text}`
   return full.length <= TITLE_MAX ? full : text
 }

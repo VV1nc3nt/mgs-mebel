@@ -119,7 +119,8 @@ export const projectPlan: ProjectPlan[] = (() => {
         n: plan.length + 1,
         category,
         title: TITLES[(i + offset) % TITLES.length],
-        place: PLACES[i % PLACES.length],
+        // By the overall number, not the index in the category: keeps «title, place» unique.
+        place: PLACES[plan.length % PLACES.length],
         area: 30 + ((i * 7) % 60),
         duration: weeks(3 + (i % 4)),
         video: hasVideo ? VIDEOS[videoIndex++ % VIDEOS.length] : undefined,
@@ -152,5 +153,9 @@ export const projects = (id: MediaId): Project[] =>
     ],
     featured: p.featured,
     order: p.n,
-    meta: seoMeta({ title: p.title, description: DESCRIPTION, image: id(p.photos[0]) }),
+    meta: seoMeta({
+      title: `${p.title}, ${p.place}`,
+      description: DESCRIPTION,
+      image: id(p.photos[0]),
+    }),
   }))

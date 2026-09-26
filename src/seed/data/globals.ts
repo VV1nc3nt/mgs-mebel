@@ -87,7 +87,6 @@ export const globals = (id: MediaId): SeedGlobals => ({
     works: { label: 'наши работы', title: 'Реальные проекты', buttonLabel: 'Смотреть все работы' },
     meta: seoMeta({
       title: 'Мы — MGS MEBEL',
-      brand: 'start',
       description: HERO_TEXT,
       image: id('U1'),
     }),
