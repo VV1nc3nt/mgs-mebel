@@ -35,6 +35,9 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
+  // beforeAll may have failed before reading the global: then there is nothing to restore.
+  if (!payload) return
+  if (!settingsBefore) return cleanup(payload)
   if (settingsBefore.createdAt) {
     // Raw DB write: skips validation of fields other roles may have left empty.
     await payload.db.updateGlobal({
