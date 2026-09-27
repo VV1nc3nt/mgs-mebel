@@ -137,7 +137,7 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           name: standalone
-      - run: tar -xf standalone.tar -C .next
+      - run: mkdir -p .next && tar -xf standalone.tar -C .next
 
       # The server applies migrations on start (prodMigrations); no seed here, so media is empty
       # and the page must degrade gracefully.
