@@ -30,12 +30,15 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'], channel: 'chromium' },
+      // Locally PW_CHANNEL=chrome drives the installed Google Chrome instead of a downloaded Chromium.
+      use: { ...devices['Desktop Chrome'], channel: process.env.PW_CHANNEL || 'chromium' },
     },
   ],
   webServer: {
-    command: 'pnpm dev',
-    reuseExistingServer: true,
+    // CI tests the production standalone build (the same server as the Docker image).
+    command: process.env.CI ? 'node .next/standalone/server.js' : 'pnpm dev',
+    reuseExistingServer: !process.env.CI,
     url: 'http://localhost:3000',
+    env: { ENABLE_UI_KIT: 'true', PORT: '3000' },
   },
 })

@@ -23,7 +23,7 @@ PR → CI (GitHub Actions) → merge в `main` → сборка Docker-обра�
 - `NEXT_PUBLIC_*` вшиваются при сборке → передаются как build args из GitHub Environment `staging`.
 
 ## GitHub Actions
-- `ci.yml` — на `pull_request` и push в `main`: `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm tsc --noEmit`, `pnpm build`; отдельная job с сервисом `postgres`: `pnpm payload migrate` на пустой БД, `migrate:status`, проверка дрейфа схемы (`migrate:create drift_check --skip-empty` не должен создать файл) и `pnpm test:int`.
+- `ci.yml` — на `pull_request` и push в `main`: `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm tsc --noEmit`, `pnpm build`, `pnpm test:unit`; standalone-сборка (с `public/` и `.next/static`, как в `Dockerfile`) упаковывается в tar и передаётся артефактом в job `ui-kit`. Отдельная job с сервисом `postgres`: `pnpm payload migrate` на пустой БД, `migrate:status`, проверка дрейфа схемы (`migrate:create drift_check --skip-empty` не должен создать файл) и `pnpm test:int`. Job `ui-kit` (после `build`, свой `postgres`): `/ui-kit` без флага → 404, затем Playwright-спека `tests/e2e/ui-kit.e2e.spec.ts` на standalone-сервере с `ENABLE_UI_KIT=true` (axe, фокус, hit-area 44, 390/834/1440); скриншоты — артефактом.
 - `deploy-staging.yml` — на push в `main` после успешного CI, `environment: staging`, `concurrency: staging`:
   1. build + push образа с тегами `<sha>` и `staging` (кэш слоёв `type=gha`);
   2. SSH на сервер (`deploy/deploy.sh`): бэкап (`backup.sh`), синхронизация `compose.yml`/`Caddyfile`/`backup.sh` через `/opt/mgs/.incoming` + `mv` (изменился `compose.yml` → `docker compose up -d` всех сервисов, изменился `Caddyfile` → `caddy reload`), запомнить текущий `APP_TAG`, `docker compose pull app && docker compose up -d app`;
@@ -130,6 +130,25 @@ deploy/seed-upload.sh      # проверить кэш и rsync в deploy@5.180.
 
 ### Откат из бэкапа
 Бэкап перед seed — самые свежие `backups/db-<дата>.dump` и `backups/media-<дата>.tar.gz` (время в имени — сразу перед строкой `==> Seed` в выводе). Восстановление — командами из «Эксплуатации»: `pg_restore` для БД и `tar` для тома `media`, затем `docker compose restart app`. `tar` не удаляет файлы, добавленные seed после бэкапа; чтобы том был точной копией, перед распаковкой очистить его: `docker compose run --rm --no-deps -T --entrypoint sh app -c 'rm -rf /app/media/*'`.
+
+## UI-kit на staging
+
+`/ui-kit` — песочница UI-примитивов (все варианты и состояния, демо-медиа из seed). Без `ENABLE_UI_KIT=true` страница отдаёт 404; с флагом — 200 с `noindex, nofollow`, в sitemap не попадает. Флаг читается на каждый запрос, пересобирать образ не нужно. **На проде не задаётся.**
+
+Переменные попадают в контейнер `app` только через явный список `environment:` в `compose.yml` (там есть `ENABLE_UI_KIT: ${ENABLE_UI_KIT:-}`), поэтому включать флаг — после деплоя версии с этой строкой.
+
+Включить (на сервере от deploy):
+```bash
+cd /opt/mgs
+grep -q '^ENABLE_UI_KIT=' .env || echo 'ENABLE_UI_KIT=true' >> .env
+docker compose up -d app                          # пересоздаёт app с новым окружением
+docker compose exec app printenv ENABLE_UI_KIT    # → true
+docker compose exec app wget -qS -O /dev/null http://127.0.0.1:3000/ui-kit   # HTTP/1.1 200 OK
+```
+Выключить:
+```bash
+cd /opt/mgs && sed -i '/^ENABLE_UI_KIT=/d' .env && docker compose up -d app
+```
 
 ## Git-процесс
 - Работа в ветках `feat/*`, `fix/*`, `chore/*` → PR в `main`. Прямой push в `main` запрещён (branch protection: обязательный зелёный CI).
