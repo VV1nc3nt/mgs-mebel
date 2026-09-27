@@ -31,6 +31,11 @@ describe('MediaCard', () => {
     expect(screen.getByRole('link').getAttribute('href')).toBe('/news/artdom-2026')
   })
 
+  it('is not a nameless link without media and content', () => {
+    render(<MediaCard media={null} sizes={sizes} href="/works" />)
+    expect(screen.queryByRole('link')).toBeNull()
+  })
+
   it('keeps slot buttons outside the clipping layer', () => {
     render(
       <MediaCard

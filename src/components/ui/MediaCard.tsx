@@ -126,7 +126,9 @@ export function MediaCard({
 
   const classes = cn('relative isolate block', ratio && RATIO[ratio], RADIUS[radius], className)
 
-  if (href) {
+  // A link needs an accessible name: the image alt or the content. Empty media and no content
+  // (e.g. no seed yet) render a plain block instead of a nameless link.
+  if (href && (image || children)) {
     return (
       <Action href={href} className={cn(classes, 'transition-opacity hover:opacity-88')}>
         {content}
