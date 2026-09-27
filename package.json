@@ -17,9 +17,10 @@
     "seed:fetch": "cross-env NODE_OPTIONS=--no-deprecation tsx src/seed/fetch.ts",
     "seed:reset": "cross-env SEED_RESET=true NODE_OPTIONS=--no-deprecation payload run src/seed/run.ts",
     "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
-    "test": "pnpm run test:int && pnpm run test:e2e",
+    "test": "pnpm run test:unit && pnpm run test:int && pnpm run test:e2e",
     "test:e2e": "cross-env NODE_OPTIONS=\"--no-deprecation --import=tsx/esm\" playwright test --config=playwright.config.ts",
-    "test:int": "cross-env NODE_OPTIONS=--no-deprecation vitest run --config ./vitest.config.mts"
+    "test:int": "cross-env NODE_OPTIONS=--no-deprecation vitest run --config ./vitest.config.mts",
+    "test:unit": "cross-env NODE_OPTIONS=--no-deprecation vitest run --config ./vitest.unit.config.mts"
   },
   "dependencies": {
     "@payloadcms/db-postgres": "3.90.1",
@@ -32,6 +33,7 @@
     "cross-env": "^7.0.3",
     "dotenv": "16.4.7",
     "graphql": "^16.8.1",
+    "lucide-react": "^1.48.0",
     "next": "16.3.3",
     "payload": "3.90.1",
     "react": "19.2.6",
@@ -39,9 +41,12 @@
     "sharp": "0.35.4"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@playwright/test": "1.58.2",
     "@tailwindcss/postcss": "^4.3.3",
+    "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "16.3.0",
+    "@testing-library/user-event": "^14.6.7",
     "@types/node": "22.19.9",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",

@@ -20,7 +20,8 @@
   --color-text: #f4f4f1;
   --color-text-2: #cfcfca;
   --color-text-3: #9c9c97;
-  --color-text-4: #7d7d78;
+  /* README §3: #7d7d78; lightened for contrast ≥ 4.5:1 on bg/surface (owner's decision) */
+  --color-text-4: #858580;
   --color-text-5: #5d5d59;
   --color-article: #e2e2dd;
   --color-accent: #c9d730;
@@ -28,6 +29,8 @@
   --color-on-accent: #141413;
   --color-map-bg: #1a1b1c;
   --color-pin: #6a6c6f;
+  /* Bottom line of the sticky segment bar (design: works/catalogs pages) */
+  --color-line-sticky: #1f1f1e;
 
   /* Font */
   --font-sans: var(--font-manrope), system-ui, sans-serif;
@@ -154,6 +157,8 @@
   --spacing-section: 80px;
   --spacing-section-xl: 128px;
   --spacing-heading: 20px;
+  /* Minimum hit area of interactive elements (README §9) */
+  --spacing-hit: 44px;
 
   /* Containers */
   --container-page: 1600px;
@@ -165,13 +170,26 @@
   --radius-card: 20px;
   --radius-media: 24px;
   --radius-footer: 28px;
+  --radius-cover-xl: 32px;
+  --radius-pill: calc(infinity * 1px);
 
   /* Shadows */
   --shadow-dock: 0 10px 30px rgb(0 0 0 / 0.35);
+  /* Active item of the segment bar (design: works/catalogs pages) */
+  --shadow-segment: 0 2px 10px rgb(0 0 0 / 0.35);
+
+  /* Backdrop blur: soft — buttons over media, glass — badges, sticky — sticky bar and dock */
+  --blur-soft: 8px;
+  --blur-glass: 10px;
+  --blur-sticky: 20px;
 
   /* Easing */
   --ease-menu: cubic-bezier(0.7, 0, 0.2, 1);
   --ease-soft: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* Color and border transitions: 150–200ms ease-out (README §9); 200ms is duration-200 */
+  --default-transition-duration: 150ms;
+  --default-transition-timing-function: ease-out;
 }
 
 /* Media overlays: text on photo/video always sits on one of these */
@@ -214,15 +232,29 @@
 }
 
 /* Glass */
+@utility glass {
+  background-color: rgb(20 20 19 / 0.6);
+  -webkit-backdrop-filter: blur(var(--blur-glass));
+  backdrop-filter: blur(var(--blur-glass));
+}
+
+@utility glass-strong {
+  background-color: rgb(20 20 19 / 0.75);
+  -webkit-backdrop-filter: blur(var(--blur-glass));
+  backdrop-filter: blur(var(--blur-glass));
+}
+
 @utility glass-dock {
   background-color: rgb(29 29 28 / 0.72);
   border: 1px solid rgb(244 244 241 / 0.08);
-  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--blur-sticky)) saturate(1.4);
+  backdrop-filter: blur(var(--blur-sticky)) saturate(1.4);
 }
 
 @utility glass-sticky {
   background-color: rgb(20 20 19 / 0.88);
-  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(var(--blur-sticky));
+  backdrop-filter: blur(var(--blur-sticky));
 }
 
 @layer base {
