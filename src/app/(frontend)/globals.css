@@ -257,6 +257,14 @@
   backdrop-filter: blur(var(--blur-sticky));
 }
 
+/* Hides the scrollbar of horizontal segment bars and carousels */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @layer base {
   html {
     background-color: var(--color-bg-outer);
@@ -273,6 +281,16 @@
 
   p {
     text-wrap: pretty;
+  }
+
+  /*
+   * The ring color is constant, so focusing changes only outline-style/width. transition-colors
+   * animates outline-color and utilities override base, so this keeps the ring from fading in.
+   */
+  *,
+  ::before,
+  ::after {
+    outline-color: var(--color-accent);
   }
 
   :focus-visible {

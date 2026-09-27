@@ -67,8 +67,8 @@ for (const width of WIDTHS) {
         })
       for (let i = 0; i < count; i++) {
         await page.keyboard.press('Tab')
-        // transition-colors also animates outline-color (150ms): wait for the final value.
-        await expect.poll(ring).toMatch(/: solid 2px rgb\(201, 215, 48\)$/)
+        // Read right away: the ring must not fade in.
+        expect(await ring()).toMatch(/: solid 2px rgb\(201, 215, 48\)$/)
       }
     })
 
@@ -120,10 +120,34 @@ for (const width of WIDTHS) {
   })
 }
 
-test('renders with reduced motion', async ({ page }) => {
+const isVideoRequest = (url: string) => /\.(mp4|webm)(\?|$)/i.test(url)
+
+test('reduced motion: poster only, no video element and no video requests', async ({ page }) => {
+  const videoRequests: string[] = []
+  page.on('request', (request) => {
+    if (request.resourceType() === 'media' || isVideoRequest(request.url())) {
+      videoRequests.push(request.url())
+    }
+  })
   await page.emulateMedia({ reducedMotion: 'reduce' })
   const response = await page.goto(URL)
   expect(response?.status()).toBe(200)
+  await scrollThrough(page)
+  await expect(page.locator('video')).toHaveCount(0)
+  expect(videoRequests).toEqual([])
   const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()
   expect(violations).toEqual([])
+})
+
+test('without reduced motion: background videos mount and play', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.goto(URL)
+  const withVideo = page.locator('[data-bg-video]')
+  // CI has no seed media: nothing to play, the posters are covered by the test above.
+  test.skip((await withVideo.count()) === 0, 'no background video in the database')
+  await scrollThrough(page)
+  await expect(page.locator('[data-bg-video] video').first()).toBeAttached()
+  const hero = page.locator('[data-bg-video] video').first()
+  await expect(hero).toHaveJSProperty('muted', true)
+  await expect(hero).not.toHaveAttribute('controls')
 })

@@ -1,4 +1,65 @@
 import { cleanup } from '@testing-library/react'
-import { afterEach } from 'vitest'
+import { afterEach, beforeEach, vi } from 'vitest'
+
+/** jsdom has no matchMedia, IntersectionObserver or media playback: minimal controllable stubs. */
+export const env = {
+  reducedMotion: false,
+  saveData: false,
+  observers: [] as { callback: IntersectionObserverCallback; elements: Element[] }[],
+}
+
+/** Fires IntersectionObserver callbacks for all observed elements. */
+export const intersect = (isIntersecting: boolean) => {
+  for (const observer of env.observers) {
+    observer.callback(
+      observer.elements.map((target) => ({ target, isIntersecting }) as IntersectionObserverEntry),
+      {} as IntersectionObserver,
+    )
+  }
+}
+
+beforeEach(() => {
+  env.reducedMotion = false
+  env.saveData = false
+  env.observers = []
+
+  window.matchMedia = vi.fn((query: string) => ({
+    matches: query.includes('prefers-reduced-motion') && env.reducedMotion,
+    media: query,
+    onchange: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })) as unknown as typeof window.matchMedia
+
+  Object.defineProperty(navigator, 'connection', {
+    configurable: true,
+    get: () => Object.assign(new EventTarget(), { saveData: env.saveData }),
+  })
+
+  window.IntersectionObserver = class {
+    private entry: (typeof env.observers)[number]
+    constructor(callback: IntersectionObserverCallback) {
+      this.entry = { callback, elements: [] }
+      env.observers.push(this.entry)
+    }
+    observe(element: Element) {
+      this.entry.elements.push(element)
+    }
+    unobserve() {}
+    disconnect() {
+      env.observers = env.observers.filter((o) => o !== this.entry)
+    }
+    takeRecords() {
+      return []
+    }
+  } as unknown as typeof IntersectionObserver
+
+  HTMLMediaElement.prototype.play = vi.fn(() => Promise.resolve())
+  HTMLMediaElement.prototype.pause = vi.fn()
+  Element.prototype.scrollTo = vi.fn()
+})
 
 afterEach(() => cleanup())

@@ -3,14 +3,17 @@ import type { ReactNode } from 'react'
 
 import { cn } from '@/lib/cn'
 import {
+  asMedia,
   focalPosition,
   imageSizes,
   imageSource,
+  videoSource,
   type ImageSizeName,
   type MediaValue,
   type SizesPreset,
 } from '@/lib/media'
 import { Action } from './Action'
+import { BgVideo } from './BgVideo'
 
 const RATIO = {
   '9/16': 'aspect-9/16',
@@ -50,6 +53,8 @@ const INSET = {
 export type MediaCardProps = {
   /** Image from Payload Media. An id (not populated) or nothing renders an empty surface. */
   media: MediaValue
+  /** Background video over `media` as its poster (exhibitions, salon reviews, #mission). */
+  video?: MediaValue
   /** Payload size used as the optimizer source: thumb 480, card 960, hero 1920. */
   imageSize?: ImageSizeName
   /** Rendered width per breakpoint, e.g. `{ base: '100vw', md: '50vw', xl: '33vw' }`. */
@@ -81,6 +86,7 @@ export type MediaCardProps = {
  */
 export function MediaCard({
   media,
+  video,
   imageSize = 'card',
   sizes,
   ratio,
@@ -95,21 +101,33 @@ export function MediaCard({
   className,
 }: MediaCardProps) {
   const image = imageSource(media, imageSize)
+  const poster = asMedia(media)
+  const withVideo = Boolean(poster && videoSource(video))
 
   const content = (
     <>
       <div className={cn('absolute inset-0 -z-10 overflow-hidden bg-surface', RADIUS[radius])}>
-        {image && (
-          <Image
-            src={image.src}
-            alt={image.alt}
-            fill
-            sizes={imageSizes(sizes)}
-            preload={priority}
-            fetchPriority={priority ? 'high' : undefined}
-            className="object-cover"
-            style={{ objectPosition: focalPosition(media) }}
+        {poster && withVideo ? (
+          <BgVideo
+            poster={poster}
+            video={video}
+            sizes={sizes}
+            imageSize={imageSize}
+            priority={priority}
           />
+        ) : (
+          image && (
+            <Image
+              src={image.src}
+              alt={image.alt}
+              fill
+              sizes={imageSizes(sizes)}
+              preload={priority}
+              fetchPriority={priority ? 'high' : undefined}
+              className="object-cover"
+              style={{ objectPosition: focalPosition(media) }}
+            />
+          )
         )}
         {overlay !== 'none' && <div className={cn('absolute inset-0', OVERLAY[overlay])} />}
       </div>

@@ -60,3 +60,15 @@ export const focalPosition = (value: MediaValue): string => {
   const y = media?.focalY ?? 50
   return `${x}% ${y}%`
 }
+
+export type VideoSource = { src: string; type: string }
+
+/** Source of a video file: URL and MIME type for `<source type>`. */
+export const videoSource = (value: MediaValue): VideoSource | null => {
+  const media = asMedia(value)
+  if (!media || !isVideo(media) || !media.url || !media.mimeType) return null
+  return { src: media.url, type: media.mimeType }
+}
+
+/** Background videos below the fold mount this far before they scroll into view. */
+export const VIDEO_MOUNT_MARGIN = '200px 0px'

@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { connection } from 'next/server'
 import type { ReactNode } from 'react'
 
+import { BgVideo } from '@/components/ui/BgVideo'
 import { Button } from '@/components/ui/Button'
 import { Chip } from '@/components/ui/Chip'
 import { FilterChip } from '@/components/ui/FilterChip'
@@ -12,6 +13,7 @@ import { MediaCard } from '@/components/ui/MediaCard'
 import { SectionLabel } from '@/components/ui/SectionLabel'
 import { StatCard } from '@/components/ui/StatCard'
 import { getUiKitData } from './data'
+import { CatalogsSegmentDemo, ViewSegmentDemo, WorksSegmentDemo } from './SegmentDemo'
 
 // Dev sandbox: hidden from search engines and never listed in the sitemap.
 export const metadata: Metadata = {
@@ -45,7 +47,8 @@ export default async function UiKitPage() {
   await connection()
   if (process.env.ENABLE_UI_KIT !== 'true') notFound()
 
-  const { news, newsCount, history, stats } = await getUiKitData()
+  const { news, newsCount, hero, history, mission, stats, workCounts, catalogCounts } =
+    await getUiKitData()
   const [first, second, third] = news
 
   return (
@@ -320,6 +323,76 @@ export default async function UiKitPage() {
             radius="cover"
             className="w-full"
           />
+        </Row>
+      </Section>
+
+      <Section title="BgVideo">
+        <Row note="Hero: постер — LCP (priority), видео стартует сразу. Reduced motion / Save-Data / ошибка автоплея — только постер.">
+          <div className="relative isolate flex h-160 w-full flex-col justify-end overflow-hidden rounded-media p-5 md:h-195 md:p-8">
+            {hero ? (
+              <BgVideo
+                poster={hero.poster}
+                video={hero.video}
+                sizes={{ base: '100vw' }}
+                priority
+                className="-z-20"
+              />
+            ) : (
+              <div className="absolute inset-0 -z-20 bg-surface" />
+            )}
+            <div className="absolute inset-0 -z-10 bg-overlay-hero" />
+            <div className="flex max-w-2xl flex-col gap-4">
+              {hero?.label && <SectionLabel>{hero.label}</SectionLabel>}
+              <h3 className="text-h2 md:text-h2-md">{hero?.title ?? 'Пустой глобал home'}</h3>
+              {hero?.text && <p className="text-body text-text-2">{hero.text}</p>}
+              {hero?.ctaLabel && (
+                <Button width="mobile-full" arrow>
+                  {hero.ctaLabel}
+                </Button>
+              )}
+            </div>
+          </div>
+        </Row>
+        <Row note="В карточке (MediaCard video): монтируется у вьюпорта, вне вьюпорта — пауза">
+          <MediaCard
+            media={mission?.poster}
+            video={mission?.video}
+            sizes={{ base: '100vw', md: '50vw' }}
+            ratio="4/5"
+            className="w-full md:w-1/2"
+          />
+        </Row>
+      </Section>
+
+      <Section title="SegmentFilter">
+        <Row note="Sticky-лента со счётчиком (работы, счёт из базы). Активный пункт прокручивается в видимую область.">
+          <div className="flex w-full flex-col gap-3.5">
+            <WorksSegmentDemo workCounts={workCounts} />
+            {/* Content under the bar, so it has room to stick while scrolling */}
+            <div className="grid grid-cols-3 gap-1.5 md:grid-cols-4 xl:grid-cols-6">
+              {[...news, ...news].map((item, index) => (
+                <MediaCard
+                  key={`${item.id}-${index}`}
+                  media={item.cover}
+                  imageSize="thumb"
+                  sizes={{ base: '33vw', md: '25vw', xl: '16vw' }}
+                  ratio="9/16"
+                  radius="thumb"
+                  overlay="work"
+                />
+              ))}
+            </div>
+          </div>
+        </Row>
+        <Row note="Не sticky (каталоги)">
+          <div className="w-full">
+            <CatalogsSegmentDemo catalogCounts={catalogCounts} />
+          </div>
+        </Row>
+        <Row note="overlay — «Карта / Список» поверх карты">
+          <div className="flex h-40 w-full items-start justify-end rounded-media bg-map-bg p-4">
+            <ViewSegmentDemo />
+          </div>
         </Row>
       </Section>
     </div>
