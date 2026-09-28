@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { connection } from 'next/server'
 import type { ReactNode } from 'react'
 
+import { MessengerIcon } from '@/components/icons/MessengerIcon'
 import { BgVideo } from '@/components/ui/BgVideo'
 import { Button } from '@/components/ui/Button'
 import { Chip } from '@/components/ui/Chip'
@@ -12,6 +13,7 @@ import { IconButton } from '@/components/ui/IconButton'
 import { MediaCard } from '@/components/ui/MediaCard'
 import { SectionLabel } from '@/components/ui/SectionLabel'
 import { StatCard } from '@/components/ui/StatCard'
+import { MESSENGER_NAMES } from '@/lib/chrome'
 import { getUiKitData } from './data'
 import { CatalogsSegmentDemo, ViewSegmentDemo, WorksSegmentDemo } from './SegmentDemo'
 
@@ -127,8 +129,8 @@ export default async function UiKitPage() {
       <Section title="IconButton">
         {(['surface', 'glass', 'ghost', 'outline', 'outline-media', 'light'] as const).map(
           (variant) => (
-            <Row key={variant} note={`${variant}: 32 / 36 / 40 / 44 / 56`}>
-              {([32, 36, 40, 44, 56] as const).map((size) => (
+            <Row key={variant} note={`${variant}: 32 / 36 / 40 / 44 / 48 / 56`}>
+              {([32, 36, 40, 44, 48, 56] as const).map((size) => (
                 <IconButton key={size} variant={variant} size={size} aria-label="Наверх">
                   <ArrowUp />
                 </IconButton>
@@ -136,6 +138,13 @@ export default async function UiKitPage() {
             </Row>
           ),
         )}
+        <Row note="Соц-кнопки подвала: surface 48, логотипы 22">
+          {(['telegram', 'max', 'whatsapp'] as const).map((kind) => (
+            <IconButton key={kind} size={48} aria-label={MESSENGER_NAMES[kind]}>
+              <MessengerIcon kind={kind} />
+            </IconButton>
+          ))}
+        </Row>
         <Row note="Ссылки и disabled">
           <IconButton href="/" variant="outline" aria-label="Назад">
             <ArrowLeft />

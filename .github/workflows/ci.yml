@@ -104,8 +104,8 @@ jobs:
 
       - run: pnpm test:int
 
-  ui-kit:
-    name: UI kit (Playwright on the standalone build)
+  e2e:
+    name: E2E (Playwright on the standalone build)
     needs: build
     runs-on: ubuntu-latest
     services:
@@ -151,10 +151,27 @@ jobs:
           if [ "$code" != 404 ]; then cat server.log; exit 1; fi
 
       - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm test:e2e tests/e2e/ui-kit.e2e.spec.ts --reporter=list
+
+      # Fresh database: header and footer must render from empty globals.
+      - name: Layout on empty globals
+        run: pnpm test:e2e tests/e2e/layout.e2e.spec.ts --grep @empty --reporter=list
+        env:
+          E2E_EMPTY_DB: 1
+
+      # Layout and settings texts from the seed, no media. NODE_ENV=production keeps Payload from
+      # pushing the schema, which would make the next server start ask about migrations.
+      # The data cache of the previous server run is dropped so the new texts are read.
+      - name: Layout and settings fixture
+        run: |
+          rm -rf .next/standalone/.next/cache
+          pnpm payload run tests/helpers/seedChrome.ts
+        env:
+          NODE_ENV: production
+
+      - run: pnpm test:e2e tests/e2e/ui-kit.e2e.spec.ts tests/e2e/layout.e2e.spec.ts --grep-invert @empty --reporter=list
       - if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: ui-kit-screenshots
+          name: e2e-screenshots
           path: test-results/
           retention-days: 7

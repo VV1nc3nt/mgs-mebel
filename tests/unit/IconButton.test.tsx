@@ -34,4 +34,16 @@ describe('IconButton', () => {
     expect(screen.getByRole('button', { name: 'Закрыть' }).className).toContain('before:size-hit')
     expect(screen.getByRole('button', { name: 'Наверх' }).className).not.toContain('before:')
   })
+
+  it('has a 48 size with a 22 icon for footer social buttons', () => {
+    render(
+      <IconButton aria-label="Telegram" size={48}>
+        <svg />
+      </IconButton>,
+    )
+    const className = screen.getByRole('button', { name: 'Telegram' }).className
+    expect(className).toContain('size-12')
+    expect(className).toContain('[&_svg]:size-5.5')
+    expect(className).not.toContain('before:')
+  })
 })
