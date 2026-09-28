@@ -109,17 +109,23 @@ test.describe('menu behaviour', () => {
     }
   })
 
-  test('Esc moves focus to the menu button at once and restores the scroll', async ({ page }) => {
+  test('Esc: focus on the menu button at once, scroll back after the animation', async ({
+    page,
+  }) => {
     await page.goto(`${BASE}/salons`)
     await scrollTo(page, Y)
     await openMenu(page)
     await page.keyboard.press('Escape')
-    // No waiting for the 450ms closing animation
-    expect(await page.evaluate(() => document.activeElement?.getAttribute('aria-label'))).toBe(
-      'Открыть меню',
-    )
-    expect(await scrollY(page)).toBe(Y)
+    // Right after Esc, before the 450ms closing animation: focus is back, the page is still fixed
+    const start = await page.evaluate(() => ({
+      focus: document.activeElement?.getAttribute('aria-label'),
+      locked: document.documentElement.dataset.scrollLocked ?? null,
+    }))
+    expect(start).toEqual({ focus: 'Открыть меню', locked: '' })
+    // End of the animation: unlocked and scrolled back in one go
     await expect(dialog(page)).toHaveCount(0)
+    await expect(page.locator('html')).not.toHaveAttribute('data-scroll-locked')
+    expect(await scrollY(page)).toBe(Y)
   })
 
   test('the page under the menu does not scroll and keeps its width', async ({ page }) => {
@@ -139,7 +145,9 @@ test.describe('menu behaviour', () => {
     await page.waitForTimeout(300)
     expect(await layoutBox()).toEqual(before)
     await page.getByRole('button', { name: 'Закрыть меню' }).click()
+    await expect(page.locator('html')).not.toHaveAttribute('data-scroll-locked')
     expect(await scrollY(page)).toBe(Y)
+    expect(await layoutBox()).toEqual(before)
   })
 
   test('a link to the current page closes the menu and keeps the scroll', async ({ page }) => {
@@ -148,6 +156,7 @@ test.describe('menu behaviour', () => {
     await openMenu(page)
     await dialog(page).getByRole('link', { name: layout.nav.salons.label }).click()
     await expect(dialog(page)).toHaveCount(0)
+    await expect(page.locator('html')).not.toHaveAttribute('data-scroll-locked')
     await expect(page).toHaveURL(`${BASE}/salons`)
     expect(await scrollY(page)).toBe(Y)
   })
@@ -159,8 +168,8 @@ test.describe('menu behaviour', () => {
     await dialog(page).getByRole('link', { name: layout.nav.catalogs.label }).click()
     await expect(page).toHaveURL(`${BASE}/catalogs`)
     await expect(dialog(page)).toHaveCount(0)
+    await expect(page.locator('html')).not.toHaveAttribute('data-scroll-locked')
     await expect.poll(() => scrollY(page)).toBe(0)
-    expect(await page.evaluate(() => document.documentElement.dataset.scrollLocked)).toBeUndefined()
   })
 
   test('the logo in the menu leads home and closes the menu', async ({ page }) => {
