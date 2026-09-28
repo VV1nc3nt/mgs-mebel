@@ -5,6 +5,7 @@ import { BackLink } from './BackLink'
 import { HeaderNav } from './HeaderNav'
 import { HeaderShell } from './HeaderShell'
 import { Logo } from './Logo'
+import { MenuButton } from './MenuButton'
 
 /**
  * Site header (README §5.2, §4). Mobile/tablet: ← / logo / ☰. Desktop: logo · sections · phone ·
@@ -40,8 +41,12 @@ export function AppHeader({ chrome }: { chrome: SiteChrome }) {
           )}
         </div>
       )}
-      {/* The menu button takes this slot (step 5, menu) */}
-      <span aria-hidden="true" className="size-10 shrink-0 xl:hidden" />
+      {/* Without sections there is nothing to open: an empty slot keeps the logo centred */}
+      {chrome.nav.length > 0 ? (
+        <MenuButton />
+      ) : (
+        <span aria-hidden="true" className="size-10 shrink-0 xl:hidden" />
+      )}
     </HeaderShell>
   )
 }

@@ -38,7 +38,7 @@ test.describe('layout: header and footer', () => {
       test('header over the hero on /, in the flow on /salons', async ({ page }) => {
         const errors = watchConsole(page)
         await page.goto(`${BASE}/`)
-        const header = page.locator('body > div > header')
+        const header = page.locator('header')
         await expect(header).toHaveAttribute('data-variant', 'hero')
         await expect(header).toHaveCSS('position', 'absolute')
         await page.screenshot({ path: `test-results/layout/home-${width}.png` })
@@ -182,6 +182,8 @@ test.describe('layout on an empty database @empty', () => {
           )
         expect(unnamed, path).toBe(0)
         await expect(page.locator('footer a')).toHaveCount(0)
+        // No sections: no menu to open, the slot stays empty
+        await expect(page.getByRole('button', { name: 'Открыть меню' })).toHaveCount(0)
         await expect(page.locator('header a[href^="tel:"], header a[target="_blank"]')).toHaveCount(
           0,
         )

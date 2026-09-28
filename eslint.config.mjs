@@ -29,7 +29,9 @@ function magicValueRules() {
       message: `px values are not allowed: ${TOKEN_HINT}`,
     },
     {
-      selector: 'JSXAttribute[name.name="style"] Property > Literal[raw=/^-?\\d/]',
+      // CSS custom properties (`'--i': 0`) carry indexes and counts for calc(), not design values
+      selector:
+        'JSXAttribute[name.name="style"] Property:not([key.value=/^--/]) > Literal[raw=/^-?\\d/]',
       message: `numeric values in style are not allowed: ${TOKEN_HINT}`,
     },
   ]

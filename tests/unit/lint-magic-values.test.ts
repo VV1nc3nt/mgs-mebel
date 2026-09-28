@@ -28,6 +28,14 @@ describe('magic values lint rule', () => {
     expect(await lint(code)).toEqual([])
   })
 
+  it('allows numbers in CSS custom properties, not in regular style properties', async () => {
+    expect(await lint(`export const A = () => <li style={{ '--i': 0, '--n': 6 }} />`)).toEqual([])
+    expect(await lint(`export const A = (i) => <li style={{ '--i': i }} />`)).toEqual([])
+    expect(
+      await lint(`export const A = () => <li style={{ '--i': 0, width: 24 }} />`),
+    ).toHaveLength(1)
+  })
+
   it('applies to frontend pages but not to lib', async () => {
     const code = 'export const a = "24px"'
     expect(await lint(code, 'src/app/(frontend)/page.tsx')).not.toHaveLength(0)

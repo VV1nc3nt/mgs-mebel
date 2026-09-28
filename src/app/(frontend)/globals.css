@@ -134,6 +134,11 @@
   --text-phone--line-height: normal;
   --text-phone--letter-spacing: -0.01em;
   --text-phone--font-weight: 700;
+  /* Menu hotline (design: MGSMenu) */
+  --text-phone-lg: 1.75rem;
+  --text-phone-lg--line-height: normal;
+  --text-phone-lg--letter-spacing: -0.02em;
+  --text-phone-lg--font-weight: 700;
 
   /* Article (/news/[slug]) */
   --text-article-title: 2.375rem;
@@ -171,10 +176,14 @@
   --spacing-hit: 44px;
   /* Footer bottom padding: room for the floating dock (README §5.5) */
   --spacing-dock-clearance: 120px;
+  /* Menu button lines: 14×1.5 (README §5.2) */
+  --spacing-burger-bar: 1.5px;
 
   /* Containers */
   --container-page: 1600px;
   --container-article: 760px;
+  /* Menu items and bottom block on tablet (design: MGSMenu) */
+  --container-menu: 720px;
 
   /* Radii (pill buttons use rounded-full) */
   --radius-thumb: 14px;
@@ -198,6 +207,28 @@
   /* Easing */
   --ease-menu: cubic-bezier(0.7, 0, 0.2, 1);
   --ease-soft: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /*
+   * Motion. Menu: README §5.3; values marked (dc) come from MGSMenu / MGSDock. Opening and
+   * closing have their own durations; closing runs in reverse order and faster.
+   */
+  --motion-menu-clip-in: 650ms;
+  --motion-menu-clip-out: 450ms;
+  --motion-menu-item-in: 560ms;
+  --motion-menu-item-out: 220ms;
+  --motion-menu-item-delay: 220ms;
+  --motion-menu-stagger-in: 55ms;
+  --motion-menu-stagger-out: 25ms;
+  --motion-menu-line-in: 800ms;
+  --motion-menu-line-out: 200ms; /* (dc) */
+  --motion-menu-foot-in: 500ms;
+  --motion-menu-foot-out: 180ms; /* (dc) */
+  --motion-menu-foot-gap: 40ms; /* (dc) after the last item */
+  --motion-menu-header-fade: 250ms; /* (dc) */
+  --motion-menu-hover: 300ms; /* (dc) item shift, arrow, menu button colors */
+  --motion-burger: 350ms;
+  --motion-fade-reduced: 200ms;
+  --motion-dock: 350ms; /* README §5.4 */
 
   /* Color and border transitions: 150–200ms ease-out (README §9); 200ms is duration-200 */
   --default-transition-duration: 150ms;
@@ -298,6 +329,129 @@
   z-index: 70;
 }
 
+/*
+ * Menu overlay (README §5.3). Components set data-shown on the dialog and --i / --n on items;
+ * everything else is here. The circle grows from the menu button: calc(100% - 40px) 40px.
+ */
+@utility bg-menu-glow {
+  background-image: radial-gradient(
+    90% 50% at 100% 0%,
+    rgb(201 215 48 / 0.08) 0%,
+    rgb(201 215 48 / 0) 60%
+  );
+}
+
+@utility menu-overlay {
+  clip-path: circle(0 at calc(100% - 40px) 40px);
+  transition: clip-path var(--motion-menu-clip-out) var(--ease-menu);
+  [data-shown] & {
+    clip-path: circle(150% at calc(100% - 40px) 40px);
+    transition-duration: var(--motion-menu-clip-in);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    clip-path: none;
+    opacity: 0;
+    transition: opacity var(--motion-fade-reduced) ease-out;
+    [data-shown] & {
+      clip-path: none;
+      opacity: 1;
+      transition-duration: var(--motion-fade-reduced);
+    }
+  }
+}
+
+/* Closing: from the last item, 25ms apart. Opening: 220ms + 55ms × index. */
+@utility menu-item {
+  --menu-delay-out: calc(var(--motion-menu-stagger-out) * (var(--n) - 1 - var(--i)));
+  --menu-delay-in: calc(var(--motion-menu-item-delay) + var(--motion-menu-stagger-in) * var(--i));
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity var(--motion-menu-item-out) ease var(--menu-delay-out),
+    transform var(--motion-menu-item-out) var(--ease-soft) var(--menu-delay-out);
+  [data-shown] & {
+    opacity: 1;
+    transform: none;
+    transition:
+      opacity var(--motion-menu-item-in) ease var(--menu-delay-in),
+      transform var(--motion-menu-item-in) var(--ease-soft) var(--menu-delay-in);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &,
+    [data-shown] & {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+  }
+}
+
+@utility menu-line {
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--motion-menu-line-out) var(--ease-soft)
+    calc(var(--motion-menu-stagger-out) * (var(--n) - 1 - var(--i)));
+  [data-shown] & {
+    transform: scaleX(1);
+    transition: transform var(--motion-menu-line-in) var(--ease-soft)
+      calc(var(--motion-menu-item-delay) + var(--motion-menu-stagger-in) * var(--i));
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &,
+    [data-shown] & {
+      transform: none;
+      transition: none;
+    }
+  }
+}
+
+/* After the items: 220ms + n × 55ms + 40ms */
+@utility menu-foot {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity var(--motion-menu-foot-out) ease,
+    transform var(--motion-menu-foot-out) var(--ease-soft);
+  [data-shown] & {
+    --menu-delay-in: calc(
+      var(--motion-menu-item-delay) + var(--motion-menu-stagger-in) * var(--n) +
+        var(--motion-menu-foot-gap)
+    );
+    opacity: 1;
+    transform: none;
+    transition:
+      opacity var(--motion-menu-foot-in) ease var(--menu-delay-in),
+      transform var(--motion-menu-foot-in) var(--ease-soft) var(--menu-delay-in);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &,
+    [data-shown] & {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+  }
+}
+
+@utility menu-header {
+  opacity: 0;
+  transition: opacity var(--motion-menu-header-fade) ease;
+  [data-shown] & {
+    opacity: 1;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition-duration: var(--motion-fade-reduced);
+  }
+}
+
+/* Bottom block: 28 / 48 above the home indicator (design: MGSMenu) */
+@utility pb-menu-foot {
+  padding-bottom: calc(28px + env(safe-area-inset-bottom));
+  @variant md {
+    padding-bottom: calc(48px + env(safe-area-inset-bottom));
+  }
+}
+
 /* Hides the scrollbar of horizontal segment bars and carousels */
 @utility no-scrollbar {
   scrollbar-width: none;
@@ -310,6 +464,8 @@
   html {
     background-color: var(--color-bg-outer);
     color-scheme: dark;
+    /* The scroll lock hides the scrollbar: keep its gutter so the page does not shift */
+    scrollbar-gutter: stable;
   }
 
   body {
