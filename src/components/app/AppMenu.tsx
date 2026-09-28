@@ -35,20 +35,24 @@ function MenuDialog({ chrome }: { chrome: MenuChrome }) {
   const overlayRef = useRef<HTMLDivElement>(null)
   const firstItemRef = useRef<HTMLAnchorElement>(null)
   const [shown, setShown] = useState(false)
-  const visible = shown && isMenuOpen(state)
 
-  // Start from the closed styles, then switch: the transitions run from the menu button corner.
+  // Mount: the closed styles are computed first, so opening transitions from them.
   useEffect(() => {
     overlayRef.current?.getBoundingClientRect()
-    const frame = requestAnimationFrame(() => setShown(true))
     firstItemRef.current?.focus({ preventScroll: true })
-    return () => cancelAnimationFrame(frame)
   }, [])
+
+  // Both directions switch styles in the next frame: the work of the state change (inert,
+  // focus, scroll lock) never shares a frame with the start of the animation.
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setShown(isMenuOpen(state)))
+    return () => cancelAnimationFrame(frame)
+  }, [state])
 
   // End of opening / closing: the overlay's transitionend, or its computed duration as a fallback.
   useEffect(() => {
     const overlay = overlayRef.current
-    if (!overlay || !(state === 'closing' || (state === 'opening' && shown))) return
+    if (!overlay || !((state === 'closing' && !shown) || (state === 'opening' && shown))) return
     const onEnd = (event: TransitionEvent) => event.target === overlay && settle()
     overlay.addEventListener('transitionend', onEnd)
     const timer = window.setTimeout(settle, transitionTime(overlay) + 50)
@@ -107,7 +111,9 @@ function MenuDialog({ chrome }: { chrome: MenuChrome }) {
       role="dialog"
       aria-modal="true"
       aria-label="Меню"
-      data-shown={visible ? '' : undefined}
+      data-shown={shown ? '' : undefined}
+      // will-change only while something moves (globals.css), dropped once the menu is still
+      data-animating={state === 'opening' || state === 'closing' ? '' : undefined}
       inert={state === 'closing'}
       onKeyDown={trapFocus}
       style={cssVars({ '--n': chrome.nav.length })}
@@ -120,13 +126,15 @@ function MenuDialog({ chrome }: { chrome: MenuChrome }) {
           type="button"
           onClick={() => close('dismiss')}
           aria-label="Закрыть меню"
+          // No backdrop blur: the button lies over the animating overlay, so the blur would be
+          // recomputed every frame, and it is opaque (surface) while the menu is open.
           className={cn(
-            'relative flex size-10 shrink-0 items-center justify-center rounded-full border backdrop-blur-soft transition-colors duration-(--motion-menu-hover)',
+            'relative flex size-10 shrink-0 items-center justify-center rounded-full border transition-colors duration-(--motion-menu-hover)',
             HIT_AREA,
-            visible ? 'border-border-strong bg-surface' : 'border-text/25',
+            shown ? 'border-border-strong bg-surface' : 'border-text/25',
           )}
         >
-          <BurgerIcon crossed={visible} />
+          <BurgerIcon crossed={shown} />
         </button>
       </div>
 

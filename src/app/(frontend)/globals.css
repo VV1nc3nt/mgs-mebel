@@ -332,6 +332,7 @@
 /*
  * Menu overlay (README §5.3). Components set data-shown on the dialog and --i / --n on items;
  * everything else is here. The circle grows from the menu button: calc(100% - 40px) 40px.
+ * will-change applies only while [data-animating] (opening, closing).
  */
 @utility bg-menu-glow {
   background-image: radial-gradient(
@@ -342,6 +343,9 @@
 }
 
 @utility menu-overlay {
+  [data-animating] & {
+    will-change: clip-path;
+  }
   clip-path: circle(0 at calc(100% - 40px) 40px);
   transition: clip-path var(--motion-menu-clip-out) var(--ease-menu);
   [data-shown] & {
@@ -362,6 +366,9 @@
 
 /* Closing: from the last item, 25ms apart. Opening: 220ms + 55ms × index. */
 @utility menu-item {
+  [data-animating] & {
+    will-change: transform, opacity;
+  }
   --menu-delay-out: calc(var(--motion-menu-stagger-out) * (var(--n) - 1 - var(--i)));
   --menu-delay-in: calc(var(--motion-menu-item-delay) + var(--motion-menu-stagger-in) * var(--i));
   opacity: 0;
@@ -387,6 +394,9 @@
 }
 
 @utility menu-line {
+  [data-animating] & {
+    will-change: transform;
+  }
   transform: scaleX(0);
   transform-origin: left;
   transition: transform var(--motion-menu-line-out) var(--ease-soft)
@@ -407,6 +417,9 @@
 
 /* After the items: 220ms + n × 55ms + 40ms */
 @utility menu-foot {
+  [data-animating] & {
+    will-change: transform, opacity;
+  }
   opacity: 0;
   transform: translateY(16px);
   transition:

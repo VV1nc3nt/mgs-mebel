@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AppMenu, type MenuChrome } from '@/components/app/AppMenu'
@@ -178,24 +178,36 @@ describe('AppMenu', () => {
     expect(dialog.querySelector('[aria-current="page"]')?.textContent).toContain('Фирменные салоны')
   })
 
-  it('Esc returns focus to the menu button at once, before the animation ends', () => {
+  it('Esc returns focus to the menu button at once; the page stays locked until the end', async () => {
     const { container } = setup()
     openMenu()
+    const scrollTo = vi.mocked(window.scrollTo)
+    scrollTo.mockClear()
     fireEvent.keyDown(document, { key: 'Escape' })
+
+    // Start of closing: focus and inert only
     const button = screen.getByRole('button', { name: 'Открыть меню' })
     expect(document.activeElement).toBe(button)
     expect(container.querySelector('[inert]')).toBe(screen.getByRole('dialog', { hidden: true }))
+    expect(document.documentElement.dataset.scrollLocked).toBe('')
+    expect(scrollTo).not.toHaveBeenCalled()
+
+    // End of closing: unmounted, unlocked and scrolled back in the same commit
+    await waitFor(() => expect(screen.queryByRole('dialog', { hidden: true })).toBeNull())
     expect(document.documentElement.dataset.scrollLocked).toBeUndefined()
+    expect(document.body.style.position).toBe('')
+    expect(scrollTo).toHaveBeenCalledTimes(1)
   })
 
-  it('unmounts after the closing transition', async () => {
-    vi.useFakeTimers()
+  it('switches the animation styles in the next frame, not in the closing commit', async () => {
     setup()
     openMenu()
+    const dialog = screen.getByRole('dialog')
+    await waitFor(() => expect(dialog.hasAttribute('data-shown')).toBe(true))
     fireEvent.click(screen.getByRole('button', { name: 'Закрыть меню' }))
-    await act(async () => vi.advanceTimersByTime(100))
-    expect(screen.queryByRole('dialog', { hidden: true })).toBeNull()
-    vi.useRealTimers()
+    expect(dialog.hasAttribute('data-shown')).toBe(true)
+    expect(dialog.hasAttribute('data-animating')).toBe(true)
+    await waitFor(() => expect(dialog.hasAttribute('data-shown')).toBe(false))
   })
 
   it('keeps Tab inside the dialog', () => {
