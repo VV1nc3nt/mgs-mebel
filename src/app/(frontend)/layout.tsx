@@ -3,6 +3,8 @@ import React from 'react'
 
 import { AppFooter } from '@/components/app/AppFooter'
 import { AppHeader } from '@/components/app/AppHeader'
+import { AppMenu } from '@/components/app/AppMenu'
+import { MenuProvider, PageRoot } from '@/components/app/MenuProvider'
 import { SkipLink } from '@/components/app/SkipLink'
 import { toChrome } from '@/lib/chrome'
 import { getLayout, getSettings } from '@/lib/queries'
@@ -24,14 +26,26 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="ru" className={manrope.variable}>
       <body>
-        <SkipLink />
-        <div className="relative mx-auto max-w-page">
-          <AppHeader chrome={chrome} />
-          <main id="content" tabIndex={-1} className="focus-visible:outline-none">
-            {children}
-          </main>
-          <AppFooter chrome={chrome} />
-        </div>
+        <MenuProvider>
+          <PageRoot>
+            <SkipLink />
+            <div className="relative mx-auto max-w-page">
+              <AppHeader chrome={chrome} />
+              <main id="content" tabIndex={-1} className="focus-visible:outline-none">
+                {children}
+              </main>
+              <AppFooter chrome={chrome} />
+            </div>
+          </PageRoot>
+          <AppMenu
+            chrome={{
+              nav: chrome.nav,
+              phone: chrome.phone,
+              messengers: chrome.messengers,
+              menu: chrome.menu,
+            }}
+          />
+        </MenuProvider>
       </body>
     </html>
   )
