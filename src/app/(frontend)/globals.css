@@ -125,6 +125,16 @@
   --text-logo-sub--letter-spacing: 0.7em;
   --text-logo-sub--font-weight: 600;
 
+  /* Footer (design: <footer> of every page) */
+  --text-slogan: 1.625rem;
+  --text-slogan--line-height: 1.1;
+  --text-slogan--letter-spacing: -0.03em;
+  --text-slogan--font-weight: 700;
+  --text-phone: 1.375rem;
+  --text-phone--line-height: normal;
+  --text-phone--letter-spacing: -0.01em;
+  --text-phone--font-weight: 700;
+
   /* Article (/news/[slug]) */
   --text-article-title: 2.375rem;
   --text-article-title--line-height: 1;
@@ -159,6 +169,8 @@
   --spacing-heading: 20px;
   /* Minimum hit area of interactive elements (README §9) */
   --spacing-hit: 44px;
+  /* Footer bottom padding: room for the floating dock (README §5.5) */
+  --spacing-dock-clearance: 120px;
 
   /* Containers */
   --container-page: 1600px;
@@ -255,6 +267,35 @@
   background-color: rgb(20 20 19 / 0.88);
   -webkit-backdrop-filter: blur(var(--blur-sticky));
   backdrop-filter: blur(var(--blur-sticky));
+}
+
+/*
+ * Stacking order, the only place z-index values live: content < header over the hero < dock <
+ * project viewer < menu < menu header < skip link. header 8 and dock 20: design (dc.html);
+ * viewer 50, menu 60 / 61: README §6.4, §5.3.
+ */
+@utility z-header {
+  z-index: 8;
+}
+
+@utility z-dock {
+  z-index: 20;
+}
+
+@utility z-viewer {
+  z-index: 50;
+}
+
+@utility z-menu {
+  z-index: 60;
+}
+
+@utility z-menu-header {
+  z-index: 61;
+}
+
+@utility z-skip-link {
+  z-index: 70;
 }
 
 /* Hides the scrollbar of horizontal segment bars and carousels */

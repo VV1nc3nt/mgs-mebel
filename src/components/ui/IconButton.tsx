@@ -6,7 +6,7 @@ import { HIT_AREA } from './hitArea'
 
 export type IconButtonVariant =
   'surface' | 'glass' | 'ghost' | 'outline' | 'outline-media' | 'light'
-export type IconButtonSize = 32 | 36 | 40 | 44 | 56
+export type IconButtonSize = 32 | 36 | 40 | 44 | 48 | 56
 
 const VARIANT: Record<IconButtonVariant, string> = {
   surface: 'bg-surface-3 text-text hover:bg-border-strong',
@@ -25,6 +25,8 @@ const SIZE: Record<IconButtonSize, string> = {
   36: `size-9 ${HIT_AREA} [&_svg]:size-4.5`,
   40: `size-10 ${HIT_AREA} [&_svg]:size-4.5`,
   44: 'size-11 [&_svg]:size-5',
+  // Footer social buttons: 48 with a 22 logo (README §5.5)
+  48: 'size-12 [&_svg]:size-5.5',
   56: 'size-14 [&_svg]:size-5.5',
 }
 

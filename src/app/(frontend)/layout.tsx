@@ -1,6 +1,11 @@
 import type { Metadata } from 'next'
 import React from 'react'
 
+import { AppFooter } from '@/components/app/AppFooter'
+import { AppHeader } from '@/components/app/AppHeader'
+import { SkipLink } from '@/components/app/SkipLink'
+import { toChrome } from '@/lib/chrome'
+import { getLayout, getSettings } from '@/lib/queries'
 import { manrope } from './fonts'
 import './globals.css'
 
@@ -12,11 +17,21 @@ export const metadata: Metadata = {
   description: 'MGS MEBEL — мебельная фабрика',
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const [layout, settings] = await Promise.all([getLayout(), getSettings()])
+  const chrome = toChrome(layout, settings)
+
   return (
     <html lang="ru" className={manrope.variable}>
       <body>
-        <main>{children}</main>
+        <SkipLink />
+        <div className="relative mx-auto max-w-page">
+          <AppHeader chrome={chrome} />
+          <main id="content" tabIndex={-1} className="focus-visible:outline-none">
+            {children}
+          </main>
+          <AppFooter chrome={chrome} />
+        </div>
       </body>
     </html>
   )
