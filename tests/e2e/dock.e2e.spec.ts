@@ -43,18 +43,21 @@ test.describe('dock', () => {
         .poll(() => dock(page).evaluate((el) => getComputedStyle(el).transform))
         .toBe('none')
       await expect.poll(() => dock(page).evaluate((el) => getComputedStyle(el).opacity)).toBe('1')
-      const box = await dock(page).boundingBox()
-      // bottom 16, right 16 (README §5.4) from the content edge: a classic scrollbar (Linux CI)
-      // takes its own width off the viewport, overlay scrollbars (macOS) do not
-      const content = await page.evaluate(() => ({
-        width: document.documentElement.clientWidth,
-        height: document.documentElement.clientHeight,
-        inner: [window.innerWidth, window.innerHeight],
-        dock: document.querySelector('.dock')!.getBoundingClientRect().toJSON(),
-      }))
-      const where = JSON.stringify({ box, ...content })
-      expect(Math.round(content.width - box!.x - box!.width), `right: ${where}`).toBe(16)
-      expect(Math.round(content.height - box!.y - box!.height), `bottom: ${where}`).toBe(16)
+      // bottom 16, right 16 (README §5.4) from the area fixed elements are placed in. A probe
+      // measures it: a reserved scrollbar gutter (headless Linux hides the bar, keeps the gutter)
+      // is not part of it, while clientWidth may still include it.
+      const gap = await page.evaluate(() => {
+        const probe = document.body.appendChild(document.createElement('div'))
+        probe.style.cssText = 'position:fixed;inset:0;visibility:hidden'
+        const area = probe.getBoundingClientRect()
+        probe.remove()
+        const box = document.querySelector('.dock')!.getBoundingClientRect()
+        return {
+          right: Math.round(area.right - box.right),
+          bottom: Math.round(area.bottom - box.bottom),
+        }
+      })
+      expect(gap).toEqual({ right: 16, bottom: 16 })
       await page.screenshot({ path: `test-results/dock/dock-${width}.png` })
       const { violations } = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
