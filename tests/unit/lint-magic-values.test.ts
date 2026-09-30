@@ -36,6 +36,14 @@ describe('magic values lint rule', () => {
     ).toHaveLength(1)
   })
 
+  it.each([
+    ['px', `'--gap': '12px'`],
+    ['hex', `'--c': '#C9D730'`],
+    ['rgba', `'--c': 'rgba(0,0,0,.5)'`],
+  ])('still fails on %s in a CSS custom property value', async (_, prop) => {
+    expect(await lint(`export const A = () => <li style={{ ${prop} }} />`)).toHaveLength(1)
+  })
+
   it('applies to frontend pages but not to lib', async () => {
     const code = 'export const a = "24px"'
     expect(await lint(code, 'src/app/(frontend)/page.tsx')).not.toHaveLength(0)
