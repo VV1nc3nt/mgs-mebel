@@ -13,6 +13,12 @@ export type NavKey = (typeof NAV_ROUTES)[number]['key']
 /** Pages that open with a full-bleed hero: the header lies over it (design: absolute header). */
 export const HERO_ROUTES: readonly string[] = ['/', '/about', '/designers']
 
+/**
+ * Path the header islands see on the global 404 instead of the unmatched URL: not a hero,
+ * no active section, «←» to home.
+ */
+export const NOT_FOUND_PATH = '/404'
+
 const trimSlash = (pathname: string) =>
   pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname
 

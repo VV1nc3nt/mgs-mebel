@@ -1,16 +1,16 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
 
 import { HIT_AREA_Y } from '@/components/ui/hitArea'
+import { useRoutePath } from '@/hooks/useRoutePath'
 import type { NavItem } from '@/lib/chrome'
 import { cn } from '@/lib/cn'
 import { isActive } from '@/lib/routes'
 
 /** Desktop sections row (README §5.2). Client: layouts keep their render across navigations. */
 export function HeaderNav({ items }: { items: NavItem[] }) {
-  const pathname = usePathname()
+  const pathname = useRoutePath()
   if (!items.length) return null
 
   return (
