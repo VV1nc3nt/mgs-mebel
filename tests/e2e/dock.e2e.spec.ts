@@ -49,9 +49,12 @@ test.describe('dock', () => {
       const content = await page.evaluate(() => ({
         width: document.documentElement.clientWidth,
         height: document.documentElement.clientHeight,
+        inner: [window.innerWidth, window.innerHeight],
+        dock: document.querySelector('.dock')!.getBoundingClientRect().toJSON(),
       }))
-      expect(Math.round(content.width - box!.x - box!.width)).toBe(16)
-      expect(Math.round(content.height - box!.y - box!.height)).toBe(16)
+      const where = JSON.stringify({ box, ...content })
+      expect(Math.round(content.width - box!.x - box!.width), `right: ${where}`).toBe(16)
+      expect(Math.round(content.height - box!.y - box!.height), `bottom: ${where}`).toBe(16)
       await page.screenshot({ path: `test-results/dock/dock-${width}.png` })
       const { violations } = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
