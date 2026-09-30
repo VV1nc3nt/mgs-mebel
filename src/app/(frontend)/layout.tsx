@@ -4,6 +4,7 @@ import React from 'react'
 import { AppFooter } from '@/components/app/AppFooter'
 import { AppHeader } from '@/components/app/AppHeader'
 import { AppMenu } from '@/components/app/AppMenu'
+import { FloatingDock } from '@/components/app/FloatingDock'
 import { MenuProvider, PageRoot } from '@/components/app/MenuProvider'
 import { SkipLink } from '@/components/app/SkipLink'
 import { toChrome } from '@/lib/chrome'
@@ -36,6 +37,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               </main>
               <AppFooter chrome={chrome} />
             </div>
+            <FloatingDock askLabel={chrome.askLabel} action={chrome.contactAction} />
           </PageRoot>
           <AppMenu
             chrome={{

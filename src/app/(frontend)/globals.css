@@ -191,6 +191,8 @@
   --radius-card: 20px;
   --radius-media: 24px;
   --radius-footer: 28px;
+  /* Floating dock capsule (README §5.4) */
+  --radius-dock: 28px;
   --radius-cover-xl: 32px;
   --radius-pill: calc(infinity * 1px);
 
@@ -462,6 +464,30 @@
   padding-bottom: calc(28px + env(safe-area-inset-bottom));
   @variant md {
     padding-bottom: calc(48px + env(safe-area-inset-bottom));
+  }
+}
+
+/*
+ * Floating dock (README §5.4): bottom right, 16 from the edges plus the safe area. Hidden: slides
+ * below the edge and fades; under prefers-reduced-motion it only fades.
+ */
+@utility dock {
+  position: fixed;
+  right: calc(16px + env(safe-area-inset-right));
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  transition:
+    transform var(--motion-dock) var(--ease-soft),
+    opacity var(--motion-dock) var(--ease-soft);
+  &[data-hidden] {
+    transform: translateY(calc(100% + 24px));
+    opacity: 0;
+    pointer-events: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition: opacity var(--motion-dock) ease-out;
+    &[data-hidden] {
+      transform: none;
+    }
   }
 }
 
