@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { isActive, isHeroRoute, NAV_ROUTES, parentOf } from '@/lib/routes'
+import { isActive, isHeroRoute, NAV_ROUTES, NOT_FOUND_PATH, parentOf } from '@/lib/routes'
 
 describe('routes', () => {
   it('lists sections in menu order (README §5.3)', () => {
@@ -39,5 +39,11 @@ describe('routes', () => {
     })
     expect(parentOf('/news')).toEqual({ href: '/', label: 'На главную' })
     expect(parentOf('/salons')).toEqual({ href: '/', label: 'На главную' })
+  })
+
+  it('gives the global 404 a flow header, no active section and «←» home', () => {
+    expect(isHeroRoute(NOT_FOUND_PATH)).toBe(false)
+    expect(NAV_ROUTES.some((route) => isActive(NOT_FOUND_PATH, route.href))).toBe(false)
+    expect(parentOf(NOT_FOUND_PATH)).toEqual({ href: '/', label: 'На главную' })
   })
 })

@@ -1,8 +1,8 @@
 'use client'
 
-import { usePathname } from 'next/navigation'
 import type { ReactNode } from 'react'
 
+import { useRoutePath } from '@/hooks/useRoutePath'
 import { cn } from '@/lib/cn'
 import { isHeroRoute } from '@/lib/routes'
 
@@ -12,7 +12,7 @@ import { isHeroRoute } from '@/lib/routes'
  * right variant and nothing shifts on hydration.
  */
 export function HeaderShell({ children }: { children: ReactNode }) {
-  const hero = isHeroRoute(usePathname())
+  const hero = isHeroRoute(useRoutePath())
   return (
     <header
       data-variant={hero ? 'hero' : 'flow'}

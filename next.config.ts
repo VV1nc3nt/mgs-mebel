@@ -8,6 +8,10 @@ const dirname = path.dirname(__filename)
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  experimental: {
+    // Unmatched URLs: the app has two root layouts ((frontend), (payload)) and no shared one.
+    globalNotFound: true,
+  },
   images: {
     localPatterns: [
       {

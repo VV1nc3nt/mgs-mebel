@@ -1,9 +1,8 @@
 'use client'
 
-import { usePathname } from 'next/navigation'
-
 import { HIT_AREA } from '@/components/ui/hitArea'
 import { isMenuOpen, MENU_ID, useMenu } from '@/hooks/useMenu'
+import { useRoutePath } from '@/hooks/useRoutePath'
 import { cn } from '@/lib/cn'
 import { isHeroRoute } from '@/lib/routes'
 import { BurgerIcon } from './BurgerIcon'
@@ -14,7 +13,7 @@ import { BurgerIcon } from './BurgerIcon'
  */
 export function MenuButton() {
   const { state, open, buttonRef } = useMenu()
-  const hero = isHeroRoute(usePathname())
+  const hero = isHeroRoute(useRoutePath())
   const expanded = isMenuOpen(state)
 
   return (

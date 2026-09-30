@@ -1,13 +1,13 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
 
 import { MessengerIcon } from '@/components/icons/MessengerIcon'
 import { Action } from '@/components/ui/Action'
 import { HIT_AREA } from '@/components/ui/hitArea'
 import { isMenuOpen, MENU_ID, transitionTime, useMenu } from '@/hooks/useMenu'
+import { useRoutePath } from '@/hooks/useRoutePath'
 import { MESSENGER_NAMES, type SiteChrome } from '@/lib/chrome'
 import { cn } from '@/lib/cn'
 import { cssVars } from '@/lib/cssVars'
@@ -31,7 +31,7 @@ export function AppMenu({ chrome }: { chrome: MenuChrome }) {
 
 function MenuDialog({ chrome }: { chrome: MenuChrome }) {
   const { state, close, settle } = useMenu()
-  const pathname = usePathname()
+  const pathname = useRoutePath()
   const overlayRef = useRef<HTMLDivElement>(null)
   const firstItemRef = useRef<HTMLAnchorElement>(null)
   const [shown, setShown] = useState(false)
