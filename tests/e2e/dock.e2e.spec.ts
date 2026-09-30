@@ -44,9 +44,14 @@ test.describe('dock', () => {
         .toBe('none')
       await expect.poll(() => dock(page).evaluate((el) => getComputedStyle(el).opacity)).toBe('1')
       const box = await dock(page).boundingBox()
-      // bottom 16, right 16 (README §5.4)
-      expect(Math.round(width - box!.x - box!.width)).toBe(16)
-      expect(Math.round(900 - box!.y - box!.height)).toBe(16)
+      // bottom 16, right 16 (README §5.4) from the content edge: a classic scrollbar (Linux CI)
+      // takes its own width off the viewport, overlay scrollbars (macOS) do not
+      const content = await page.evaluate(() => ({
+        width: document.documentElement.clientWidth,
+        height: document.documentElement.clientHeight,
+      }))
+      expect(Math.round(content.width - box!.x - box!.width)).toBe(16)
+      expect(Math.round(content.height - box!.y - box!.height)).toBe(16)
       await page.screenshot({ path: `test-results/dock/dock-${width}.png` })
       const { violations } = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
