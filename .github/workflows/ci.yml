@@ -141,20 +141,29 @@ jobs:
 
       # The server applies migrations on start (prodMigrations); no seed here, so media is empty
       # and the page must degrade gracefully.
-      - name: /ui-kit is 404 without ENABLE_UI_KIT
+      # /ui-kit: notFound() → (frontend)/not-found.tsx; an unmatched URL → global-not-found.tsx.
+      # notFound() before the shell leaves the HTML body to the client, so only its <title> is
+      # checked here; the unmatched URL is rendered on the server in full.
+      - name: 404 pages without ENABLE_UI_KIT
         run: |
           PORT=3000 HOSTNAME=127.0.0.1 node .next/standalone/server.js > server.log 2>&1 &
           for i in $(seq 30); do curl -sf -o /dev/null http://127.0.0.1:3000/healthz && break; sleep 1; done
-          code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/ui-kit)
+          fail=0
+          check() {
+            code=$(curl -s -o page.html -w '%{http_code}' "http://127.0.0.1:3000$1")
+            echo "GET $1 → $code"
+            [ "$code" = 404 ] && grep -q "$2" page.html || { echo "expected 404 with: $2"; fail=1; }
+          }
+          check /ui-kit '<title>Страница не найдена — MGS MEBEL</title>'
+          check /nesushchestvuet '<h1[^>]*>Страница не найдена</h1>'
           kill %1
-          echo "GET /ui-kit → $code"
-          if [ "$code" != 404 ]; then cat server.log; exit 1; fi
+          if [ "$fail" != 0 ]; then cat server.log; exit 1; fi
 
       - run: pnpm exec playwright install --with-deps chromium
 
       # Fresh database: header and footer must render from empty globals.
       - name: Layout on empty globals
-        run: pnpm test:e2e tests/e2e/layout.e2e.spec.ts tests/e2e/dock.e2e.spec.ts --grep @empty --reporter=list
+        run: pnpm test:e2e tests/e2e/layout.e2e.spec.ts tests/e2e/dock.e2e.spec.ts tests/e2e/not-found.e2e.spec.ts --grep @empty --reporter=list
         env:
           E2E_EMPTY_DB: 1
 
@@ -168,7 +177,7 @@ jobs:
         env:
           NODE_ENV: production
 
-      - run: pnpm test:e2e tests/e2e/ui-kit.e2e.spec.ts tests/e2e/layout.e2e.spec.ts tests/e2e/menu.e2e.spec.ts tests/e2e/dock.e2e.spec.ts --grep-invert @empty --reporter=list
+      - run: pnpm test:e2e tests/e2e/ui-kit.e2e.spec.ts tests/e2e/layout.e2e.spec.ts tests/e2e/menu.e2e.spec.ts tests/e2e/dock.e2e.spec.ts tests/e2e/not-found.e2e.spec.ts --grep-invert @empty --reporter=list
       - if: always()
         uses: actions/upload-artifact@v7
         with:
