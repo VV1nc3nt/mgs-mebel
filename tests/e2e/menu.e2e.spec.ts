@@ -180,16 +180,91 @@ test.describe('menu behaviour', () => {
     await expect(dialog(page)).toHaveCount(0)
   })
 
-  test('reduced motion: a fade, no clip-path animation', async ({ page }) => {
+  test('the background is a scaled circle, no clip-path; content fades out on closing', async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}/salons`)
+    await openMenu(page)
+    const circle = page.locator('[role="dialog"] .menu-circle')
+    const overlay = page.locator('[role="dialog"] .menu-overlay')
+    const transition = (el: Element) => {
+      const s = getComputedStyle(el)
+      return { property: s.transitionProperty, duration: s.transitionDuration }
+    }
+    expect(await circle.evaluate(transition)).toEqual({ property: 'transform', duration: '0.65s' })
+    expect(await circle.evaluate((el) => getComputedStyle(el).transform)).toBe('none')
+    const clipped = await dialog(page).evaluate((root) =>
+      [root, ...root.querySelectorAll('*')].filter(
+        (el) => getComputedStyle(el).clipPath !== 'none',
+      ),
+    )
+    expect(clipped).toHaveLength(0)
+
+    await page.keyboard.press('Escape')
+    // Closing: the circle shrinks in 450ms, the content fades over the items' stagger
+    await expect
+      .poll(() => circle.evaluate(transition))
+      .toEqual({
+        property: 'transform',
+        duration: '0.45s',
+      })
+    expect(await overlay.evaluate(transition)).toEqual({ property: 'opacity', duration: '0.345s' })
+  })
+
+  for (const [width, height] of [
+    [390, 844],
+    [834, 1112],
+    [1112, 834],
+  ] as const) {
+    test(`the open circle grows from the menu button and covers ${width}×${height}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height })
+      await page.goto(`${BASE}/salons`)
+      await openMenu(page)
+      const geometry = await page.evaluate(() => {
+        const box = document.querySelector('[role="dialog"]')!.getBoundingClientRect()
+        const c = document.querySelector('[role="dialog"] .menu-circle')!.getBoundingClientRect()
+        const [cx, cy, r] = [c.x + c.width / 2, c.y + c.height / 2, c.width / 2]
+        const corners = [
+          [box.left, box.top],
+          [box.right, box.top],
+          [box.left, box.bottom],
+          [box.right, box.bottom],
+        ]
+        return {
+          centre: [Math.round(box.right - cx), Math.round(cy - box.top)],
+          covered: corners.every(([x, y]) => Math.hypot(x - cx, y - cy) < r),
+        }
+      })
+      expect(geometry).toEqual({ centre: [40, 40], covered: true })
+    })
+  }
+
+  test('reduced motion: a fade, no scaling', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.goto(`${BASE}/salons`)
     await burger(page).click()
-    const overlay = page.locator('[role="dialog"] .menu-overlay')
-    const style = await overlay.evaluate((el) => {
+    const style = (el: Element) => {
       const s = getComputedStyle(el)
-      return { property: s.transitionProperty, duration: s.transitionDuration, clip: s.clipPath }
+      return {
+        property: s.transitionProperty,
+        duration: s.transitionDuration,
+        transform: s.transform,
+      }
+    }
+    const circle = page.locator('[role="dialog"] .menu-circle')
+    const overlay = page.locator('[role="dialog"] .menu-overlay')
+    expect(await circle.evaluate(style)).toEqual({
+      property: 'opacity',
+      duration: '0.2s',
+      transform: 'none',
     })
-    expect(style).toEqual({ property: 'opacity', duration: '0.2s', clip: 'none' })
+    expect(await overlay.evaluate(style)).toEqual({
+      property: 'opacity',
+      duration: '0.2s',
+      transform: 'none',
+    })
     const item = page.locator('[role="dialog"] .menu-item').last()
     expect(await item.evaluate((el) => getComputedStyle(el).transitionDelay)).toBe('0s')
   })

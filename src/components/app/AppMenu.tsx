@@ -32,13 +32,13 @@ export function AppMenu({ chrome }: { chrome: MenuChrome }) {
 function MenuDialog({ chrome }: { chrome: MenuChrome }) {
   const { state, close, settle } = useMenu()
   const pathname = useRoutePath()
-  const overlayRef = useRef<HTMLDivElement>(null)
+  const circleRef = useRef<HTMLDivElement>(null)
   const firstItemRef = useRef<HTMLAnchorElement>(null)
   const [shown, setShown] = useState(false)
 
   // Mount: the closed styles are computed first, so opening transitions from them.
   useEffect(() => {
-    overlayRef.current?.getBoundingClientRect()
+    circleRef.current?.getBoundingClientRect()
     firstItemRef.current?.focus({ preventScroll: true })
   }, [])
 
@@ -49,15 +49,16 @@ function MenuDialog({ chrome }: { chrome: MenuChrome }) {
     return () => cancelAnimationFrame(frame)
   }, [state])
 
-  // End of opening / closing: the overlay's transitionend, or its computed duration as a fallback.
+  // End of opening / closing: the background circle's transitionend, or its computed duration as
+  // a fallback.
   useEffect(() => {
-    const overlay = overlayRef.current
-    if (!overlay || !((state === 'closing' && !shown) || (state === 'opening' && shown))) return
-    const onEnd = (event: TransitionEvent) => event.target === overlay && settle()
-    overlay.addEventListener('transitionend', onEnd)
-    const timer = window.setTimeout(settle, transitionTime(overlay) + 50)
+    const circle = circleRef.current
+    if (!circle || !((state === 'closing' && !shown) || (state === 'opening' && shown))) return
+    const onEnd = (event: TransitionEvent) => event.target === circle && settle()
+    circle.addEventListener('transitionend', onEnd)
+    const timer = window.setTimeout(settle, transitionTime(circle) + 50)
     return () => {
-      overlay.removeEventListener('transitionend', onEnd)
+      circle.removeEventListener('transitionend', onEnd)
       window.clearTimeout(timer)
     }
   }, [state, shown, settle])
@@ -117,7 +118,7 @@ function MenuDialog({ chrome }: { chrome: MenuChrome }) {
       inert={state === 'closing'}
       onKeyDown={trapFocus}
       style={cssVars({ '--n': chrome.nav.length })}
-      className="fixed inset-0 z-menu"
+      className="menu-dialog fixed inset-0 z-menu"
     >
       <div className="absolute inset-x-0 top-0 z-menu-header flex items-center justify-between gap-6 px-gutter py-5 menu-header md:px-gutter-md">
         <span aria-hidden="true" className="size-10 shrink-0" />
@@ -129,21 +130,37 @@ function MenuDialog({ chrome }: { chrome: MenuChrome }) {
           // No backdrop blur: the button lies over the animating overlay, so the blur would be
           // recomputed every frame, and it is opaque (surface) while the menu is open.
           className={cn(
-            'relative flex size-10 shrink-0 items-center justify-center rounded-full border transition-colors duration-(--motion-menu-hover)',
+            'relative flex size-10 shrink-0 items-center justify-center rounded-full',
             HIT_AREA,
-            shown ? 'border-border-strong bg-surface' : 'border-text/25',
           )}
         >
+          {/* Colours change by crossfading two rings: opacity runs on the compositor, a colour
+              transition would repaint the button in every frame of the menu animation. */}
+          <span
+            aria-hidden="true"
+            className={cn(
+              'absolute inset-0 rounded-full border border-text/25 transition-opacity duration-(--motion-menu-hover)',
+              shown && 'opacity-0',
+            )}
+          />
+          <span
+            aria-hidden="true"
+            className={cn(
+              'absolute inset-0 rounded-full border border-border-strong bg-surface transition-opacity duration-(--motion-menu-hover)',
+              !shown && 'opacity-0',
+            )}
+          />
           <BurgerIcon crossed={shown} />
         </button>
       </div>
 
       <div
-        ref={overlayRef}
-        className="absolute inset-0 flex flex-col overflow-y-auto overscroll-contain bg-bg menu-overlay"
-      >
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-menu-glow" />
+        ref={circleRef}
+        aria-hidden="true"
+        className="pointer-events-none absolute menu-circle"
+      />
 
+      <div className="absolute inset-0 flex flex-col overflow-y-auto overscroll-contain menu-overlay">
         <nav
           aria-label="Разделы сайта"
           className="relative px-gutter pt-28 md:max-w-menu md:px-gutter-md md:pt-35"
@@ -198,37 +215,43 @@ function MenuDialog({ chrome }: { chrome: MenuChrome }) {
         </nav>
 
         {(phone || messengers.length > 0) && (
-          <div className="relative mt-auto flex menu-foot flex-col gap-4.5 px-gutter pb-menu-foot md:max-w-menu md:px-gutter-md">
-            {phone && (
-              <a href={phone.href} className="group/phone flex flex-col gap-1 self-start">
-                {menu.hotlineLabel && (
-                  <span className="text-caption font-normal text-text-4">{menu.hotlineLabel}</span>
-                )}
-                <span className="text-phone-lg transition-colors group-hover/phone:text-accent">
-                  {phone.display}
-                </span>
-              </a>
-            )}
-            {messengers.length > 0 && (
-              <div className="flex flex-col gap-2.5">
-                {menu.messengersLabel && (
-                  <p className="text-body-xs font-semibold text-text-2">{menu.messengersLabel}</p>
-                )}
-                <ul className="grid grid-cols-3 gap-2">
-                  {messengers.map(({ kind, href }) => (
-                    <li key={kind} className="flex">
-                      <Action
-                        href={href}
-                        aria-label={MESSENGER_NAMES[kind]}
-                        className="flex h-14 flex-1 items-center justify-center rounded-pill border border-border-strong text-text transition-colors hover:border-accent hover:bg-surface"
-                      >
-                        <MessengerIcon kind={kind} className="size-6" />
-                      </Action>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+          // Padding on a still wrapper: the moving block stays inside the scroller's content box,
+          // so the scroll area is not recomputed and repainted in every frame
+          <div className="relative mt-auto px-gutter pb-menu-foot md:max-w-menu md:px-gutter-md">
+            <div className="flex menu-foot flex-col gap-4.5">
+              {phone && (
+                <a href={phone.href} className="group/phone flex flex-col gap-1 self-start">
+                  {menu.hotlineLabel && (
+                    <span className="text-caption font-normal text-text-4">
+                      {menu.hotlineLabel}
+                    </span>
+                  )}
+                  <span className="text-phone-lg transition-colors group-hover/phone:text-accent">
+                    {phone.display}
+                  </span>
+                </a>
+              )}
+              {messengers.length > 0 && (
+                <div className="flex flex-col gap-2.5">
+                  {menu.messengersLabel && (
+                    <p className="text-body-xs font-semibold text-text-2">{menu.messengersLabel}</p>
+                  )}
+                  <ul className="grid grid-cols-3 gap-2">
+                    {messengers.map(({ kind, href }) => (
+                      <li key={kind} className="flex">
+                        <Action
+                          href={href}
+                          aria-label={MESSENGER_NAMES[kind]}
+                          className="flex h-14 flex-1 items-center justify-center rounded-pill border border-border-strong text-text transition-colors hover:border-accent hover:bg-surface"
+                        >
+                          <MessengerIcon kind={kind} className="size-6" />
+                        </Action>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

@@ -333,34 +333,75 @@
 
 /*
  * Menu overlay (README §5.3). Components set data-shown on the dialog and --i / --n on items;
- * everything else is here. The circle grows from the menu button: calc(100% - 40px) 40px.
- * will-change applies only while [data-animating] (opening, closing).
+ * everything else is here. The background is a circle scaled from the menu button,
+ * calc(100% - 40px) 40px: a transform runs on the compositor, where clip-path: circle() is
+ * repainted every frame in Safari. will-change applies only while [data-animating] (opening,
+ * closing).
  */
-@utility bg-menu-glow {
+@utility menu-dialog {
+  /* The dialog is the viewport (fixed inset-0): cq units below measure it */
+  contain: strict;
+  container-type: size;
+}
+
+/*
+ * Radius of the design's circle(150%): 150% of hypot(w, h) / √2, from the dialog's size. The
+ * lime glow is the design's radial-gradient(90% 50% at 100% 0%) in viewport units, centred on
+ * the viewport's top right corner: it scales with the circle and has no edges of its own.
+ */
+@utility menu-circle {
+  --menu-r: calc(hypot(100cqw, 100cqh) * 1.5 / sqrt(2));
+  top: calc(40px - var(--menu-r));
+  left: calc(100cqw - 40px - var(--menu-r));
+  width: calc(var(--menu-r) * 2);
+  height: calc(var(--menu-r) * 2);
+  border-radius: 50%;
+  background-color: var(--color-bg);
   background-image: radial-gradient(
-    90% 50% at 100% 0%,
+    90cqw 50cqh at calc(var(--menu-r) + 40px) calc(var(--menu-r) - 40px),
     rgb(201 215 48 / 0.08) 0%,
     rgb(201 215 48 / 0) 60%
   );
-}
-
-@utility menu-overlay {
   [data-animating] & {
-    will-change: clip-path;
+    will-change: transform;
   }
-  clip-path: circle(0 at calc(100% - 40px) 40px);
-  transition: clip-path var(--motion-menu-clip-out) var(--ease-menu);
+  transform: scale(0);
+  transition: transform var(--motion-menu-clip-out) var(--ease-menu);
   [data-shown] & {
-    clip-path: circle(150% at calc(100% - 40px) 40px);
+    transform: none;
     transition-duration: var(--motion-menu-clip-in);
   }
   @media (prefers-reduced-motion: reduce) {
-    clip-path: none;
+    transform: none;
     opacity: 0;
     transition: opacity var(--motion-fade-reduced) ease-out;
     [data-shown] & {
-      clip-path: none;
+      transform: none;
       opacity: 1;
+      transition-duration: var(--motion-fade-reduced);
+    }
+  }
+}
+
+/*
+ * Content over the circle is not clipped by it. Closing: the whole content fades out over the
+ * items' reverse stagger (220ms + 25ms × (n - 1)), so the shrinking circle's edge never crosses
+ * visible text, and the stagger still reads. Opening: fully visible before the first item starts.
+ */
+@utility menu-overlay {
+  [data-animating] & {
+    will-change: opacity;
+  }
+  opacity: 0;
+  transition: opacity
+    calc(var(--motion-menu-item-out) + var(--motion-menu-stagger-out) * (var(--n) - 1)) ease;
+  [data-shown] & {
+    opacity: 1;
+    transition-duration: var(--motion-menu-item-delay);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &,
+    [data-shown] & {
       transition-duration: var(--motion-fade-reduced);
     }
   }
