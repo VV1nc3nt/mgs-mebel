@@ -125,6 +125,9 @@ jobs:
     env:
       DATABASE_URL: postgres://mgs:mgs@localhost:5432/mgs
       PAYLOAD_SECRET: ci-only-secret
+      # One media directory for the fixture scripts (repo root) and the standalone server, which
+      # changes its working directory to .next/standalone.
+      MEDIA_DIR: ${{ github.workspace }}/e2e-media
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
