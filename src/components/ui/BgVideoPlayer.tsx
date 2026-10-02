@@ -6,6 +6,7 @@ import { useReducedMotion } from '@/hooks/useReducedMotion'
 import { useSaveData } from '@/hooks/useSaveData'
 import { cn } from '@/lib/cn'
 import { VIDEO_MOUNT_MARGIN, type VideoSource } from '@/lib/media'
+import { isOverlayOpen, subscribeOverlay } from '@/lib/overlay'
 
 type Props = VideoSource & {
   /** Hero (LCP): mounts at once with preload="auto". Others mount near the viewport. */
@@ -15,7 +16,8 @@ type Props = VideoSource & {
 /**
  * Background video over a server-rendered poster (README §7). Not mounted — so not downloaded —
  * with reduced motion, Data Saver, before hydration, or when playback fails (iOS Low Power):
- * the poster stays. Plays only in the viewport; appears on `playing`.
+ * the poster stays. Plays only in the viewport and not under an overlay (menu); appears on
+ * `playing`.
  */
 export function BgVideoPlayer({ src, type, priority = false }: Props) {
   const reducedMotion = useReducedMotion()
@@ -31,21 +33,27 @@ export function BgVideoPlayer({ src, type, priority = false }: Props) {
   useEffect(() => {
     const box = boxRef.current
     if (!box || !allowed) return
+    let inView = false
+    const update = () => {
+      const video = videoRef.current
+      if (!video) return
+      if (inView && !isOverlayOpen()) video.play()?.catch(() => setFailed(true))
+      else video.pause()
+    }
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) setNear(true)
-        const video = videoRef.current
-        if (!video) return
-        if (entry.isIntersecting) {
-          video.play()?.catch(() => setFailed(true))
-        } else {
-          video.pause()
-        }
+        inView = entry.isIntersecting
+        if (inView) setNear(true)
+        update()
       },
       { rootMargin: VIDEO_MOUNT_MARGIN },
     )
     observer.observe(box)
-    return () => observer.disconnect()
+    const unsubscribe = subscribeOverlay(update)
+    return () => {
+      observer.disconnect()
+      unsubscribe()
+    }
   }, [allowed, near])
 
   const setVideo = (video: HTMLVideoElement | null) => {

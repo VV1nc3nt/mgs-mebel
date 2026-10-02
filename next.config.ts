@@ -13,6 +13,8 @@ const nextConfig: NextConfig = {
     globalNotFound: true,
   },
   images: {
+    // AVIF first (smaller, LCP poster on mobile), WebP for browsers without AVIF
+    formats: ['image/avif', 'image/webp'],
     localPatterns: [
       {
         pathname: '/api/media/file/**',

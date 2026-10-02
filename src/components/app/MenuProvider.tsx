@@ -21,6 +21,7 @@ import {
 } from '@/hooks/useMenu'
 import { useScrollLock } from '@/hooks/useScrollLock'
 import { DESKTOP_QUERY } from '@/lib/breakpoints'
+import { setOverlay } from '@/lib/overlay'
 
 /** Menu state for the header button, the page wrapper and the dialog. */
 export function MenuProvider({ children }: { children: ReactNode }) {
@@ -55,6 +56,12 @@ export function MenuProvider({ children }: { children: ReactNode }) {
       unlock({ restore: model.reason !== 'navigate' })
     }
   }, [model.state, model.reason, lock, unlock])
+
+  // Background videos pause from the start of opening until closing has fully ended.
+  useEffect(() => {
+    setOverlay('menu', model.state !== 'closed')
+  }, [model.state])
+  useEffect(() => () => setOverlay('menu', false), [])
 
   // Back/forward or any other route change closes the menu.
   useEffect(() => {
