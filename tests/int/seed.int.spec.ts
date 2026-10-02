@@ -1,3 +1,4 @@
+import { sql } from '@payloadcms/db-postgres'
 import fs from 'fs/promises'
 import os from 'os'
 import path from 'path'
@@ -17,8 +18,10 @@ import { isLocalDatabaseUrl, isSeedAllowed } from '@/seed/guard'
 import { seedFiles } from '@/seed/index'
 import { placeholderPdf } from '@/seed/pdf'
 import { seoDescription, seoTitle } from '@/seed/seo'
+import { SeedStats } from '@/seed/stats'
+import { upsertGlobal } from '@/seed/upsert'
 
-import { cleanup, getTestPayload, PREFIX } from './helpers'
+import { cleanup, createImage, createVideo, getTestPayload, PREFIX } from './helpers'
 
 describe('seed guard', () => {
   it('allows only a local database', () => {
@@ -214,5 +217,78 @@ describe('placeholderPdf', () => {
       file: { data, mimetype: 'application/pdf', name: `${PREFIX}-catalog.pdf`, size: data.length },
     })
     expect(doc.mimeType).toBe('application/pdf')
+  })
+})
+
+describe('seed: page globals', () => {
+  const PAGES = {
+    home: 'home',
+    about: 'about',
+    salonsPage: 'salons_page',
+    worksPage: 'works_page',
+    catalogsPage: 'catalogs_page',
+    designers: 'designers',
+    newsPage: 'news_page',
+  } as const
+  type Page = keyof typeof PAGES
+  const slugs = Object.keys(PAGES) as Page[]
+
+  let payload: Payload
+  const before = new Map<Page, Record<string, unknown>>()
+
+  beforeAll(async () => {
+    payload = await getTestPayload()
+    for (const slug of slugs) {
+      before.set(
+        slug,
+        (await payload.findGlobal({ slug, depth: 0 })) as unknown as Record<string, unknown>,
+      )
+    }
+  })
+
+  // Put the stored globals back; ones that did not exist are removed with their versions,
+  // so the test media can be deleted.
+  afterAll(async () => {
+    if (!payload) return
+    for (const slug of slugs) {
+      const doc = before.get(slug)
+      if (doc?.createdAt) {
+        const { id: _id, createdAt: _c, updatedAt: _u, globalType: _g, ...data } = doc
+        await payload.updateGlobal({ slug, data: { ...data, _status: 'published' } as never })
+      } else {
+        await payload.db.drizzle.execute(sql.raw(`delete from "_${PAGES[slug]}_v"`))
+        await payload.db.drizzle.execute(sql.raw(`delete from "${PAGES[slug]}"`))
+      }
+    }
+    await cleanup(payload)
+  })
+
+  it('publishes all page globals; a repeated run skips them', async () => {
+    // Every manifest file is replaced by one test file of the same kind.
+    const image = await createImage(payload, `${PREFIX}-seed-image.png`)
+    const video = await createVideo(payload, `${PREFIX}-seed-video.mp4`)
+    const kinds = new Map(seedFiles.map((file) => [file.key, file.kind]))
+    const id: MediaId = (key) => (kinds.get(key) === 'video' ? video.id : image.id)
+    const data = globals(id)
+
+    const run = async () => {
+      const stats = new SeedStats()
+      for (const slug of slugs) {
+        await upsertGlobal(payload, stats, slug, data[slug] as Record<string, unknown>)
+      }
+      return stats.table()
+    }
+
+    const first = await run()
+    for (const slug of slugs) {
+      const stored = await payload.findGlobal({ slug, depth: 0, overrideAccess: false })
+      expect(stored._status, slug).toBe('published')
+      expect(stored.hero?.title, slug).toBe(data[slug].hero?.title)
+      expect(first).toMatch(new RegExp(`${slug}\\s+created\\s+0\\s+updated\\s+1\\s+skipped\\s+0`))
+    }
+    const second = await run()
+    for (const slug of slugs) {
+      expect(second).toMatch(new RegExp(`${slug}\\s+created\\s+0\\s+updated\\s+0\\s+skipped\\s+1`))
+    }
   })
 })

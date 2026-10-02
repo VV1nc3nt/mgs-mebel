@@ -247,6 +247,14 @@ export interface Media {
       filesize?: number | null;
       filename?: string | null;
     };
+    og?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
   };
 }
 /**
@@ -781,6 +789,16 @@ export interface MediaSelect<T extends boolean = true> {
               filesize?: T;
               filename?: T;
             };
+        og?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
       };
 }
 /**
@@ -928,6 +946,7 @@ export interface Home {
      */
     image?: (number | null) | Media;
   };
+  _status?: ('draft' | 'published') | null;
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -1064,6 +1083,7 @@ export interface About {
      */
     image?: (number | null) | Media;
   };
+  _status?: ('draft' | 'published') | null;
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -1106,6 +1126,7 @@ export interface SalonsPage {
      */
     image?: (number | null) | Media;
   };
+  _status?: ('draft' | 'published') | null;
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -1136,6 +1157,7 @@ export interface WorksPage {
      */
     image?: (number | null) | Media;
   };
+  _status?: ('draft' | 'published') | null;
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -1161,6 +1183,7 @@ export interface CatalogsPage {
      */
     image?: (number | null) | Media;
   };
+  _status?: ('draft' | 'published') | null;
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -1249,6 +1272,7 @@ export interface Designer {
      */
     image?: (number | null) | Media;
   };
+  _status?: ('draft' | 'published') | null;
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -1282,6 +1306,7 @@ export interface NewsPage {
      */
     image?: (number | null) | Media;
   };
+  _status?: ('draft' | 'published') | null;
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -1293,16 +1318,14 @@ export interface NewsPage {
  */
 export interface Stat {
   id: number;
-  items?:
-    | {
-        /**
-         * Например, 1000+
-         */
-        value: string;
-        label: string;
-        id?: string | null;
-      }[]
-    | null;
+  items: {
+    /**
+     * Например, 1000+
+     */
+    value: string;
+    label: string;
+    id?: string | null;
+  }[];
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -1370,6 +1393,9 @@ export interface Layout {
     askLabel: string;
   };
   footer?: {
+    /**
+     * Перенос строки сохраняется на сайте.
+     */
     sloganText?: string | null;
     /**
      * Выделяется лаймовым, например «для жизни»
@@ -1482,6 +1508,7 @@ export interface HomeSelect<T extends boolean = true> {
         description?: T;
         image?: T;
       };
+  _status?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;
@@ -1567,6 +1594,7 @@ export interface AboutSelect<T extends boolean = true> {
         description?: T;
         image?: T;
       };
+  _status?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;
@@ -1602,6 +1630,7 @@ export interface SalonsPageSelect<T extends boolean = true> {
         description?: T;
         image?: T;
       };
+  _status?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;
@@ -1629,6 +1658,7 @@ export interface WorksPageSelect<T extends boolean = true> {
         description?: T;
         image?: T;
       };
+  _status?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;
@@ -1652,6 +1682,7 @@ export interface CatalogsPageSelect<T extends boolean = true> {
         description?: T;
         image?: T;
       };
+  _status?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;
@@ -1714,6 +1745,7 @@ export interface DesignersSelect<T extends boolean = true> {
         description?: T;
         image?: T;
       };
+  _status?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;
@@ -1749,6 +1781,7 @@ export interface NewsPageSelect<T extends boolean = true> {
         description?: T;
         image?: T;
       };
+  _status?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

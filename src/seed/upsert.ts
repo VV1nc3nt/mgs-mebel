@@ -54,17 +54,30 @@ export const upsertDoc = async <S extends CollectionSlug>(
   return existing.id
 }
 
+/**
+ * Writes a global unless it already matches. Globals with drafts (pages) are written as the
+ * published version, and re-published when the stored one is not (e.g. right after drafts
+ * were enabled, or an editor's unpublished change).
+ */
 export const upsertGlobal = async (
   payload: Payload,
   stats: SeedStats,
   slug: GlobalSlug,
   data: Record<string, unknown>,
 ): Promise<void> => {
+  const drafts = Boolean(payload.globals.config.find((g) => g.slug === slug)?.versions?.drafts)
   const existing = await payload.findGlobal({ slug, depth: 0, ...seedOptions })
-  if (isSame(existing, data)) {
+  const published = !drafts || (existing as { _status?: string })._status === 'published'
+  if (published && isSame(existing, data)) {
     stats.add(slug, 'skipped')
     return
   }
-  await payload.updateGlobal({ slug, data, depth: 0, ...seedOptions })
+  await payload.updateGlobal({
+    slug,
+    data: drafts ? { ...data, _status: 'published' } : data,
+    draft: false,
+    depth: 0,
+    ...seedOptions,
+  })
   stats.add(slug, 'updated')
 }

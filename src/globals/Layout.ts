@@ -75,16 +75,16 @@ export const Layout: GlobalConfig = {
           label: 'Подвал',
           fields: [
             {
-              type: 'row',
-              fields: [
-                { name: 'sloganText', type: 'text', label: 'Слоган' },
-                {
-                  name: 'sloganAccent',
-                  type: 'text',
-                  label: 'Слоган: акцент',
-                  admin: { description: 'Выделяется лаймовым, например «для жизни»' },
-                },
-              ],
+              name: 'sloganText',
+              type: 'textarea',
+              label: 'Слоган',
+              admin: { description: 'Перенос строки сохраняется на сайте.', rows: 2 },
+            },
+            {
+              name: 'sloganAccent',
+              type: 'text',
+              label: 'Слоган: акцент',
+              admin: { description: 'Выделяется лаймовым, например «для жизни»' },
             },
             { name: 'hotlineLabel', type: 'text', label: 'Подпись горячей линии' },
             {

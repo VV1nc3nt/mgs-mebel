@@ -13,6 +13,8 @@ export const Stats: GlobalConfig = {
       type: 'array',
       label: 'Цифры',
       labels: { singular: 'Цифра', plural: 'Цифры' },
+      required: true,
+      minRows: 1,
       maxRows: 6,
       fields: [
         {

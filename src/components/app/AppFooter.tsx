@@ -1,3 +1,5 @@
+import { Fragment } from 'react'
+
 import { MessengerIcon } from '@/components/icons/MessengerIcon'
 import { IconButton } from '@/components/ui/IconButton'
 import { MESSENGER_NAMES, type SiteChrome } from '@/lib/chrome'
@@ -26,7 +28,12 @@ export function AppFooter({ chrome }: { chrome: SiteChrome }) {
       <div className="flex flex-col items-start gap-6 xl:grid xl:grid-cols-3">
         {(footer.sloganText || footer.sloganAccent) && (
           <p className="text-slogan text-balance">
-            {footer.sloganText}
+            {footer.sloganText?.split(/\r?\n/).map((line, i) => (
+              <Fragment key={i}>
+                {i > 0 && <br />}
+                {line}
+              </Fragment>
+            ))}
             {footer.sloganText && footer.sloganAccent && ' '}
             {footer.sloganAccent && <span className="text-accent">{footer.sloganAccent}</span>}
           </p>

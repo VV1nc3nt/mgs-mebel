@@ -41,7 +41,8 @@ export const globals = (id: MediaId): SeedGlobals => ({
     menu: { hotlineLabel: HOTLINE_LABEL, messengersLabel: MESSENGERS_LABEL },
     dock: { askLabel: 'Спросить' },
     footer: {
-      sloganText: 'Производитель мебели',
+      // Explicit line break after «Производитель» (design: <footer>)
+      sloganText: 'Производитель\nмебели',
       sloganAccent: 'для жизни',
       hotlineLabel: HOTLINE_LABEL,
       copyright: 'MGS MEBEL. Все права защищены.',

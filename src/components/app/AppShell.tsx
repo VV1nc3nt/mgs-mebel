@@ -8,6 +8,7 @@ import { AppHeader } from './AppHeader'
 import { AppMenu } from './AppMenu'
 import { FloatingDock } from './FloatingDock'
 import { MenuProvider, PageRoot } from './MenuProvider'
+import { PreviewBanner } from './PreviewBanner'
 import { SkipLink } from './SkipLink'
 
 /**
@@ -30,6 +31,7 @@ export async function AppShell({
       <MenuProvider>
         <PageRoot>
           <SkipLink />
+          <PreviewBanner />
           <div className="relative mx-auto max-w-page">
             <AppHeader chrome={chrome} />
             <main id="content" tabIndex={-1} className="focus-visible:outline-none">
