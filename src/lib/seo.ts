@@ -77,7 +77,7 @@ export type BuildMetadataInput = {
 }
 
 /**
- * Page metadata by the SEO rules (CLAUDE.md «SEO»): CMS SEO fields first, content as the fallback;
+ * Page metadata: CMS SEO fields first, content as the fallback;
  * absolute canonical without a trailing slash; Open Graph ru_RU and a large Twitter card.
  */
 export const buildMetadata = ({

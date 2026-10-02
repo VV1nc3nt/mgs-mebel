@@ -4,7 +4,7 @@ import { hasRole } from '@/access/roles'
 import type { User } from '@/payload-types'
 import { getPayloadClient } from './payload'
 
-/** Roles that edit page globals (CLAUDE.md «Роли»): only they see drafts on the site. */
+/** Roles that edit page globals: only they see drafts on the site. */
 export const canPreview = (user: Pick<User, 'role'> | null | undefined): boolean =>
   hasRole(user, 'developer', 'admin', 'content')
 
