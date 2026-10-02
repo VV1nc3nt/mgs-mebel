@@ -163,11 +163,11 @@ jobs:
 
       # Fresh database: header and footer must render from empty globals.
       - name: Layout on empty globals
-        run: pnpm test:e2e tests/e2e/layout.e2e.spec.ts tests/e2e/dock.e2e.spec.ts tests/e2e/not-found.e2e.spec.ts --grep @empty --reporter=list
+        run: pnpm test:e2e tests/e2e/layout.e2e.spec.ts tests/e2e/dock.e2e.spec.ts tests/e2e/not-found.e2e.spec.ts tests/e2e/preview.e2e.spec.ts --grep @empty --reporter=list
         env:
           E2E_EMPTY_DB: 1
 
-      # Layout and settings texts from the seed, no media. NODE_ENV=production keeps Payload from
+      # Layout and settings texts from the seed, no media, and an editor account. NODE_ENV=production keeps Payload from
       # pushing the schema, which would make the next server start ask about migrations.
       # The data cache of the previous server run is dropped so the new texts are read.
       - name: Layout and settings fixture
@@ -177,7 +177,7 @@ jobs:
         env:
           NODE_ENV: production
 
-      - run: pnpm test:e2e tests/e2e/ui-kit.e2e.spec.ts tests/e2e/layout.e2e.spec.ts tests/e2e/menu.e2e.spec.ts tests/e2e/dock.e2e.spec.ts tests/e2e/not-found.e2e.spec.ts --grep-invert @empty --reporter=list
+      - run: pnpm test:e2e tests/e2e/ui-kit.e2e.spec.ts tests/e2e/layout.e2e.spec.ts tests/e2e/menu.e2e.spec.ts tests/e2e/dock.e2e.spec.ts tests/e2e/not-found.e2e.spec.ts tests/e2e/preview.e2e.spec.ts --grep-invert @empty --reporter=list
       - if: always()
         uses: actions/upload-artifact@v7
         with:

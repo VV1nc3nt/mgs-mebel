@@ -83,6 +83,9 @@ describe('AppFooter', () => {
   it('shows slogan, hotline, socials in footer order and the copyright with the year', () => {
     render(<AppFooter chrome={full} />)
     expect(screen.getByText('для жизни').className).toContain('text-accent')
+    // A line break typed in the CMS becomes <br> (design: «Производитель<br>мебели»)
+    const slogan = screen.getByText('для жизни').parentElement!
+    expect(slogan.innerHTML).toMatch(/^Производитель<br>мебели <span/)
     expect(screen.getByText('Бесплатная горячая линия')).toBeTruthy()
     const socials = screen
       .getAllByRole('listitem')

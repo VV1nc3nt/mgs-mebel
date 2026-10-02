@@ -20,7 +20,7 @@ PR → CI (GitHub Actions) → merge в `main` → сборка Docker-обра�
 - Миграции применяются при старте приложения (`prodMigrations` в адаптере `db-postgres`, миграции из `src/migrations`).
 - Healthcheck: `GET /healthz` → 200, делает лёгкий запрос к БД.
 - Загрузка файлов: до 100 МБ на файл (PDF каталогов); лимиты по типам — в коллекции `media` (изображения 20 МБ, видео 60 МБ, PDF 100 МБ). Caddy пропускает тело запроса до 110 МБ.
-- `NEXT_PUBLIC_*` вшиваются при сборке → передаются как build args из GitHub Environment `staging`.
+- `NEXT_PUBLIC_*` вшиваются при сборке (и в клиентский, и в серверный код) → передаются как build args из GitHub Environment `staging`. Адрес сайта во время работы — `SITE_URL` из `/opt/mgs/.env` (canonical, Open Graph, JSON-LD, Live Preview); пустой — берётся вшитый `NEXT_PUBLIC_SITE_URL`.
 
 ## GitHub Actions
 - `ci.yml` — на `pull_request` и push в `main`: `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm tsc --noEmit`, `pnpm build`, `pnpm test:unit`; standalone-сборка (с `public/` и `.next/static`, как в `Dockerfile`) упаковывается в tar и передаётся артефактом в job `ui-kit`. Отдельная job с сервисом `postgres`: `pnpm payload migrate` на пустой БД, `migrate:status`, проверка дрейфа схемы (`migrate:create drift_check --skip-empty` не должен создать файл) и `pnpm test:int`. Job `ui-kit` (после `build`, свой `postgres`): `/ui-kit` без флага → 404, затем Playwright-спека `tests/e2e/ui-kit.e2e.spec.ts` на standalone-сервере с `ENABLE_UI_KIT=true` (axe, фокус, hit-area 44, 390/834/1440); скриншоты — артефактом.
@@ -57,6 +57,7 @@ PR → CI (GitHub Actions) → merge в `main` → сборка Docker-обра�
    ```
    - `POSTGRES_PASSWORD`: `openssl rand -hex 24`; тот же пароль — в `DATABASE_URL` (`postgres://mgs:<пароль>@postgres:5432/mgs`).
    - `PAYLOAD_SECRET`: `openssl rand -hex 32`.
+   - `SITE_URL`: адрес сайта, например `https://staging.tmprl.ru`.
    - Basic Auth: `BASIC_AUTH_USER` — логин; хэш пароля:
      ```bash
      docker run --rm caddy:2-alpine caddy hash-password --plaintext '<пароль>'

@@ -76,6 +76,8 @@ export const Media: CollectionConfig = {
       { name: 'thumb', width: 480, withoutEnlargement: true },
       { name: 'card', width: 960, withoutEnlargement: true },
       { name: 'hero', width: 1920, withoutEnlargement: true },
+      // Open Graph / social preview: cropped to 1200×630 around the focal point.
+      { name: 'og', width: 1200, height: 630, withoutEnlargement: true },
     ],
   },
 }

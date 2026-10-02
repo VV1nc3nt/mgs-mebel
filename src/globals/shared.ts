@@ -1,20 +1,49 @@
 import type { Field, GlobalConfig, Tab } from 'payload'
 
-import { contentEditors, publicRead } from '@/access'
+import { contentEditors, publishedOrLoggedIn } from '@/access'
 import { imageField } from '@/fields/media'
 import { labelField, textField } from '@/fields/section'
+import { siteUrl } from '@/lib/site'
 
-/** Page global: one named tab per page section, in page order (README §6). */
+// Live Preview iframe sizes: the three reference widths of the design (README §4).
+const PREVIEW_BREAKPOINTS = [
+  { name: 'mobile', label: 'Телефон 390', width: 390, height: 844 },
+  { name: 'tablet', label: 'Планшет 834', width: 834, height: 1194 },
+  { name: 'desktop', label: 'Десктоп 1440', width: 1440, height: 900 },
+]
+
+type PageGlobalOptions = {
+  group?: string
+  /** Site path of the page: enables Live Preview (through the /preview draft mode handler). */
+  previewPath?: string
+}
+
+/**
+ * Page global: one named tab per page section, in page order (README §6).
+ * Drafts with autosave: saving does not publish; the site reads only the published version,
+ * anonymous API requests never get a draft (`publishedOrLoggedIn`).
+ */
 export const pageGlobal = (
   slug: string,
   label: string,
   tabs: Tab[],
-  group = 'Страницы',
+  { group = 'Страницы', previewPath }: PageGlobalOptions = {},
 ): GlobalConfig => ({
   slug,
   label,
-  admin: { group },
-  access: { read: publicRead, update: contentEditors },
+  admin: {
+    group,
+    livePreview: previewPath
+      ? {
+          url: () => `${siteUrl()}/preview?path=${encodeURIComponent(previewPath)}`,
+          breakpoints: PREVIEW_BREAKPOINTS,
+        }
+      : undefined,
+  },
+  // Every autosave refreshes the preview page on the server: 2 s instead of the default 0.8 s.
+  // Autosave keeps rewriting one version, so 50 covers many publications.
+  versions: { drafts: { autosave: { interval: 2000 } }, max: 50 },
+  access: { read: publishedOrLoggedIn, readVersions: contentEditors, update: contentEditors },
   fields: [{ type: 'tabs', tabs }],
 })
 
