@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppMenu, type MenuChrome } from '@/components/app/AppMenu'
 import { MenuButton } from '@/components/app/MenuButton'
 import { MenuProvider, PageRoot } from '@/components/app/MenuProvider'
+import { BgVideoPlayer } from '@/components/ui/BgVideoPlayer'
 import {
   initialMenu,
   menuReducer,
@@ -13,7 +14,9 @@ import {
 } from '@/hooks/useMenu'
 import { lockScroll } from '@/hooks/useScrollLock'
 import { toChrome } from '@/lib/chrome'
+import { isOverlayOpen } from '@/lib/overlay'
 import { globals } from '@/seed/data/globals'
+import { intersect } from './setup'
 
 const nav = vi.hoisted(() => ({ pathname: '/salons' }))
 vi.mock('next/navigation', () => ({ usePathname: () => nav.pathname }))
@@ -197,6 +200,65 @@ describe('AppMenu', () => {
     expect(document.documentElement.dataset.scrollLocked).toBeUndefined()
     expect(document.body.style.position).toBe('')
     expect(scrollTo).toHaveBeenCalledTimes(1)
+  })
+
+  it('pauses background videos from the start of opening until closing has ended', async () => {
+    render(
+      <MenuProvider>
+        <PageRoot>
+          <MenuButton />
+          <main>
+            <BgVideoPlayer src="/api/media/file/hero.mp4" type="video/mp4" priority />
+          </main>
+        </PageRoot>
+        <AppMenu chrome={chrome()} />
+      </MenuProvider>,
+    )
+    await waitFor(() => expect(document.querySelector('video')).not.toBeNull())
+    intersect(true)
+    const play = vi.mocked(HTMLMediaElement.prototype.play)
+    const pause = vi.mocked(HTMLMediaElement.prototype.pause)
+    expect(play).toHaveBeenCalled()
+    play.mockClear()
+    pause.mockClear()
+
+    // Opening: paused at once
+    openMenu()
+    expect(isOverlayOpen()).toBe(true)
+    expect(pause).toHaveBeenCalledTimes(1)
+
+    // Start of closing: still paused, not resumed
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('dialog', { hidden: true })).not.toBeNull()
+    expect(isOverlayOpen()).toBe(true)
+    expect(play).not.toHaveBeenCalled()
+
+    // Closed: plays again (it is in the viewport)
+    await waitFor(() => expect(screen.queryByRole('dialog', { hidden: true })).toBeNull())
+    expect(isOverlayOpen()).toBe(false)
+    expect(play).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not resume a video outside the viewport after the menu closes', async () => {
+    render(
+      <MenuProvider>
+        <PageRoot>
+          <MenuButton />
+          <main>
+            <BgVideoPlayer src="/api/media/file/hero.mp4" type="video/mp4" priority />
+          </main>
+        </PageRoot>
+        <AppMenu chrome={chrome()} />
+      </MenuProvider>,
+    )
+    await waitFor(() => expect(document.querySelector('video')).not.toBeNull())
+    intersect(false)
+    const play = vi.mocked(HTMLMediaElement.prototype.play)
+    play.mockClear()
+    openMenu()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog', { hidden: true })).toBeNull())
+    expect(play).not.toHaveBeenCalled()
   })
 
   it('switches the animation styles in the next frame, not in the closing commit', async () => {

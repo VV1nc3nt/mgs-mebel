@@ -1,7 +1,11 @@
 import type { Metadata } from 'next'
 
 import { PreviewRefresh } from '@/components/app/PreviewRefresh'
-import { getPageGlobal } from '@/lib/queries'
+import { HomeHero } from '@/components/home/HomeHero'
+import { HistorySection } from '@/components/sections/HistorySection'
+import { StatsSection } from '@/components/sections/StatsSection'
+import { toChrome } from '@/lib/chrome'
+import { getLayout, getPageGlobal, getSettings, getStats } from '@/lib/queries'
 import { buildMetadata } from '@/lib/seo'
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -13,13 +17,22 @@ export async function generateMetadata(): Promise<Metadata> {
   })
 }
 
-// Placeholder until the home sections (step 6, PR A): only the H1 from the CMS.
+/** Home page (README §6.1). Sections without their required content are not rendered. */
 export default async function HomePage() {
-  const { hero } = await getPageGlobal('home')
+  const [home, stats, layout, settings] = await Promise.all([
+    getPageGlobal('home'),
+    getStats(),
+    getLayout(),
+    getSettings(),
+  ])
+  const { contactAction } = toChrome(layout, settings)
+
   return (
-    <section className="mx-auto max-w-page px-gutter py-section md:px-gutter-md xl:px-gutter-xl xl:py-section-xl">
-      <h1 className="text-h1 md:text-h1-md xl:text-h1-xl">{hero?.title || 'MGS MEBEL'}</h1>
+    <>
+      <HomeHero hero={home.hero} action={contactAction} />
+      <StatsSection items={stats.items} className="pt-2" />
+      <HistorySection history={home.history} linkHref="/about" />
       <PreviewRefresh />
-    </section>
+    </>
   )
 }

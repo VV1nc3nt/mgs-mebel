@@ -140,6 +140,12 @@
   --text-phone-lg--letter-spacing: -0.02em;
   --text-phone-lg--font-weight: 700;
 
+  /* Home «История»: year plate (design: home, history block) */
+  --text-year: 1.75rem;
+  --text-year--line-height: 1;
+  --text-year--letter-spacing: -0.03em;
+  --text-year--font-weight: 700;
+
   /* Article (/news/[slug]) */
   --text-article-title: 2.375rem;
   --text-article-title--line-height: 1;
@@ -178,12 +184,22 @@
   --spacing-dock-clearance: 120px;
   /* Menu button lines: 14×1.5 (README §5.2) */
   --spacing-burger-bar: 1.5px;
+  /* Hero height: 640 mobile, 780 tablet and the desktop minimum (README §4) */
+  --spacing-hero: 640px;
+  --spacing-hero-md: 780px;
+  /* Home statistics card in the mobile carousel (design: home) */
+  --spacing-stat-card: 164px;
 
   /* Containers */
   --container-page: 1600px;
   --container-article: 760px;
   /* Menu items and bottom block on tablet (design: MGSMenu) */
   --container-menu: 720px;
+  /* Home hero: text block from tablet, its paragraph (design: home) */
+  --container-hero: 640px;
+  --container-hero-text: 460px;
+  /* Text column of «История» (design: home) */
+  --container-history: 560px;
 
   /* Radii (pill buttons use rounded-full) */
   --radius-thumb: 14px;
@@ -274,6 +290,11 @@
     rgb(0 0 0 / 0) 50%,
     rgb(0 0 0 / 0.85) 100%
   );
+}
+
+/* «История»: photo grid, a 3:4 photo and a narrower column (design: home) */
+@utility grid-history {
+  grid-template-columns: 1.15fr 1fr;
 }
 
 /* Glass */
