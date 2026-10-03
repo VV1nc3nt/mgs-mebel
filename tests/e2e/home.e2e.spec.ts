@@ -172,7 +172,9 @@ test.describe('home', () => {
     test(`${width}: full-bleed hero and footer, content in the container`, async ({ page }) => {
       await page.setViewportSize({ width, height: 1000 })
       await page.goto(`${BASE}/`)
-      const viewport = await page.evaluate(() => document.documentElement.clientWidth)
+      // The width of the containing block: headless Linux keeps a 15px scrollbar gutter that
+      // documentElement.clientWidth does not subtract
+      const viewport = await page.evaluate(() => document.body.clientWidth)
       const left = (viewport - 1600) / 2 + 64
       const box = async (locator: ReturnType<Page['locator']>) => (await locator.boundingBox())!
 
