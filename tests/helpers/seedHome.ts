@@ -13,7 +13,7 @@ import { globals } from '../../src/seed/data/globals'
 import { news } from '../../src/seed/data/news'
 import { projects } from '../../src/seed/data/projects'
 import { isLocalDatabaseUrl } from '../../src/seed/guard'
-import { E2E_NEWS_COUNT, HOME_DRAFT_TITLE, NEWS_DRAFT_TITLE } from './e2eHome'
+import { E2E_NEWS_COUNT, HOME_DRAFT_TITLE, NEWS_DRAFT_SLUG, NEWS_DRAFT_TITLE } from './e2eHome'
 
 if (!isLocalDatabaseUrl(process.env.DATABASE_URL)) {
   console.error('seedHome: только локальная БД (localhost, 127.0.0.1, ::1)')
@@ -147,13 +147,13 @@ try {
       payload.create({ collection: 'news', data: { ...item, body: [] }, depth: 0 }),
     )
   }
-  await upsertBySlug(payload, 'news', 'e2e-draft', () =>
+  await upsertBySlug(payload, 'news', NEWS_DRAFT_SLUG, () =>
     payload.create({
       collection: 'news',
       data: {
         ...publishedNews[0]!,
         title: NEWS_DRAFT_TITLE,
-        slug: 'e2e-draft',
+        slug: NEWS_DRAFT_SLUG,
         date: '2027-01-01T12:00:00.000Z',
         body: [],
         _status: 'draft',

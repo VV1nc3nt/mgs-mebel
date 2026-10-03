@@ -9,13 +9,13 @@ vi.mock('next/cache', () => ({
   unstable_cache: <T extends (...args: never[]) => unknown>(fn: T) => fn,
 }))
 
-const { getHomeWorks, getLatestNews } = await import('@/lib/queries')
+const { getHomeWorks, getLatestNews, getNewsBySlug } = await import('@/lib/queries')
 
 // Dates far in the future and the lowest order: the test rows come first among existing data.
 const day = (n: number) => `2099-01-${String(n).padStart(2, '0')}T12:00:00.000Z`
 const FIRST = -1_000_000
 
-describe('home page queries', () => {
+describe('home page and news queries', () => {
   let payload: Payload
 
   beforeAll(async () => {
@@ -80,6 +80,13 @@ describe('home page queries', () => {
   it('latest news: published only, newest first, never a draft edit', async () => {
     const titles = (await getLatestNews(3)).map((n) => n.title)
     expect(titles).toEqual([`${PREFIX} edited`, `${PREFIX} newer`, `${PREFIX} older`])
+  })
+
+  it('news by slug: published only, never a draft or a draft edit', async () => {
+    expect(await getNewsBySlug(`${PREFIX}-older`)).toMatchObject({ title: `${PREFIX} older` })
+    expect(await getNewsBySlug(`${PREFIX}-edited`)).toMatchObject({ title: `${PREFIX} edited` })
+    expect(await getNewsBySlug(`${PREFIX}-draft`)).toBeNull()
+    expect(await getNewsBySlug(`${PREFIX}-nesushchestvuet`)).toBeNull()
   })
 
   it('home works: «На главной» first, then by order; reels are the video projects', async () => {
