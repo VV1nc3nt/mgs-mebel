@@ -6,3 +6,6 @@ export const NEWS_DRAFT_TITLE = 'E2E: черновик новости'
 
 /** Published news in the fixture; the slider shows the latest three. */
 export const E2E_NEWS_COUNT = 4
+
+/** Slug of that draft: its page is a 404, also in draft mode. */
+export const NEWS_DRAFT_SLUG = 'e2e-draft'

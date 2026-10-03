@@ -145,6 +145,34 @@ export async function getLatestNews(limit: number): Promise<NewsSlide[]> {
   return latestNewsCached(limit)
 }
 
+export type NewsArticle = Pick<News, 'id' | 'title' | 'slug' | 'date' | 'lead' | 'cover' | 'meta'>
+
+/**
+ * A published news item by its slug, or null (unknown slug or draft only): the page answers 404.
+ * Drafts are not shown even in draft mode until the full news page gets Live Preview.
+ */
+export async function getNewsBySlug(slug: string): Promise<NewsArticle | null> {
+  await connection()
+  // One cache entry per slug, so a news item can be revalidated by `news:<slug>`.
+  return unstable_cache(
+    async (): Promise<NewsArticle | null> => {
+      const payload = await getPayloadClient()
+      const { docs } = await payload.find({
+        collection: 'news',
+        where: { slug: { equals: slug }, _status: { equals: 'published' } },
+        limit: 1,
+        depth: 1,
+        draft: false,
+        overrideAccess: false,
+        select: { title: true, slug: true, date: true, lead: true, cover: true, meta: true },
+      })
+      return docs[0] ?? null
+    },
+    ['collection:news:slug', slug],
+    { tags: ['collection:news', `news:${slug}`], revalidate: REVALIDATE_SECONDS },
+  )()
+}
+
 const homeWorksCached = unstable_cache(
   async (): Promise<WorkPanel[]> => {
     const payload = await getPayloadClient()

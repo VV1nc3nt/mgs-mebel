@@ -2,12 +2,15 @@ import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
 import { globals } from '../../src/seed/data/globals'
+import { news } from '../../src/seed/data/news'
 
 const BASE = 'http://localhost:3000'
 const WIDTHS = [390, 834, 1440] as const
 // Texts written by tests/helpers/seedChrome.ts (the same seed module).
 const { layout, settings } = globals(() => 0)
 const EMPTY_DB = !!process.env.E2E_EMPTY_DB
+// A nested page: published news of tests/helpers/seedHome.ts (an unknown slug is a 404).
+const NEWS_PATH = `/news/${news(() => 0)[0]!.slug}`
 
 /** Fails the test on hydration mismatches and other console errors. */
 const watchConsole = (page: Page) => {
@@ -76,7 +79,7 @@ test.describe('layout: header and footer', () => {
       })
 
       test('has no axe violations', async ({ page }) => {
-        for (const path of ['/', '/salons', '/news/test']) {
+        for (const path of ['/', '/salons', NEWS_PATH]) {
           await page.goto(`${BASE}${path}`)
           expect(await axe(page), path).toEqual([])
         }
@@ -90,7 +93,7 @@ test.describe('layout: header and footer', () => {
     test('«←» leads to the parent section; none on the home page', async ({ page }) => {
       await page.goto(`${BASE}/`)
       await expect(page.getByRole('link', { name: 'На главную', exact: true })).toHaveCount(0)
-      await page.goto(`${BASE}/news/test`)
+      await page.goto(`${BASE}${NEWS_PATH}`)
       await page.getByRole('link', { name: 'Назад к новостям' }).click()
       await expect(page).toHaveURL(`${BASE}/news`)
       await page.getByRole('link', { name: 'На главную', exact: true }).click()
@@ -107,7 +110,7 @@ test.describe('layout: header and footer', () => {
     test.use({ viewport: { width: 1440, height: 900 } })
 
     test('marks the current section, also on nested pages', async ({ page }) => {
-      await page.goto(`${BASE}/news/test`)
+      await page.goto(`${BASE}${NEWS_PATH}`)
       const nav = page.getByRole('navigation', { name: 'Разделы сайта' })
       const current = nav.locator('[aria-current="page"]')
       await expect(current).toHaveText(layout.nav.news.shortLabel!)
@@ -168,7 +171,7 @@ test.describe('layout on an empty database @empty', () => {
     test(`${width}: header and footer render without empty controls`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 })
       const errors = watchConsole(page)
-      for (const path of ['/', '/salons', '/news/test']) {
+      for (const path of ['/', '/salons', '/news']) {
         const response = await page.goto(`${BASE}${path}`)
         expect(response?.status(), path).toBe(200)
         await expect(page.locator('header')).toHaveCount(1)
