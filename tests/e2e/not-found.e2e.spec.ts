@@ -55,6 +55,16 @@ test.describe('404', () => {
     })
   }
 
+  test('1728: no column, the content in the container', async ({ page }) => {
+    await page.setViewportSize({ width: 1728, height: 900 })
+    await expectSite404(page, '/nesushchestvuet')
+    const viewport = await page.evaluate(() => document.documentElement.clientWidth)
+    const footer = (await page.locator('footer').boundingBox())!
+    expect([footer.x, footer.width]).toEqual([0, viewport])
+    expect((await page.locator('h1').boundingBox())!.x).toBe((viewport - 1600) / 2 + 64)
+    await page.screenshot({ path: 'test-results/not-found/404-1728.png', fullPage: true })
+  })
+
   test('the button leads home, to the hero header', async ({ page }) => {
     const errors = watchConsole(page)
     await page.goto(`${BASE}/nesushchestvuet`)

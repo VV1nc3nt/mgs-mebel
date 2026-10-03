@@ -33,8 +33,8 @@ export function HistorySection({ history, linkHref, className }: Props) {
   return (
     <section
       className={cn(
-        'flex flex-col gap-7 px-gutter pt-14 md:px-gutter-md',
-        'xl:grid xl:grid-cols-2 xl:items-center xl:gap-16 xl:px-gutter-xl xl:pt-section-xl',
+        'page-container flex flex-col gap-7 pt-14',
+        'xl:grid xl:grid-cols-2 xl:items-center xl:gap-16 xl:pt-section-xl',
         className,
       )}
     >

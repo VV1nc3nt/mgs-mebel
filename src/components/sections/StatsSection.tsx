@@ -19,8 +19,8 @@ export function StatsSection({ items, className }: Props) {
     <ul
       tabIndex={0}
       className={cn(
-        'no-scrollbar flex snap-x snap-mandatory scroll-px-gutter gap-2.5 overflow-x-auto px-gutter',
-        'md:grid md:grid-cols-3 md:overflow-visible md:px-gutter-md xl:grid-cols-6 xl:px-gutter-xl',
+        'page-container no-scrollbar flex snap-x snap-mandatory scroll-px-gutter gap-2.5 overflow-x-auto',
+        'md:grid md:grid-cols-3 md:overflow-visible xl:grid-cols-6',
         className,
       )}
     >

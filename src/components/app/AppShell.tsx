@@ -32,7 +32,7 @@ export async function AppShell({
         <PageRoot>
           <SkipLink />
           <PreviewBanner />
-          <div className="relative mx-auto max-w-page">
+          <div className="relative">
             <AppHeader chrome={chrome} />
             <main id="content" tabIndex={-1} className="focus-visible:outline-none">
               {children}

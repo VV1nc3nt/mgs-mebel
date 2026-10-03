@@ -10,6 +10,7 @@
   --color-*: initial;
   --color-black: #000000;
   --color-bg: #141413;
+  /* Backdrop of the project viewer only; the page background is bg everywhere */
   --color-bg-outer: #0b0b0a;
   --color-surface: #1d1d1c;
   --color-surface-2: #1a1a19;
@@ -559,6 +560,24 @@
   }
 }
 
+/*
+ * Page content container: 1600 wide at most, centered, with the 20 / 32 / 64 page gutters.
+ * Sections, their background media and the footer surface span the whole window; text and grids
+ * sit inside this container.
+ */
+@utility page-container {
+  width: 100%;
+  max-width: var(--container-page);
+  margin-inline: auto;
+  padding-inline: var(--spacing-gutter);
+  @variant md {
+    padding-inline: var(--spacing-gutter-md);
+  }
+  @variant xl {
+    padding-inline: var(--spacing-gutter-xl);
+  }
+}
+
 /* Hides the scrollbar of horizontal segment bars and carousels */
 @utility no-scrollbar {
   scrollbar-width: none;
@@ -569,7 +588,7 @@
 
 @layer base {
   html {
-    background-color: var(--color-bg-outer);
+    background-color: var(--color-bg);
     color-scheme: dark;
     /* The scroll lock hides the scrollbar: keep its gutter so the page does not shift */
     scrollbar-gutter: stable;

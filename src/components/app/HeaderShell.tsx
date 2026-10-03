@@ -17,7 +17,7 @@ export function HeaderShell({ children }: { children: ReactNode }) {
     <header
       data-variant={hero ? 'hero' : 'flow'}
       className={cn(
-        'flex items-center justify-between gap-6 px-gutter py-5 md:px-gutter-md xl:px-gutter-xl',
+        'page-container flex items-center justify-between gap-6 py-5',
         hero && 'absolute inset-x-0 top-0 z-header',
       )}
     >

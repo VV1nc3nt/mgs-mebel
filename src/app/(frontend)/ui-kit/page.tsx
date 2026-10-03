@@ -54,7 +54,7 @@ export default async function UiKitPage() {
   const [first, second, third] = news
 
   return (
-    <div className="mx-auto flex max-w-page flex-col gap-12 px-gutter py-section md:px-gutter-md xl:px-gutter-xl">
+    <div className="page-container flex flex-col gap-12 py-section">
       <h1 className="text-h1 md:text-h1-md xl:text-h1-xl">UI-kit</h1>
       <p className="max-w-article text-body text-text-3">
         Все примитивы в вариантах, размерах и состояниях. Hover работает только на устройствах с

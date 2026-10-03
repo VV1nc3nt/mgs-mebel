@@ -65,7 +65,7 @@ export function NewsSlider({ heading, headingId, label, slides }: Props) {
       aria-label={headingId ? undefined : label}
       className="flex flex-col gap-heading pt-section xl:pt-section-xl"
     >
-      <div className="flex items-end justify-between gap-4 px-gutter md:px-gutter-md xl:px-gutter-xl">
+      <div className="page-container flex items-end justify-between gap-4">
         <div className="min-w-0">{heading}</div>
         {controls && (
           <div className="flex shrink-0 gap-2">
@@ -88,7 +88,7 @@ export function NewsSlider({ heading, headingId, label, slides }: Props) {
           </div>
         )}
       </div>
-      <div className="px-gutter md:px-gutter-md xl:px-gutter-xl">
+      <div className="page-container">
         <div className="relative">
           <div
             ref={track}

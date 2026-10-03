@@ -27,7 +27,7 @@ export function WorksChips({ chips, initial, panels }: Props) {
       <div
         role="group"
         aria-label="Категории работ"
-        className="no-scrollbar flex gap-2 overflow-x-auto px-gutter py-0.5 md:px-gutter-md xl:px-gutter-xl"
+        className="page-container no-scrollbar flex gap-2 overflow-x-auto py-0.5"
       >
         {chips.map(({ key, label }) => (
           <FilterChip
