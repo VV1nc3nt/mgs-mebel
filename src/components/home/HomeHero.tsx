@@ -28,7 +28,7 @@ export function HomeHero({ hero, action }: Props) {
     >
       {poster && <BgVideo poster={poster} video={hero?.video} sizes={{ base: '100vw' }} priority />}
       <div aria-hidden="true" className="absolute inset-0 bg-overlay-hero" />
-      <div className="absolute inset-x-0 bottom-8 px-gutter md:px-gutter-md xl:px-gutter-xl">
+      <div className="absolute inset-x-0 bottom-8 page-container">
         <div className="flex flex-col gap-4 md:max-w-hero">
           {hero?.label && <SectionLabel>{hero.label}</SectionLabel>}
           <h1 id="home-hero-title" className="text-h1 md:text-h1-md xl:text-h1-xl">

@@ -166,6 +166,64 @@ test.describe('home', () => {
     })
   }
 
+  // Wider than the 1600 container: the hero and the footer surface span the window, the header,
+  // texts and grids keep to the container with the 64 gutter; the page background is bg.
+  for (const width of [1728, 2560] as const) {
+    test(`${width}: full-bleed hero and footer, content in the container`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 1000 })
+      await page.goto(`${BASE}/`)
+      // The width of the containing block: headless Linux keeps a 15px scrollbar gutter that
+      // documentElement.clientWidth does not subtract
+      const viewport = await page.evaluate(() => document.body.clientWidth)
+      const left = (viewport - 1600) / 2 + 64
+      const box = async (locator: ReturnType<Page['locator']>) => (await locator.boundingBox())!
+
+      const hero = await box(page.locator('section[aria-labelledby="home-hero-title"]'))
+      expect([hero.x, hero.width]).toEqual([0, viewport])
+      const footer = await box(page.locator('footer'))
+      expect([footer.x, footer.width]).toEqual([0, viewport])
+
+      const header = page.locator('header')
+      expect((await box(header.getByRole('link', { name: 'MGS MEBEL — на главную' }))).x).toBe(left)
+      const cta = await box(header.getByRole('link', { name: `${home.hero.ctaLabel} в WhatsApp` }))
+      expect(cta.x + cta.width).toBe(viewport - left)
+      expect((await box(page.locator('h1'))).x).toBe(left)
+      const stat = page.locator('ul').filter({ hasText: stats.items[0].label }).first()
+      expect((await box(stat.locator('li').first())).x).toBe(left)
+      expect((await box(page.locator('footer p').first())).x).toBe(left)
+
+      const backgrounds = await page.evaluate(() =>
+        [document.documentElement, document.body].map((el) => getComputedStyle(el).backgroundColor),
+      )
+      expect(backgrounds).toEqual(['rgb(20, 20, 19)', 'rgb(20, 20, 19)'])
+
+      await page.evaluate(async () => {
+        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' })
+        const loaded = [...document.images].filter((img) => img.complete && img.naturalWidth)
+        await Promise.all(loaded.map((img) => img.decode().catch(() => undefined)))
+        window.scrollTo({ top: 0, behavior: 'instant' })
+      })
+      await page.screenshot({ path: `test-results/home/home-${width}.png` })
+      await page.locator('footer').screenshot({ path: `test-results/home/footer-${width}.png` })
+      expect(await cls(page)).toBe(0)
+      expect(await axe(page)).toEqual([])
+    })
+  }
+
+  test('390: carousels start at the page gutter', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto(`${BASE}/`)
+    const stat = page.locator('ul').filter({ hasText: stats.items[0].label }).first()
+    expect(await stat.evaluate((el) => getComputedStyle(el).scrollPaddingLeft)).toBe('20px')
+    expect((await stat.locator('li').first().boundingBox())!.x).toBe(20)
+    // One card further: snap brings the second card to the gutter
+    await stat.evaluate((el) => el.scrollBy({ left: 120, behavior: 'instant' }))
+    await expect.poll(async () => (await stat.locator('li').nth(1).boundingBox())!.x).toBe(20)
+
+    const track = page.getByRole('region', { name: NEWS_TITLE }).locator('.snap-x')
+    expect((await track.getByRole('group').first().boundingBox())!.x).toBe(20)
+  })
+
   test.describe('news slider', () => {
     test.use({ viewport: { width: 390, height: 844 } })
 

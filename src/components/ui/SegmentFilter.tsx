@@ -19,7 +19,7 @@ export type SegmentFilterProps<T extends string> = {
    * `overlay` — «Карта / Список» switch over the map (design: home, salons).
    */
   variant?: 'bar' | 'overlay'
-  /** Full-width sticky bar on glass with a bottom line and page gutters (bar only). */
+  /** Full-width sticky bar on glass with a bottom line, contents in the page container (bar only). */
   sticky?: boolean
   /** Result counter under the bar, e.g. «60 работ · комплекс» (bar only). */
   count?: string
@@ -28,7 +28,7 @@ export type SegmentFilterProps<T extends string> = {
   className?: string
 }
 
-const GUTTERS = 'px-gutter md:px-gutter-md xl:px-gutter-xl'
+const CONTAINER = 'page-container'
 
 /**
  * Single-choice filter: a group of toggle buttons (aria-pressed). Explicit activation with
@@ -131,7 +131,7 @@ export function SegmentFilter<T extends string>({
         className,
       )}
     >
-      <div className={cn(sticky && GUTTERS)}>
+      <div className={cn(sticky && CONTAINER)}>
         <div className="relative md:max-w-max">
           <div
             ref={scrollerRef}
@@ -154,7 +154,7 @@ export function SegmentFilter<T extends string>({
         <div
           className={cn(
             'flex items-center justify-between gap-3 text-caption font-normal text-text-4',
-            sticky && GUTTERS,
+            sticky && CONTAINER,
           )}
         >
           <p aria-live="polite">{count}</p>

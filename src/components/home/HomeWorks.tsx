@@ -67,7 +67,7 @@ export function HomeWorks({ section, panels }: Props) {
         label={section?.label}
         title={title}
         id={HEADING_ID}
-        className="px-gutter md:px-gutter-md xl:px-gutter-xl"
+        className="page-container"
       />
       <WorksChips
         chips={panels.map(({ key, label }) => ({ key, label }))}
@@ -75,7 +75,7 @@ export function HomeWorks({ section, panels }: Props) {
         panels={panels.map((panel) => (
           <ul
             key={panel.key}
-            className="grid grid-cols-2 gap-2 px-gutter md:grid-cols-4 md:px-gutter-md xl:px-gutter-xl"
+            className="page-container grid grid-cols-2 gap-2 md:grid-cols-4"
           >
             {panel.works.map((work) => (
               <li key={work.id}>
@@ -86,7 +86,7 @@ export function HomeWorks({ section, panels }: Props) {
         ))}
       />
       {buttonLabel && (
-        <div className="flex justify-center px-gutter md:px-gutter-md xl:px-gutter-xl">
+        <div className="page-container flex justify-center">
           <Button href="/works" variant="outline" size={52} width="mobile-full" arrow>
             {buttonLabel}
           </Button>

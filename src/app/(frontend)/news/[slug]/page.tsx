@@ -29,7 +29,7 @@ export default async function NewsArticlePage({ params }: Props) {
   if (!news) notFound()
 
   return (
-    <article className="mx-auto max-w-page px-gutter py-section md:px-gutter-md xl:px-gutter-xl xl:py-section-xl">
+    <article className="page-container py-section xl:py-section-xl">
       <h1 className="text-article-title md:text-article-title-md xl:text-article-title-xl">
         {news.title}
       </h1>
