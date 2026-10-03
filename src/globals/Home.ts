@@ -35,7 +35,8 @@ export const Home = pageGlobal(
     {
       name: 'works',
       label: 'Наши работы',
-      description: 'Превью — работы с отметкой «На главной».',
+      description:
+        'Превью — до 4 работ на категорию: сначала с отметкой «На главной», затем по порядку.',
       fields: [labelField(), titleField(), { name: 'buttonLabel', type: 'text', label: 'Кнопка' }],
     },
   ],
