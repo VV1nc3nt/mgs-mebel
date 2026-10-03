@@ -3,23 +3,92 @@ import { expect, test, type Page } from '@playwright/test'
 
 import { globals } from '../../src/seed/data/globals'
 
-// The page stubs are shorter than the first screen (0.7·vh); /ui-kit is long enough to scroll.
-const URL = 'http://localhost:3000/ui-kit'
+// The home page in its real context: hero on the first screen, long enough to scroll with the
+// seedHome data. On an empty database it is short, so the @empty check of the dock's content
+// stays on /ui-kit.
+const URL = 'http://localhost:3000/'
+const UI_KIT = 'http://localhost:3000/ui-kit'
 const { layout, settings } = globals(() => 0)
 const EMPTY_DB = !!process.env.E2E_EMPTY_DB
 
 const dock = (page: Page) => page.locator('.dock')
 const toTop = (page: Page) => dock(page).getByRole('button', { name: 'Наверх' })
 
-/** Real wheel input: scroll events with a direction, as a user makes them. */
-async function wheel(page: Page, dy: number) {
-  await page.mouse.move(100, 300)
-  await page.mouse.wheel(0, dy)
+/**
+ * Waits until the page stops changing under the test: images in view decoded (lazy ones load
+ * as they scroll in) and the document height the same over two frames.
+ */
+async function settle(page: Page) {
+  await page.evaluate(async () => {
+    // In view on both axes: slides beside the current one never load (lazy), and decode() of a
+    // never-loaded image does not settle
+    const inView = [...document.images].filter((img) => {
+      const box = img.getBoundingClientRect()
+      return (
+        box.width > 0 &&
+        box.bottom > 0 &&
+        box.top < window.innerHeight &&
+        box.right > 0 &&
+        box.left < window.innerWidth
+      )
+    })
+    await Promise.race([
+      Promise.all(inView.map((img) => img.decode().catch(() => undefined))),
+      new Promise((r) => setTimeout(r, 3000)),
+    ])
+    let height = -1
+    while (height !== document.documentElement.scrollHeight) {
+      height = document.documentElement.scrollHeight
+      // Two frames; no named helpers in here: the test transpiler wraps them in __name()
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+    }
+  })
 }
 
-/** Deep in the page, then a scroll up: the dock shows. */
+/**
+ * Real wheel input: scroll events with a direction, as a user makes them. Returns after the
+ * smooth scroll ends (`scrollend`): a wheel during a running scroll animation merges into it and
+ * may move the page by only a few pixels — below the dock's direction threshold.
+ */
+async function wheel(page: Page, dy: number) {
+  await page.evaluate(() => {
+    const w = window as Window & { scrollEnded?: Promise<void> }
+    w.scrollEnded = new Promise((resolve) => {
+      window.addEventListener('scrollend', () => resolve(), { once: true })
+      // No scroll at all (already at the edge): no scrollend
+      setTimeout(resolve, 1500)
+    })
+  })
+  await page.mouse.move(100, 300)
+  await page.mouse.wheel(0, dy)
+  await page.evaluate(() => (window as Window & { scrollEnded?: Promise<void> }).scrollEnded)
+}
+
+/**
+ * Jumps to the middle of the page: past the first screen, the footer out of view and room for
+ * a 300 wheel either way. The jump itself is a scroll down, so the dock stays hidden here.
+ */
+async function scrollToMiddle(page: Page) {
+  await settle(page)
+  const top = await page.evaluate(() => {
+    const vh = window.innerHeight
+    const footer = document.querySelector('footer')!.getBoundingClientRect().top + window.scrollY
+    // First screen: 0.7·vh; the footer counts as visible 40 above the viewport bottom
+    const min = 0.7 * vh + 300
+    const max = footer - vh - 40 - 300
+    if (max < min) throw new Error(`page too short for the dock checks: ${min}…${max}`)
+    return Math.round((min + max) / 2)
+  })
+  await page.evaluate((y) => window.scrollTo({ top: y, behavior: 'instant' }), top)
+  await settle(page)
+}
+
+/**
+ * The middle of the page, then a scroll up: the dock shows. Showing also proves the dock's
+ * scroll listener is live (hydrated) before a test goes on wheeling.
+ */
 async function showDock(page: Page) {
-  await page.evaluate(() => window.scrollTo({ top: 2500, behavior: 'instant' }))
+  await scrollToMiddle(page)
   await wheel(page, -300)
   await expect(dock(page)).not.toHaveAttribute('data-hidden')
 }
@@ -74,6 +143,7 @@ test.describe('dock', () => {
 
     test('hidden on the first screen and out of the Tab order', async ({ page }) => {
       await page.goto(URL)
+      await settle(page)
       await expect(dock(page)).toHaveAttribute('data-hidden', '')
       await expect(dock(page)).toHaveAttribute('inert', '')
       await toTop(page).evaluate((el) => (el as HTMLElement).focus())
@@ -86,7 +156,7 @@ test.describe('dock', () => {
 
     test('hides on scrolling down, shows on scrolling up', async ({ page }) => {
       await page.goto(URL)
-      await page.evaluate(() => window.scrollTo({ top: 1500, behavior: 'instant' }))
+      await showDock(page)
       await wheel(page, 300)
       await expect(dock(page)).toHaveAttribute('data-hidden', '')
       await wheel(page, -300)
@@ -97,6 +167,7 @@ test.describe('dock', () => {
 
     test('hidden next to the footer', async ({ page }) => {
       await page.goto(URL)
+      await settle(page)
       await page.evaluate(() =>
         window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }),
       )
@@ -152,9 +223,22 @@ test.describe('dock on an empty database @empty', () => {
 
   test('without messengers the dock has only «Наверх»', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
-    await page.goto(URL)
+    await page.goto(UI_KIT)
     await showDock(page)
     await expect(dock(page).getByRole('button', { name: 'Наверх' })).toBeVisible()
     await expect(dock(page).getByRole('link')).toHaveCount(0)
+  })
+
+  test('the short empty home page keeps the dock hidden, without errors', async ({ page }) => {
+    const errors: string[] = []
+    page.on('pageerror', (error) => errors.push(error.message))
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto(URL)
+    await page.evaluate(() =>
+      window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }),
+    )
+    await wheel(page, -40)
+    await expect(dock(page)).toHaveAttribute('data-hidden', '')
+    expect(errors).toEqual([])
   })
 })

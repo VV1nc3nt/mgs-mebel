@@ -2,7 +2,8 @@ import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
 import { globals } from '../../src/seed/data/globals'
-import { HOME_DRAFT_TITLE } from '../helpers/e2eHome'
+import { news } from '../../src/seed/data/news'
+import { E2E_NEWS_COUNT, HOME_DRAFT_TITLE, NEWS_DRAFT_TITLE } from '../helpers/e2eHome'
 
 const BASE = 'http://localhost:3000'
 const EMPTY_DB = !!process.env.E2E_EMPTY_DB
@@ -44,7 +45,18 @@ const cls = (page: Page) =>
       }),
   )
 
+// The slider: the latest three of the published fixture news, newest first
+const LATEST_NEWS = news(() => 0)
+  .slice(0, E2E_NEWS_COUNT)
+  .sort((a, b) => b.date.localeCompare(a.date))
+  .slice(0, 3)
+
+const NEWS_TITLE = home.news!.title!
+const WORKS_TITLE = home.works!.title!
+
 const HEIGHTS = { 390: 844, 834: 1194, 1440: 900 } as const
+const NEWS_CARD = { 390: 440, 834: 560, 1440: 640 } as const
+const WORK_COLUMNS = { 390: 2, 834: 4, 1440: 4 } as const
 const HERO = { 390: 640, 834: 780, 1440: 900 } as const
 const STAT_COLUMNS = { 390: 0, 834: 3, 1440: 6 } as const
 
@@ -102,12 +114,147 @@ test.describe('home', () => {
         '/about',
       )
 
+      // News: one card per view of README §6.1 heights, the latest published only
+      const slider = page.getByRole('region', { name: NEWS_TITLE })
+      await expect(slider).toHaveAttribute('aria-roledescription', 'карусель')
+      const slides = slider.getByRole('group')
+      await expect(slides).toHaveCount(3)
+      await expect(slider.getByRole('heading', { level: 3 })).toHaveText(
+        LATEST_NEWS.map((n) => n.title),
+      )
+      await expect(page.getByText(NEWS_DRAFT_TITLE)).toHaveCount(0)
+      expect(Math.round((await slides.first().boundingBox())!.height)).toBe(NEWS_CARD[width])
+      await expect(slider.getByRole('link', { name: LATEST_NEWS[0]!.title })).toHaveAttribute(
+        'href',
+        `/news/${LATEST_NEWS[0]!.slug}`,
+      )
+
+      // Works: «Комплекс» selected, 4 previews in 2 / 4 columns, the button to the works page
+      const works = page.getByRole('region', { name: WORKS_TITLE })
+      const chips = works.getByRole('group', { name: 'Категории работ' }).getByRole('button')
+      await expect(chips.first()).toHaveText('reels')
+      await expect(works.getByRole('button', { name: 'Комплекс' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
+      const panel = works.locator('#works-complex')
+      await expect(panel.getByRole('link')).toHaveCount(4)
+      const columns = await panel
+        .locator('ul')
+        .evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length)
+      expect(columns).toBe(WORK_COLUMNS[width])
+      await expect(works.getByRole('link', { name: /Смотреть все работы/ })).toHaveAttribute(
+        'href',
+        '/works',
+      )
+
+      // Lazy images below the fold: scroll through before the full-page screenshot
+      await page.evaluate(async () => {
+        for (let y = 0; y < document.documentElement.scrollHeight; y += window.innerHeight / 2) {
+          window.scrollTo({ top: y, behavior: 'instant' })
+          await new Promise((r) => setTimeout(r, 50))
+        }
+        // Loaded images only: the hidden works panels and other slides stay lazy
+        const loaded = [...document.images].filter((img) => img.complete && img.naturalWidth)
+        await Promise.all(loaded.map((img) => img.decode().catch(() => undefined)))
+        window.scrollTo({ top: 0, behavior: 'instant' })
+      })
       await page.screenshot({ path: `test-results/home/home-${width}.png`, fullPage: true })
       expect(await cls(page)).toBe(0)
       expect(await axe(page)).toEqual([])
       expect(errors).toEqual([])
     })
   }
+
+  test.describe('news slider', () => {
+    test.use({ viewport: { width: 390, height: 844 } })
+
+    const current = (page: Page) =>
+      page
+        .getByRole('button', { name: /^Показать новость/ })
+        .evaluateAll((buttons) => buttons.findIndex((b) => b.getAttribute('aria-current')))
+
+    /** Index of the slide the track is scrolled to, once the smooth scroll has settled. */
+    const scrolledTo = (page: Page) =>
+      page
+        .getByRole('region', { name: NEWS_TITLE })
+        .locator('.snap-x')
+        .evaluate((track) => {
+          const slides = [...track.children] as HTMLElement[]
+          return slides.findIndex((s) => Math.abs(s.offsetLeft - track.scrollLeft) < 2)
+        })
+
+    test('arrows and segments from the keyboard go round', async ({ page }) => {
+      await page.goto(`${BASE}/`)
+      const next = page.getByRole('button', { name: 'Следующая новость' })
+      const prev = page.getByRole('button', { name: 'Предыдущая новость' })
+      await expect.poll(() => current(page)).toBe(0)
+
+      await next.focus()
+      await page.keyboard.press('Enter')
+      await expect.poll(() => current(page)).toBe(1)
+      await expect.poll(() => scrolledTo(page)).toBe(1)
+      await page.keyboard.press('Space')
+      await expect.poll(() => scrolledTo(page)).toBe(2)
+      await page.keyboard.press('Enter')
+      await expect.poll(() => scrolledTo(page)).toBe(0)
+      await expect.poll(() => current(page)).toBe(0)
+
+      await prev.focus()
+      await page.keyboard.press('Enter')
+      await expect.poll(() => scrolledTo(page)).toBe(2)
+      await expect.poll(() => current(page)).toBe(2)
+
+      await page.getByRole('button', { name: 'Показать новость 2 из 3' }).focus()
+      await page.keyboard.press('Enter')
+      await expect.poll(() => scrolledTo(page)).toBe(1)
+      await expect(page.getByRole('button', { name: 'Показать новость 2 из 3' })).toHaveAttribute(
+        'aria-current',
+        'true',
+      )
+    })
+
+    test('a swipe moves the segments', async ({ page }) => {
+      await page.goto(`${BASE}/`)
+      const track = page.getByRole('region', { name: NEWS_TITLE }).locator('.snap-x')
+      await track.evaluate((el) => {
+        const last = el.lastElementChild as HTMLElement
+        el.scrollTo({ left: last.offsetLeft, behavior: 'instant' })
+      })
+      await expect.poll(() => current(page)).toBe(2)
+    })
+  })
+
+  test('works chips switch the panels', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto(`${BASE}/`)
+    const works = page.getByRole('region', { name: WORKS_TITLE })
+    const reels = works.getByRole('button', { name: 'reels' })
+    await expect(reels).toHaveAttribute('aria-controls', 'works-reels')
+    await expect(works.locator('#works-reels')).toBeHidden()
+
+    await reels.focus()
+    await page.keyboard.press('Enter')
+    await expect(reels).toHaveAttribute('aria-pressed', 'true')
+    await expect(works.getByRole('button', { name: 'Комплекс' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+    await expect(works.locator('#works-complex')).toBeHidden()
+    const panel = works.locator('#works-reels')
+    await expect(panel).toBeVisible()
+    // Video projects: ▶ marker, the link to the works page filtered by the project's category
+    const first = panel.getByRole('link').first()
+    await expect(first).toContainText('Видео')
+    await expect(first).toHaveAttribute('href', /^\/works\?category=[a-z]+$/)
+
+    await works.getByRole('button', { name: 'Кухни' }).click()
+    await expect(works.locator('#works-kitchens')).toBeVisible()
+    await expect(works.locator('#works-kitchens').getByRole('link').first()).toHaveAttribute(
+      'href',
+      '/works?category=kitchens',
+    )
+  })
 
   test('anonymous API never gets the home draft', async ({ request }) => {
     for (const query of ['', '?draft=true']) {

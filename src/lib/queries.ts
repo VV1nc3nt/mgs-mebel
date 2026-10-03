@@ -1,11 +1,21 @@
 import { unstable_cache } from 'next/cache'
 import { draftMode } from 'next/headers'
 import { connection } from 'next/server'
-import type { DataFromGlobalSlug } from 'payload'
+import type { DataFromGlobalSlug, Where } from 'payload'
+
+import type { News } from '@/payload-types'
 
 import type { LayoutInput, SettingsInput } from './chrome'
 import { getPayloadClient } from './payload'
 import { getPreviewUser } from './preview'
+import {
+  HOME_WORKS_LIMIT,
+  REELS,
+  WORK_FILTERS,
+  workPanels,
+  type ProjectRow,
+  type WorkPanel,
+} from './works'
 
 // Until step 9: replace the time-based revalidate with revalidateTag from the globals' hooks.
 const REVALIDATE_SECONDS = 60
@@ -105,4 +115,68 @@ const statsCached = unstable_cache(
 export async function getStats() {
   await connection()
   return statsCached()
+}
+
+export type NewsSlide = Pick<News, 'id' | 'title' | 'slug' | 'date' | 'lead' | 'cover'>
+
+const latestNewsCached = unstable_cache(
+  async (limit: number): Promise<NewsSlide[]> => {
+    const payload = await getPayloadClient()
+    // As an anonymous visitor: the collection's read access lets through published news only.
+    const { docs } = await payload.find({
+      collection: 'news',
+      where: { _status: { equals: 'published' } },
+      sort: '-date',
+      limit,
+      depth: 1,
+      draft: false,
+      overrideAccess: false,
+      select: { title: true, slug: true, date: true, lead: true, cover: true },
+    })
+    return docs
+  },
+  ['collection:news:latest'],
+  { tags: ['collection:news'], revalidate: REVALIDATE_SECONDS },
+)
+
+/** The latest published news, newest first (home slider). */
+export async function getLatestNews(limit: number): Promise<NewsSlide[]> {
+  await connection()
+  return latestNewsCached(limit)
+}
+
+const homeWorksCached = unstable_cache(
+  async (): Promise<WorkPanel[]> => {
+    const payload = await getPayloadClient()
+    const find = async (where: Where): Promise<ProjectRow[]> => {
+      const { docs } = await payload.find({
+        collection: 'projects',
+        where,
+        // «На главной» first, then by the editor's order
+        sort: ['-featured', 'order', '-createdAt'],
+        limit: HOME_WORKS_LIMIT,
+        depth: 1,
+        overrideAccess: false,
+        select: { title: true, slug: true, category: true, slides: true },
+      })
+      return docs
+    }
+    const lists = await Promise.all(
+      WORK_FILTERS.map(async ({ key }) => {
+        // A video can only be the first slide, so «has a video» means a video project.
+        const where: Where =
+          key === REELS ? { 'slides.type': { equals: 'video' } } : { category: { equals: key } }
+        return [key, await find(where)] as const
+      }),
+    )
+    return workPanels(Object.fromEntries(lists))
+  },
+  ['collection:projects:home'],
+  { tags: ['collection:projects'], revalidate: REVALIDATE_SECONDS },
+)
+
+/** Home «Наши работы»: up to 4 previews per chip, chips without works left out. */
+export async function getHomeWorks(): Promise<WorkPanel[]> {
+  await connection()
+  return homeWorksCached()
 }

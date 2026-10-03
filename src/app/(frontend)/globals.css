@@ -189,6 +189,10 @@
   --spacing-hero-md: 780px;
   /* Home statistics card in the mobile carousel (design: home) */
   --spacing-stat-card: 164px;
+  /* Home news slider: 440 mobile; tall media blocks 560 tablet, 640 desktop (README §6.1) */
+  --spacing-news-card: 440px;
+  --spacing-tall-md: 560px;
+  --spacing-tall-xl: 640px;
 
   /* Containers */
   --container-page: 1600px;
@@ -200,6 +204,8 @@
   --container-hero-text: 460px;
   /* Text column of «История» (design: home) */
   --container-history: 560px;
+  /* Text of a news slide (design: home) */
+  --container-slide-text: 640px;
 
   /* Radii (pill buttons use rounded-full) */
   --radius-thumb: 14px;

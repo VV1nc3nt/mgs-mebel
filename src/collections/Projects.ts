@@ -3,17 +3,8 @@ import { array as validateArray } from 'payload/shared'
 
 import { contentEditors, publicRead } from '@/access'
 import { checkMediaKind, imageField, mediaField, mimeFilter } from '@/fields/media'
+import { projectCategoryOptions } from '@/lib/projectCategories'
 import { slugify } from '@/lib/slugify'
-
-export const projectCategoryOptions = [
-  { label: 'Комплекс', value: 'complex' },
-  { label: 'Кухни', value: 'kitchens' },
-  { label: 'Прихожие', value: 'hallways' },
-  { label: 'Спальни', value: 'bedrooms' },
-  { label: 'Санузлы', value: 'bathrooms' },
-  { label: 'Гардеробные', value: 'wardrobes' },
-  { label: 'Гостиные', value: 'livingrooms' },
-]
 
 type SlideRow = { type?: 'video' | 'photo' | null }
 
@@ -43,7 +34,7 @@ export const Projects: CollectionConfig = {
       type: 'select',
       label: 'Категория',
       required: true,
-      options: projectCategoryOptions,
+      options: [...projectCategoryOptions],
     },
     {
       type: 'row',

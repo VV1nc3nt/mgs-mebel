@@ -44,10 +44,12 @@ const OVERLAY = {
   viewer: 'bg-overlay-viewer',
 } as const
 
-// Slot offsets from the design: 16 top / 20 bottom on cards, 8 on work previews.
+// Slot offsets from the design: 16 top / 20 bottom on cards, 8 on work previews,
+// home work previews — icon 10 from the top right corner, text 12 from the edges.
 const INSET = {
   md: { top: 'inset-x-4 top-4', bottom: 'inset-x-5 bottom-5' },
   sm: { top: 'inset-x-2 top-2', bottom: 'inset-x-2 bottom-2' },
+  work: { top: 'right-2.5 top-2.5', bottom: 'inset-x-3 bottom-3' },
 } as const
 
 export type MediaCardProps = {
@@ -74,6 +76,8 @@ export type MediaCardProps = {
    * A link card must not contain buttons or links in `top` / `children`.
    */
   href?: string
+  /** Id of the element that names the link card (e.g. its heading) instead of all its text. */
+  labelledBy?: string
   /** LCP image: preloaded, not lazy. */
   priority?: boolean
   as?: 'div' | 'article' | 'figure'
@@ -96,6 +100,7 @@ export function MediaCard({
   top,
   children,
   href,
+  labelledBy,
   priority = false,
   as: Tag = 'div',
   className,
@@ -148,7 +153,11 @@ export function MediaCard({
   // (e.g. no seed yet) render a plain block instead of a nameless link.
   if (href && (image || children)) {
     return (
-      <Action href={href} className={cn(classes, 'transition-opacity hover:opacity-88')}>
+      <Action
+        href={href}
+        aria-labelledby={labelledBy}
+        className={cn(classes, 'transition-opacity hover:opacity-88')}
+      >
         {content}
       </Action>
     )
