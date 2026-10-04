@@ -48,7 +48,8 @@ test.describe('layout: header and footer', () => {
 
         await page.goto(`${BASE}/salons`)
         await expect(header).toHaveAttribute('data-variant', 'flow')
-        await expect(header).toHaveCSS('position', 'static')
+        await expect(header).toHaveCSS('position', 'relative')
+        await expect(header).toHaveAttribute('data-state', 'top')
         await page.screenshot({ path: `test-results/layout/salons-${width}.png` })
         await page.locator('footer').screenshot({ path: `test-results/layout/footer-${width}.png` })
         expect(errors).toEqual([])

@@ -577,6 +577,89 @@
 }
 
 /*
+ * Smart header (a deviation from README §5.2; states in lib/headerState.ts). The <header> slot
+ * keeps the bar's height in the flow while the bar is fixed, so nothing below moves.
+ * --header-h is the bar height without a unit: measured by HeaderShell, by default from the
+ * tokens (py-5 × 2 + the 40 / 44 controls) so it is valid before hydration.
+ */
+@utility site-header {
+  min-height: calc(var(--header-h) * 1px);
+}
+
+/*
+ * The bar: in place at the top, fixed at the viewport top otherwise. Hidden (away / hidden) it
+ * sits above the edge; only hidden ⇄ pinned slide, as the dock does (away was never on screen).
+ * The glass and the bottom line fade in under the contents when pinned. Reduced motion: fades.
+ */
+@utility header-bar {
+  position: relative;
+  isolation: isolate;
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-bottom: 1px solid var(--color-line-sticky);
+    opacity: 0;
+    transition: opacity var(--motion-dock) var(--ease-soft);
+  }
+  /* The glass only out of place: in place the bar renders exactly as a plain header */
+  [data-state='away'] > &::before,
+  [data-state='hidden'] > &::before,
+  [data-state='pinned'] > &::before {
+    @apply glass-sticky;
+  }
+  [data-state='away'] > &,
+  [data-state='hidden'] > &,
+  [data-state='pinned'] > & {
+    position: fixed;
+    inset-inline: 0;
+    top: 0;
+  }
+  [data-state='away'] > &,
+  [data-state='hidden'] > & {
+    transform: translateY(-100%);
+    opacity: 0;
+    pointer-events: none;
+  }
+  [data-state='hidden'] > &,
+  [data-state='pinned'] > & {
+    transition:
+      transform var(--motion-dock) var(--ease-soft),
+      opacity var(--motion-dock) var(--ease-soft);
+  }
+  [data-state='pinned'] > &::before {
+    opacity: 1;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    [data-state='hidden'] > &,
+    [data-state='pinned'] > & {
+      transition: opacity var(--motion-dock) ease-out;
+    }
+    [data-state='away'] > &,
+    [data-state='hidden'] > & {
+      transform: none;
+    }
+  }
+}
+
+/*
+ * Sticky bars (segment filters): at the viewport top, under the header while it is pinned,
+ * moving together with it.
+ */
+@utility sticky-under-header {
+  position: sticky;
+  top: 0;
+  transition: top var(--motion-dock) var(--ease-soft);
+  :root[data-header-pinned] & {
+    top: calc(var(--header-h) * 1px);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+/*
  * Page content container: 1600 wide at most, centered, with the 20 / 32 / 64 page gutters.
  * Sections, their background media and the footer surface span the whole window; text and grids
  * sit inside this container.
@@ -603,11 +686,21 @@
 }
 
 @layer base {
+  :root {
+    /* Header bar height before it is measured (see site-header) */
+    --header-h: 80;
+    @variant xl {
+      --header-h: 84;
+    }
+  }
+
   html {
     background-color: var(--color-bg);
     color-scheme: dark;
     /* The scroll lock hides the scrollbar: keep its gutter so the page does not shift */
     scrollbar-gutter: stable;
+    /* Anchors, focus and scrollIntoView stop below the header */
+    scroll-padding-top: calc(var(--header-h) * 1px);
   }
 
   body {

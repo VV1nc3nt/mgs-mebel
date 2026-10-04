@@ -19,7 +19,10 @@ export type SegmentFilterProps<T extends string> = {
    * `overlay` — «Карта / Список» switch over the map (design: home, salons).
    */
   variant?: 'bar' | 'overlay'
-  /** Full-width sticky bar on glass with a bottom line, contents in the page container (bar only). */
+  /**
+   * Full-width sticky bar on glass with a bottom line, contents in the page container (bar only).
+   * Under the header while it is pinned.
+   */
   sticky?: boolean
   /** Result counter under the bar, e.g. «60 работ · комплекс» (bar only). */
   count?: string
@@ -117,7 +120,7 @@ export function SegmentFilter<T extends string>({
     <div
       className={cn(
         'flex flex-col gap-3',
-        sticky && 'sticky top-0 z-10 border-b border-line-sticky glass-sticky pt-4 pb-3.5',
+        sticky && 'sticky-under-header z-10 border-b border-line-sticky glass-sticky pt-4 pb-3.5',
         className,
       )}
     >

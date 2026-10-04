@@ -1,18 +1,13 @@
 'use client'
 
 import { ChevronUp } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { IconButton } from '@/components/ui/IconButton'
+import { usePageScroll, type PageScroll } from '@/hooks/usePageScroll'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
 import type { Messenger } from '@/lib/chrome'
-import {
-  FOOTER_ROOT_MARGIN,
-  initialDockScroll,
-  isDockVisible,
-  nextDockScroll,
-  type DockScroll,
-} from '@/lib/dockVisibility'
+import { FOOTER_ROOT_MARGIN, isDockVisible } from '@/lib/dockVisibility'
 import { AskAction } from './AskAction'
 
 /**
@@ -22,55 +17,42 @@ import { AskAction } from './AskAction'
 export function FloatingDock({ askLabel, action }: { askLabel?: string; action?: Messenger }) {
   const reducedMotion = useReducedMotion()
   const [visible, setVisible] = useState(false)
-  const scroll = useRef<DockScroll | null>(null)
+  const scroll = useRef<PageScroll | null>(null)
   const footerVisible = useRef(false)
   const focusWithin = useRef(false)
-  const update = useRef<() => void>(() => {})
+
+  const update = useCallback(() => {
+    if (!scroll.current) return
+    setVisible(
+      isDockVisible({
+        y: scroll.current.y,
+        vh: window.innerHeight,
+        dir: scroll.current.dir,
+        footerVisible: footerVisible.current,
+        focusWithin: focusWithin.current,
+      }),
+    )
+  }, [])
+
+  usePageScroll((next) => {
+    scroll.current = next
+    update()
+  })
 
   useEffect(() => {
-    let frame = 0
-    const compute = () => {
-      frame = 0
-      const y = window.scrollY
-      scroll.current = scroll.current ? nextDockScroll(scroll.current, y) : initialDockScroll(y)
-      setVisible(
-        isDockVisible({
-          y,
-          vh: window.innerHeight,
-          dir: scroll.current.dir,
-          footerVisible: footerVisible.current,
-          focusWithin: focusWithin.current,
-        }),
-      )
-    }
-    update.current = compute
-    const onScroll = () => {
-      // The menu's scroll lock jumps the page to the top and back: not a user scroll.
-      if (document.documentElement.hasAttribute('data-scroll-locked')) return
-      frame ||= requestAnimationFrame(compute)
-    }
-
     const footer = document.querySelector('footer')
     const observer = new IntersectionObserver(
       (entries) => {
         const entry = entries.at(-1)
         if (!entry) return
         footerVisible.current = entry.isIntersecting
-        compute()
+        update()
       },
       { rootMargin: FOOTER_ROOT_MARGIN },
     )
     if (footer) observer.observe(footer)
-    window.addEventListener('scroll', onScroll, { passive: true })
-    window.addEventListener('resize', onScroll, { passive: true })
-    compute()
-    return () => {
-      cancelAnimationFrame(frame)
-      observer.disconnect()
-      window.removeEventListener('scroll', onScroll)
-      window.removeEventListener('resize', onScroll)
-    }
-  }, [])
+    return () => observer.disconnect()
+  }, [update])
 
   const toTop = () => {
     window.scrollTo({ top: 0, behavior: reducedMotion ? 'instant' : 'smooth' })
@@ -84,12 +66,12 @@ export function FloatingDock({ askLabel, action }: { askLabel?: string; action?:
       inert={!visible}
       onFocus={() => {
         focusWithin.current = true
-        update.current()
+        update()
       }}
       onBlur={(event) => {
         if (event.currentTarget.contains(event.relatedTarget as Node | null)) return
         focusWithin.current = false
-        update.current()
+        update()
       }}
       className="dock z-dock flex items-center gap-1 rounded-dock glass-dock p-1 shadow-dock"
     >

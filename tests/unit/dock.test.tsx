@@ -3,36 +3,32 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AskAction } from '@/components/app/AskAction'
 import { FloatingDock } from '@/components/app/FloatingDock'
-import {
-  initialDockScroll,
-  isDockVisible,
-  nextDockScroll,
-  type DockInput,
-} from '@/lib/dockVisibility'
+import { isDockVisible, type DockInput } from '@/lib/dockVisibility'
+import { initialScroll, nextScroll } from '@/lib/scrollDirection'
 
 import { intersect } from './setup'
 
-describe('nextDockScroll', () => {
-  const start = initialDockScroll(1000)
+describe('nextScroll', () => {
+  const start = initialScroll(1000)
 
   it('starts as if the last move was up', () => {
     expect(start).toEqual({ lastY: 1000, dir: 'up' })
   })
 
   it('ignores moves up to 6px, turns after more than 6px', () => {
-    expect(nextDockScroll(start, 1005)).toBe(start)
-    expect(nextDockScroll(start, 1006)).toBe(start)
-    expect(nextDockScroll(start, 1007)).toEqual({ lastY: 1007, dir: 'down' })
+    expect(nextScroll(start, 1005)).toBe(start)
+    expect(nextScroll(start, 1006)).toBe(start)
+    expect(nextScroll(start, 1007)).toEqual({ lastY: 1007, dir: 'down' })
     const down = { lastY: 1000, dir: 'down' as const }
-    expect(nextDockScroll(down, 994)).toBe(down)
-    expect(nextDockScroll(down, 993)).toEqual({ lastY: 993, dir: 'up' })
+    expect(nextScroll(down, 994)).toBe(down)
+    expect(nextScroll(down, 993)).toEqual({ lastY: 993, dir: 'up' })
   })
 
   it('measures from the last turning point, so slow scrolling adds up', () => {
     let s = start
-    for (const y of [1003, 1006]) s = nextDockScroll(s, y)
+    for (const y of [1003, 1006]) s = nextScroll(s, y)
     expect(s.dir).toBe('up')
-    expect(nextDockScroll(s, 1009)).toEqual({ lastY: 1009, dir: 'down' })
+    expect(nextScroll(s, 1009)).toEqual({ lastY: 1009, dir: 'down' })
   })
 })
 
@@ -101,6 +97,10 @@ describe('FloatingDock', () => {
   beforeEach(() => {
     Object.defineProperty(window, 'innerHeight', { configurable: true, value: 1000 })
     Object.defineProperty(window, 'scrollY', { configurable: true, value: 0 })
+    Object.defineProperty(document.documentElement, 'scrollHeight', {
+      configurable: true,
+      value: 5000,
+    })
     document.documentElement.removeAttribute('data-scroll-locked')
   })
 

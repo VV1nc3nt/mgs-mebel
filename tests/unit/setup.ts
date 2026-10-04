@@ -57,6 +57,16 @@ beforeEach(() => {
     }
   } as unknown as typeof IntersectionObserver
 
+  // Reports once, on observe: enough for components that measure an element
+  window.ResizeObserver = class {
+    constructor(private callback: ResizeObserverCallback) {}
+    observe(target: Element) {
+      this.callback([{ target } as ResizeObserverEntry], this as unknown as ResizeObserver)
+    }
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver
+
   HTMLMediaElement.prototype.play = vi.fn(() => Promise.resolve())
   HTMLMediaElement.prototype.pause = vi.fn()
   Element.prototype.scrollTo = vi.fn()
