@@ -1,5 +1,6 @@
 /**
- * E2E data of the home page: the `home` and `stats` globals, news and projects with the seed
+ * E2E data of the home page: the `home`, `salonsPage` and `stats` globals, news, projects and
+ * salons with the seed
  * texts and media generated on the fly (no stock downloads, no binaries in git), then a draft
  * over the published home and a news draft for the «anonymous never sees drafts» checks.
  * Local database only.
@@ -12,8 +13,15 @@ import sharp from 'sharp'
 import { globals } from '../../src/seed/data/globals'
 import { news } from '../../src/seed/data/news'
 import { projects } from '../../src/seed/data/projects'
+import { salons } from '../../src/seed/data/salons'
 import { isLocalDatabaseUrl } from '../../src/seed/guard'
-import { E2E_NEWS_COUNT, HOME_DRAFT_TITLE, NEWS_DRAFT_SLUG, NEWS_DRAFT_TITLE } from './e2eHome'
+import {
+  E2E_NEWS_COUNT,
+  E2E_SALONS,
+  HOME_DRAFT_TITLE,
+  NEWS_DRAFT_SLUG,
+  NEWS_DRAFT_TITLE,
+} from './e2eHome'
 
 if (!isLocalDatabaseUrl(process.env.DATABASE_URL)) {
   console.error('seedHome: только локальная БД (localhost, 127.0.0.1, ::1)')
@@ -117,13 +125,19 @@ try {
   }
   // Seed media keys: U1 — hero poster, U2 / U3 — history photos; no background video here.
   const byKey: Record<string, number> = { U1: ids.poster, U2: ids.main, U3: ids.secondary }
-  const { home, stats } = globals((key) => byKey[key] ?? ids.poster)
+  const { home, stats, salonsPage } = globals((key) => byKey[key] ?? ids.poster)
   const published = { ...home, hero: { ...home.hero, video: null } }
 
   await payload.updateGlobal({ slug: 'stats', data: stats, depth: 0 })
   await payload.updateGlobal({
     slug: 'home',
     data: { ...published, _status: 'published' },
+    depth: 0,
+  })
+  // The home salon card takes its button label from the «Салоны» page.
+  await payload.updateGlobal({
+    slug: 'salonsPage',
+    data: { ...salonsPage, _status: 'published' },
     depth: 0,
   })
   await payload.updateGlobal({
@@ -170,7 +184,26 @@ try {
       payload.create({ collection: 'projects', data: { ...project, slides }, depth: 0 }),
     )
   }
-  console.log('seedHome: stats, home (published + draft), news, projects')
+  // Salons without the review media; the order and the missing phone come from E2E_SALONS.
+  const seedSalons = salons(media)
+  for (const [i, name] of E2E_SALONS.entries()) {
+    const {
+      reviewVideo: _video,
+      poster: _poster,
+      ...salon
+    } = seedSalons.find((item) => item.name === name)!
+    const { totalDocs } = await payload.count({
+      collection: 'salons',
+      where: { name: { equals: name } },
+    })
+    if (totalDocs) continue
+    await payload.create({
+      collection: 'salons',
+      data: { ...salon, order: i + 1, phone: i === E2E_SALONS.length - 1 ? null : salon.phone },
+      depth: 0,
+    })
+  }
+  console.log('seedHome: stats, home (published + draft), salonsPage, news, projects, salons')
 } catch (error) {
   console.error(error)
   code = 1

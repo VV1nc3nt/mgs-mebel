@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from 'react'
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode, Ref } from 'react'
 
 import { classifyHref } from '@/lib/href'
 
@@ -12,11 +12,14 @@ type Common = {
 export type ActionLinkProps = Common &
   Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href' | 'className' | 'children'> & {
     href: string
+    ref?: Ref<HTMLAnchorElement>
   }
 
 export type ActionButtonProps = Common &
   Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'className' | 'children'> & {
     href?: undefined
+    /** E.g. to move focus to the button after a toggle. */
+    ref?: Ref<HTMLButtonElement>
   }
 
 export type ActionProps = ActionLinkProps | ActionButtonProps

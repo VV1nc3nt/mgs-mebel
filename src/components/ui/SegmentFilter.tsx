@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { useReducedMotion } from '@/hooks/useReducedMotion'
 import { cn } from '@/lib/cn'
-import { HIT_AREA_Y } from './hitArea'
+import { segmentItemBase, segmentOverlayGroup, segmentOverlayItem } from './segmentStyles'
 
 export type SegmentItem<T extends string> = { value: T; label: string }
 
@@ -85,23 +85,17 @@ export function SegmentFilter<T extends string>({
         type="button"
         aria-pressed={selected}
         onClick={() => onChange(item.value)}
-        className={cn(
-          'relative inline-flex shrink-0 items-center rounded-pill whitespace-nowrap transition-colors',
-          HIT_AREA_Y,
+        className={
           variant === 'bar'
             ? cn(
+                segmentItemBase,
                 'h-9.5 gap-1.75 px-4 text-button-s',
                 selected
                   ? 'bg-text text-bg shadow-segment'
                   : 'font-semibold text-text-3 hover:bg-surface-3 hover:text-text',
               )
-            : cn(
-                'px-3.5 py-2 text-body-xs',
-                selected
-                  ? 'bg-text font-bold text-bg'
-                  : 'font-semibold text-text-2 hover:text-text',
-              ),
-        )}
+            : segmentOverlayItem(selected)
+        }
       >
         {variant === 'bar' && selected && (
           <span aria-hidden="true" className="size-1.5 rounded-full bg-accent ring-2 ring-bg" />
@@ -113,11 +107,7 @@ export function SegmentFilter<T extends string>({
 
   if (variant === 'overlay') {
     return (
-      <div
-        role="group"
-        aria-label={label}
-        className={cn('inline-flex gap-1 rounded-media glass-strong p-1', className)}
-      >
+      <div role="group" aria-label={label} className={cn(segmentOverlayGroup, className)}>
         {buttons}
       </div>
     )
