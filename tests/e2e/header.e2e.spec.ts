@@ -129,7 +129,8 @@ test.describe('smart header', () => {
           while (await page.evaluate(() => window.scrollY > 0)) await wheel(page, -2000)
           await expect(header(page)).toHaveAttribute('data-state', 'top')
           expect(await style(page, 'position')).toBe('relative')
-          expect(await box(page)).toEqual(start)
+          // A fast scroll may reach the top during the slide-in: it ends in the same place
+          await expect.poll(() => box(page)).toEqual(start)
           await expect
             .poll(() => bar(page).evaluate((el) => getComputedStyle(el, '::before').opacity))
             .toBe('0')
