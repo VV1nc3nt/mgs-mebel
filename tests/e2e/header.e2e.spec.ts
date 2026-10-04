@@ -50,8 +50,16 @@ const box = async (page: Page) => {
   }
 }
 
+/**
+ * The header's effects have run: its measured height is on <html>. Before that a jump down is
+ * seen as a page opened mid-way, and the header pins itself (as it should after a reload).
+ */
+const hydrated = (page: Page) =>
+  page.waitForFunction(() => document.documentElement.style.getPropertyValue('--header-h') !== '')
+
 /** An instant jump down to `y`: a scroll down, so the header goes away (out of view). */
 async function jumpTo(page: Page, y: number) {
+  await hydrated(page)
   await settle(page)
   await page.evaluate((top) => window.scrollTo({ top, behavior: 'instant' }), y)
   await expect(header(page)).toHaveAttribute('data-state', 'away')
