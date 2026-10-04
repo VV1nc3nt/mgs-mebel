@@ -12,9 +12,14 @@ test.skip(!!process.env.E2E_EMPTY_DB, 'needs tests/helpers/seedChrome.ts data')
 const burger = (page: Page) => page.getByRole('button', { name: 'Открыть меню' })
 const dialog = (page: Page) => page.getByRole('dialog', { name: 'Меню' })
 
-/** Opens the menu and waits for the whole opening animation (items and bottom block). */
+/**
+ * Opens the menu with a pointer click where the button is, and waits for the whole opening
+ * animation (items and bottom block). Playwright's own click would first scroll the button out
+ * of the scroll-padding area under the header (as keyboard focus does); a tap does not scroll.
+ */
 async function openMenu(page: Page) {
-  await burger(page).click()
+  const box = (await burger(page).boundingBox())!
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
   await expect(dialog(page)).toBeVisible()
   await page.waitForTimeout(1500)
 }
@@ -25,8 +30,8 @@ const Y = 20
 const scrollY = (page: Page) => page.evaluate(() => window.scrollY)
 
 /**
- * Scrolls the page to `y`. The header is not sticky, so the offset must keep the menu button on
- * screen: otherwise Playwright scrolls back to it before clicking, as a user would have to.
+ * Scrolls the page to `y`. At a small offset the header is still in its place (it leaves the
+ * flow only once out of view), so the menu button stays on screen.
  */
 async function scrollTo(page: Page, y: number) {
   await page.evaluate((top) => window.scrollTo({ top, behavior: 'instant' }), y)

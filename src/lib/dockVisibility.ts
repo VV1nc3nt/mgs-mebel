@@ -1,5 +1,4 @@
-/** Scroll delta that counts as a change of direction (README §5.4). */
-export const DIRECTION_THRESHOLD = 6
+import type { ScrollDirection } from './scrollDirection'
 
 /** Hidden on the first screen: until scrollY reaches this share of the viewport (README §5.4). */
 export const FIRST_SCREEN = 0.7
@@ -9,20 +8,6 @@ export const FIRST_SCREEN = 0.7
  * above the viewport bottom (design: MGSDock `nearFooter`).
  */
 export const FOOTER_ROOT_MARGIN = '0px 0px -40px 0px'
-
-export type ScrollDirection = 'up' | 'down'
-
-export type DockScroll = { lastY: number; dir: ScrollDirection }
-
-/** The design starts as if the last move was up: a page reloaded mid-way shows the dock. */
-export const initialDockScroll = (y: number): DockScroll => ({ lastY: y, dir: 'up' })
-
-/** Direction changes only after more than 6px from the last turning point; smaller jitter is ignored. */
-export function nextDockScroll(prev: DockScroll, y: number): DockScroll {
-  const delta = y - prev.lastY
-  if (Math.abs(delta) <= DIRECTION_THRESHOLD) return prev
-  return { lastY: y, dir: delta > 0 ? 'down' : 'up' }
-}
 
 export type DockInput = {
   y: number

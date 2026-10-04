@@ -2,6 +2,7 @@ import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
 import { globals } from '../../src/seed/data/globals'
+import { settle, wheel } from '../helpers/scroll'
 
 // The home page in its real context: hero on the first screen, long enough to scroll with the
 // seedHome data. On an empty database it is short, so the @empty check of the dock's content
@@ -13,56 +14,6 @@ const EMPTY_DB = !!process.env.E2E_EMPTY_DB
 
 const dock = (page: Page) => page.locator('.dock')
 const toTop = (page: Page) => dock(page).getByRole('button', { name: 'Наверх' })
-
-/**
- * Waits until the page stops changing under the test: images in view decoded (lazy ones load
- * as they scroll in) and the document height the same over two frames.
- */
-async function settle(page: Page) {
-  await page.evaluate(async () => {
-    // In view on both axes: slides beside the current one never load (lazy), and decode() of a
-    // never-loaded image does not settle
-    const inView = [...document.images].filter((img) => {
-      const box = img.getBoundingClientRect()
-      return (
-        box.width > 0 &&
-        box.bottom > 0 &&
-        box.top < window.innerHeight &&
-        box.right > 0 &&
-        box.left < window.innerWidth
-      )
-    })
-    await Promise.race([
-      Promise.all(inView.map((img) => img.decode().catch(() => undefined))),
-      new Promise((r) => setTimeout(r, 3000)),
-    ])
-    let height = -1
-    while (height !== document.documentElement.scrollHeight) {
-      height = document.documentElement.scrollHeight
-      // Two frames; no named helpers in here: the test transpiler wraps them in __name()
-      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
-    }
-  })
-}
-
-/**
- * Real wheel input: scroll events with a direction, as a user makes them. Returns after the
- * smooth scroll ends (`scrollend`): a wheel during a running scroll animation merges into it and
- * may move the page by only a few pixels — below the dock's direction threshold.
- */
-async function wheel(page: Page, dy: number) {
-  await page.evaluate(() => {
-    const w = window as Window & { scrollEnded?: Promise<void> }
-    w.scrollEnded = new Promise((resolve) => {
-      window.addEventListener('scrollend', () => resolve(), { once: true })
-      // No scroll at all (already at the edge): no scrollend
-      setTimeout(resolve, 1500)
-    })
-  })
-  await page.mouse.move(100, 300)
-  await page.mouse.wheel(0, dy)
-  await page.evaluate(() => (window as Window & { scrollEnded?: Promise<void> }).scrollEnded)
-}
 
 /**
  * Jumps to the middle of the page: past the first screen, the footer out of view and room for

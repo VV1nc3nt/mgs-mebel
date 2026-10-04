@@ -2,10 +2,9 @@
 
 import { HIT_AREA } from '@/components/ui/hitArea'
 import { isMenuOpen, MENU_ID, useMenu } from '@/hooks/useMenu'
-import { useRoutePath } from '@/hooks/useRoutePath'
 import { cn } from '@/lib/cn'
-import { isHeroRoute } from '@/lib/routes'
 import { BurgerIcon } from './BurgerIcon'
+import { useHeaderOverMedia } from './HeaderShell'
 
 /**
  * ☰ in the mobile/tablet header (README §5.2). While the menu is open the page, this button
@@ -13,7 +12,7 @@ import { BurgerIcon } from './BurgerIcon'
  */
 export function MenuButton() {
   const { state, open, buttonRef } = useMenu()
-  const hero = isHeroRoute(useRoutePath())
+  const overMedia = useHeaderOverMedia()
   const expanded = isMenuOpen(state)
 
   return (
@@ -29,8 +28,8 @@ export function MenuButton() {
       className={cn(
         'relative flex size-10 shrink-0 items-center justify-center rounded-full border text-text transition-colors xl:hidden',
         HIT_AREA,
-        // Over the hero like «←»: translucent border + blur; in the flow: border-strong
-        hero
+        // Over the hero like «←»: translucent border + blur; in the flow or pinned: border-strong
+        overMedia
           ? 'border-text/25 backdrop-blur-soft hover:border-text'
           : 'border-border-strong hover:border-accent',
       )}

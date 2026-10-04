@@ -4,6 +4,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { globals } from '../../src/seed/data/globals'
 import { news } from '../../src/seed/data/news'
 import { salons } from '../../src/seed/data/salons'
+import { cls } from '../helpers/scroll'
 import { E2E_NEWS_COUNT, E2E_SALONS, HOME_DRAFT_TITLE, NEWS_DRAFT_TITLE } from '../helpers/e2eHome'
 
 const BASE = 'http://localhost:3000'
@@ -27,24 +28,6 @@ const axe = async (page: Page) => {
     .analyze()
   return violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(', ')}`)
 }
-
-/** Sum of layout shifts since navigation (buffered entries included). */
-const cls = (page: Page) =>
-  page.evaluate(
-    () =>
-      new Promise<number>((resolve) => {
-        let total = 0
-        new PerformanceObserver((list) => {
-          for (const entry of list.getEntries() as (PerformanceEntry & {
-            value: number
-            hadRecentInput: boolean
-          })[]) {
-            if (!entry.hadRecentInput) total += entry.value
-          }
-        }).observe({ type: 'layout-shift', buffered: true })
-        setTimeout(() => resolve(total), 500)
-      }),
-  )
 
 // The slider: the latest three of the published fixture news, newest first
 const LATEST_NEWS = news(() => 0)
