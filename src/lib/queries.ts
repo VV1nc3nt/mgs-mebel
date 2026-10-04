@@ -3,7 +3,7 @@ import { draftMode } from 'next/headers'
 import { connection } from 'next/server'
 import type { DataFromGlobalSlug, Where } from 'payload'
 
-import type { News } from '@/payload-types'
+import type { News, Salon } from '@/payload-types'
 
 import type { LayoutInput, SettingsInput } from './chrome'
 import { getPayloadClient } from './payload'
@@ -207,4 +207,32 @@ const homeWorksCached = unstable_cache(
 export async function getHomeWorks(): Promise<WorkPanel[]> {
   await connection()
   return homeWorksCached()
+}
+
+export type SalonPin = Pick<
+  Salon,
+  'id' | 'name' | 'address' | 'phone' | 'metro' | 'location' | 'order'
+>
+
+const salonsCached = unstable_cache(
+  async (): Promise<SalonPin[]> => {
+    const payload = await getPayloadClient()
+    const { docs } = await payload.find({
+      collection: 'salons',
+      sort: 'order',
+      pagination: false,
+      depth: 0,
+      overrideAccess: false,
+      select: { name: true, address: true, phone: true, metro: true, location: true, order: true },
+    })
+    return docs
+  },
+  ['collection:salons:pins'],
+  { tags: ['collection:salons'], revalidate: REVALIDATE_SECONDS },
+)
+
+/** Salons for the map and the salon card, in the editor's order. */
+export async function getSalons(): Promise<SalonPin[]> {
+  await connection()
+  return salonsCached()
 }

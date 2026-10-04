@@ -30,6 +30,9 @@
   --color-on-accent: #141413;
   --color-map-bg: #1a1b1c;
   --color-pin: #6a6c6f;
+  /* Street lines of the map placeholder (design: home) */
+  --color-map-line: #232527;
+  --color-map-line-2: #212325;
   /* Bottom line of the sticky segment bar (design: works/catalogs pages) */
   --color-line-sticky: #1f1f1e;
 
@@ -146,6 +149,15 @@
   --text-year--line-height: 1;
   --text-year--letter-spacing: -0.03em;
   --text-year--font-weight: 700;
+  /* Salon card: «Фирменный салон» over the name (design: home) */
+  --text-eyebrow: 0.75rem;
+  --text-eyebrow--line-height: 1.3;
+  --text-eyebrow--letter-spacing: 0.08em;
+  --text-eyebrow--font-weight: 600;
+  --text-title-s: 1.125rem;
+  --text-title-s--line-height: 1.25;
+  --text-title-s--letter-spacing: -0.01em;
+  --text-title-s--font-weight: 700;
 
   /* Article (/news/[slug]) */
   --text-article-title: 2.375rem;
@@ -194,6 +206,8 @@
   --spacing-news-card: 440px;
   --spacing-tall-md: 560px;
   --spacing-tall-xl: 640px;
+  /* Home salon map, mobile; tablet and desktop use the tall heights (design: home) */
+  --spacing-map: 500px;
 
   /* Containers */
   --container-page: 1600px;
@@ -207,6 +221,8 @@
   --container-history: 560px;
   /* Text of a news slide (design: home) */
   --container-slide-text: 640px;
+  /* Salon card over the map (design: home) */
+  --container-salon-card: 420px;
 
   /* Radii (pill buttons use rounded-full) */
   --radius-thumb: 14px;

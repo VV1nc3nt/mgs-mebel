@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { PreviewRefresh } from '@/components/app/PreviewRefresh'
 import { HomeHero } from '@/components/home/HomeHero'
 import { HomeNews } from '@/components/home/HomeNews'
+import { HomeSalons } from '@/components/home/HomeSalons'
 import { HomeWorks } from '@/components/home/HomeWorks'
 import { HistorySection } from '@/components/sections/HistorySection'
 import { StatsSection } from '@/components/sections/StatsSection'
@@ -12,6 +13,7 @@ import {
   getLatestNews,
   getLayout,
   getPageGlobal,
+  getSalons,
   getSettings,
   getStats,
 } from '@/lib/queries'
@@ -31,12 +33,15 @@ const HOME_NEWS_LIMIT = 3
 
 /** Home page (README §6.1). Sections without their required content are not rendered. */
 export default async function HomePage() {
-  const [home, stats, layout, settings, news, works] = await Promise.all([
+  const [home, salonsPage, stats, layout, settings, news, salons, works] = await Promise.all([
     getPageGlobal('home'),
+    // The salon card button label lives on the «Салоны» page.
+    getPageGlobal('salonsPage'),
     getStats(),
     getLayout(),
     getSettings(),
     getLatestNews(HOME_NEWS_LIMIT),
+    getSalons(),
     getHomeWorks(),
   ])
   const { contactAction } = toChrome(layout, settings)
@@ -47,6 +52,12 @@ export default async function HomePage() {
       <StatsSection items={stats.items} className="pt-2" />
       <HistorySection history={home.history} linkHref="/about" />
       <HomeNews section={home.news} news={news} />
+      <HomeSalons
+        section={home.salons}
+        salons={salons}
+        ctaLabel={salonsPage.map?.cardCtaLabel}
+        action={contactAction}
+      />
       <HomeWorks section={home.works} panels={works} />
       <PreviewRefresh />
     </>

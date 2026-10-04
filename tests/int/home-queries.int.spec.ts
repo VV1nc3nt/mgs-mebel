@@ -9,7 +9,7 @@ vi.mock('next/cache', () => ({
   unstable_cache: <T extends (...args: never[]) => unknown>(fn: T) => fn,
 }))
 
-const { getHomeWorks, getLatestNews, getNewsBySlug } = await import('@/lib/queries')
+const { getHomeWorks, getLatestNews, getNewsBySlug, getSalons } = await import('@/lib/queries')
 
 // Dates far in the future and the lowest order: the test rows come first among existing data.
 const day = (n: number) => `2099-01-${String(n).padStart(2, '0')}T12:00:00.000Z`
@@ -71,6 +71,23 @@ describe('home page and news queries', () => {
     await project('plain first by order', false, FIRST)
     await project('featured', true, FIRST + 1)
     await project('reel', true, FIRST, true)
+
+    const salon = (name: string, order: number) =>
+      payload.create({
+        collection: 'salons',
+        data: {
+          name: `${PREFIX} ${name}`,
+          address: 'Москва',
+          phone: '8-495-777-35-75',
+          hours: '10:00–21:00',
+          location: { lat: 55.65, lng: 37.63 },
+          poster: image.id,
+          order,
+        },
+        depth: 0,
+      })
+    await salon('second', FIRST + 1)
+    await salon('first', FIRST)
   })
 
   afterAll(async () => {
@@ -108,5 +125,15 @@ describe('home page and news queries', () => {
     })
     expect(reels.works.map((w) => w.title)).not.toContain(`${PREFIX} featured`)
     expect(reels.works[0]!.image?.mimeType).toMatch(/^image\//)
+  })
+
+  it('salons: by order, only the map and card fields', async () => {
+    const salons = await getSalons()
+    expect(salons.slice(0, 2).map((s) => s.name)).toEqual([`${PREFIX} first`, `${PREFIX} second`])
+    const first = salons[0]!
+    expect(first).toMatchObject({ address: 'Москва', location: { lat: 55.65, lng: 37.63 } })
+    expect(first).not.toHaveProperty('hours')
+    expect(first).not.toHaveProperty('poster')
+    expect(first).not.toHaveProperty('reviewVideo')
   })
 })
