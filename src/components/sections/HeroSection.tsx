@@ -3,19 +3,20 @@ import { Button } from '@/components/ui/Button'
 import { SectionLabel } from '@/components/ui/SectionLabel'
 import { contactLabel, type Messenger } from '@/lib/chrome'
 import { asMedia } from '@/lib/media'
-import type { Home } from '@/payload-types'
+import type { SectionHeroCta } from '@/payload-types'
 
 type Props = {
-  hero: Partial<Home['hero']> | undefined
+  /** `hero` of a page global (heroTab); without the CTA label there is no button. */
+  hero: Partial<SectionHeroCta> | undefined
   /** «Рассчитать проект»: WhatsApp, else Telegram, else no button. */
   action: Messenger | undefined
 }
 
 /**
- * Home first screen (README §6.1 п.1): background video over the poster (the LCP image), the hero
+ * First screen (README §6.1 п.1): background video over the poster (the LCP image), the hero
  * overlay, label, H1, text, CTA. The header lies over it; the content sits at the bottom.
  */
-export function HomeHero({ hero, action }: Props) {
+export function HeroSection({ hero, action }: Props) {
   const title = hero?.title?.trim()
   if (!title) return null
   const poster = asMedia(hero?.poster)

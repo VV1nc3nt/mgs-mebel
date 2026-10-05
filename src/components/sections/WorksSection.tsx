@@ -5,11 +5,11 @@ import { Button } from '@/components/ui/Button'
 import { MediaCard } from '@/components/ui/MediaCard'
 import { SectionHeading } from '@/components/ui/SectionHeading'
 import { initialWorkFilter, type WorkPanel, type WorkPreview } from '@/lib/works'
-import type { Home } from '@/payload-types'
+import type { SectionWorks } from '@/payload-types'
 import { WorksChips } from './WorksChips'
 
 type Props = {
-  section: Partial<Home['works']> | undefined
+  section: Partial<SectionWorks> | undefined
   /** Panels of the chips that have works, in chip order. */
   panels: WorkPanel[]
 }
@@ -48,10 +48,10 @@ function WorkCard({ work }: { work: WorkPreview }) {
 }
 
 /**
- * Home «#Наши работы» (README §6.1 п.6): chips (reels + categories), up to 4 previews per chip
+ * «#Наши работы» (README §6.1 п.6): chips (reels + categories), up to 4 previews per chip
  * (2 columns, 4 from tablet), «Смотреть все работы». No works at all — no section.
  */
-export function HomeWorks({ section, panels }: Props) {
+export function WorksSection({ section, panels }: Props) {
   const initial = initialWorkFilter(panels)
   if (!initial) return null
   const title = section?.title?.trim()

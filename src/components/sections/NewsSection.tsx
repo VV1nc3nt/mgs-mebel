@@ -3,11 +3,11 @@ import { MediaCard } from '@/components/ui/MediaCard'
 import { SectionHeading } from '@/components/ui/SectionHeading'
 import { formatDate } from '@/lib/date'
 import type { NewsSlide } from '@/lib/queries'
-import type { Home } from '@/payload-types'
+import type { SectionNews } from '@/payload-types'
 import { NewsSlider } from './NewsSlider'
 
 type Props = {
-  section: Partial<Home['news']> | undefined
+  section: Partial<SectionNews> | undefined
   /** The latest published news, newest first. */
   news: NewsSlide[]
 }
@@ -15,11 +15,11 @@ type Props = {
 const HEADING_ID = 'home-news-title'
 
 /**
- * Home «#Новости» (README §6.1 п.4): a slider of the latest news, one card per view
+ * «#Новости» (README §6.1 п.4): a slider of the latest news, one card per view
  * (440 / 560 / 640). The whole card links to the article; the title names the link.
  * No news — no section; one news — no arrows and segments.
  */
-export function HomeNews({ section, news }: Props) {
+export function NewsSection({ section, news }: Props) {
   if (!news.length) return null
   const title = section?.title?.trim()
 

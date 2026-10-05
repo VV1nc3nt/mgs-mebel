@@ -7,12 +7,12 @@ import { SectionLabel } from '@/components/ui/SectionLabel'
 import { cn } from '@/lib/cn'
 import { asMedia } from '@/lib/media'
 import { paragraphs } from '@/lib/text'
-import type { Home } from '@/payload-types'
+import type { SectionHistoryLink } from '@/payload-types'
 
 type Props = {
-  /** `history` of the home or «О нас» global (historyFields). */
-  history: Partial<Home['history']> | undefined
-  /** «Подробнее о компании»: shown on the home page only, when the label is filled in. */
+  /** `history` of a page global (historyTab); the link label exists only in the link variant. */
+  history: Partial<SectionHistoryLink> | undefined
+  /** «Подробнее о компании»: shown when the page passes it and the label is filled in. */
   linkHref?: string
   className?: string
 }

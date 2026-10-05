@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
-import { HomeSalons } from '@/components/home/HomeSalons'
+import { SalonsSection } from '@/components/sections/SalonsSection'
 import { SalonCard } from '@/components/salons/SalonCard'
 import { SalonPanel } from '@/components/salons/SalonPanel'
 import type { SalonPin } from '@/lib/queries'
@@ -74,12 +74,12 @@ describe('SalonPanel', () => {
   })
 })
 
-describe('HomeSalons', () => {
+describe('SalonsSection', () => {
   const section = { label: 'фирменные салоны', title: '50+ салонов по России' }
 
   it('renders nothing without salons', () => {
     const { container } = render(
-      <HomeSalons section={section} salons={[]} ctaLabel={CTA} action={whatsapp} />,
+      <SalonsSection section={section} salons={[]} ctaLabel={CTA} action={whatsapp} />,
     )
     expect(container.innerHTML).toBe('')
   })
@@ -87,7 +87,7 @@ describe('HomeSalons', () => {
   it('shows the H2, the view switch and the card of the first salon', () => {
     const second = { ...salon, id: 2, name: 'Химки', order: 2 }
     render(
-      <HomeSalons section={section} salons={[salon, second]} ctaLabel={CTA} action={whatsapp} />,
+      <SalonsSection section={section} salons={[salon, second]} ctaLabel={CTA} action={whatsapp} />,
     )
     expect(screen.getByRole('region', { name: section.title })).toBeTruthy()
     const view = screen.getByRole('group', { name: 'Вид: карта или список' })
