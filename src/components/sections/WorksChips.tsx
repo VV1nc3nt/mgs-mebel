@@ -15,7 +15,7 @@ type Props = {
 const panelId = (key: WorkFilter) => `works-${key}`
 
 /**
- * Chips of the home «Наши работы» (README §6.1 п.6): toggle buttons over server-rendered panels;
+ * Chips of «Наши работы» (README §6.1 п.6): toggle buttons over server-rendered panels;
  * the panel of an inactive chip is `hidden`, so its lazy images do not load until it is shown.
  */
 export function WorksChips({ chips, initial, panels }: Props) {

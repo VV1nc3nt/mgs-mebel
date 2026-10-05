@@ -1,8 +1,8 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
-import { HomeNews } from '@/components/home/HomeNews'
-import { HomeWorks } from '@/components/home/HomeWorks'
+import { NewsSection } from '@/components/sections/NewsSection'
+import { WorksSection } from '@/components/sections/WorksSection'
 import { formatDate } from '@/lib/date'
 import { projectCategoryOptions } from '@/lib/projectCategories'
 import type { NewsSlide } from '@/lib/queries'
@@ -109,13 +109,13 @@ const news = (id: number): NewsSlide => ({
 })
 const newsSection = { label: 'новости', title: 'Что нового' }
 
-describe('HomeNews', () => {
+describe('NewsSection', () => {
   it('renders nothing without news', () => {
-    expect(render(<HomeNews section={newsSection} news={[]} />).container.innerHTML).toBe('')
+    expect(render(<NewsSection section={newsSection} news={[]} />).container.innerHTML).toBe('')
   })
 
   it('has no arrows and segments with one news; the card link is named by its title', () => {
-    render(<HomeNews section={newsSection} news={[news(1)]} />)
+    render(<NewsSection section={newsSection} news={[news(1)]} />)
     expect(screen.queryAllByRole('button')).toHaveLength(0)
     const link = screen.getByRole('link', { name: 'Новость 1' })
     expect(link.getAttribute('href')).toBe('/news/novost-1')
@@ -123,7 +123,7 @@ describe('HomeNews', () => {
   })
 
   it('arrows and segments go round and mark the current slide', () => {
-    render(<HomeNews section={newsSection} news={[news(1), news(2), news(3)]} />)
+    render(<NewsSection section={newsSection} news={[news(1), news(2), news(3)]} />)
     const carousel = screen.getByRole('region', { name: 'Что нового' })
     expect(carousel.getAttribute('aria-roledescription')).toBe('карусель')
     const current = () =>
@@ -145,7 +145,7 @@ describe('HomeNews', () => {
   })
 
   it('follows a swipe: the slide in view becomes current', () => {
-    render(<HomeNews section={newsSection} news={[news(1), news(2), news(3)]} />)
+    render(<NewsSection section={newsSection} news={[news(1), news(2), news(3)]} />)
     const slides = screen.getAllByRole('group')
     act(() => {
       for (const observer of env.observers) {
@@ -161,7 +161,7 @@ describe('HomeNews', () => {
   })
 })
 
-describe('HomeWorks', () => {
+describe('WorksSection', () => {
   const section = {
     label: 'наши работы',
     title: 'Реальные проекты',
@@ -173,11 +173,11 @@ describe('HomeWorks', () => {
   })
 
   it('renders nothing without works', () => {
-    expect(render(<HomeWorks section={section} panels={[]} />).container.innerHTML).toBe('')
+    expect(render(<WorksSection section={section} panels={[]} />).container.innerHTML).toBe('')
   })
 
   it('chips switch panels and aria-pressed', () => {
-    render(<HomeWorks section={section} panels={panels} />)
+    render(<WorksSection section={section} panels={panels} />)
     const chips = within(screen.getByRole('group', { name: 'Категории работ' })).getAllByRole(
       'button',
     )
@@ -197,7 +197,7 @@ describe('HomeWorks', () => {
   })
 
   it('links «Смотреть все работы» to the works page', () => {
-    render(<HomeWorks section={section} panels={panels} />)
+    render(<WorksSection section={section} panels={panels} />)
     expect(screen.getByRole('link', { name: /Смотреть все работы/ }).getAttribute('href')).toBe(
       '/works',
     )

@@ -1,12 +1,12 @@
 import type { Metadata } from 'next'
 
 import { PreviewRefresh } from '@/components/app/PreviewRefresh'
-import { HomeHero } from '@/components/home/HomeHero'
-import { HomeNews } from '@/components/home/HomeNews'
-import { HomeSalons } from '@/components/home/HomeSalons'
-import { HomeWorks } from '@/components/home/HomeWorks'
+import { HeroSection } from '@/components/sections/HeroSection'
 import { HistorySection } from '@/components/sections/HistorySection'
+import { NewsSection } from '@/components/sections/NewsSection'
+import { SalonsSection } from '@/components/sections/SalonsSection'
 import { StatsSection } from '@/components/sections/StatsSection'
+import { WorksSection } from '@/components/sections/WorksSection'
 import { toChrome } from '@/lib/chrome'
 import {
   getHomeWorks,
@@ -48,17 +48,17 @@ export default async function HomePage() {
 
   return (
     <>
-      <HomeHero hero={home.hero} action={contactAction} />
+      <HeroSection hero={home.hero} action={contactAction} />
       <StatsSection items={stats.items} className="pt-2" />
       <HistorySection history={home.history} linkHref="/about" />
-      <HomeNews section={home.news} news={news} />
-      <HomeSalons
+      <NewsSection section={home.news} news={news} />
+      <SalonsSection
         section={home.salons}
         salons={salons}
         ctaLabel={salonsPage.map?.cardCtaLabel}
         action={contactAction}
       />
-      <HomeWorks section={home.works} panels={works} />
+      <WorksSection section={home.works} panels={works} />
       <PreviewRefresh />
     </>
   )

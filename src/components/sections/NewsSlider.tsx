@@ -23,7 +23,7 @@ type Props = {
 const VISIBLE = 0.6
 
 /**
- * Home news slider (README §6.1 п.4): one card per view on a native scroll-snap track, arrows
+ * News slider (README §6.1 п.4): one card per view on a native scroll-snap track, arrows
  * in the section head going round, one set of progress segments over the track. Swipes and
  * keyboard scrolling move the segments too (IntersectionObserver on the slides).
  */

@@ -1,15 +1,12 @@
 import { bgVideoFields, imageField } from '@/fields/media'
 import { labelField, textField, titleField } from '@/fields/section'
 
-import { historyFields, pageGlobal } from './shared'
+import { heroTab, historyTab } from './sections'
+import { pageGlobal } from './shared'
 
 export const About = pageGlobal('about', 'О нас', [
-  {
-    name: 'hero',
-    label: 'Первый экран',
-    fields: [labelField(), titleField(true), textField(), ...bgVideoFields()],
-  },
-  { name: 'history', label: 'История', fields: historyFields(false) },
+  heroTab({ cta: false }),
+  historyTab({ link: false }),
   { name: 'mission', label: 'Миссия', fields: [labelField(), titleField(), ...bgVideoFields()] },
   {
     name: 'hardware',

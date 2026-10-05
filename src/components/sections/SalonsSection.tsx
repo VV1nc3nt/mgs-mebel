@@ -7,10 +7,10 @@ import { segmentOverlayGroup, segmentOverlayItem } from '@/components/ui/segment
 import type { Messenger } from '@/lib/chrome'
 import { cn } from '@/lib/cn'
 import type { SalonPin } from '@/lib/queries'
-import type { Home } from '@/payload-types'
+import type { SectionSalons } from '@/payload-types'
 
 type Props = {
-  section: Partial<Home['salons']> | undefined
+  section: Partial<SectionSalons> | undefined
   /** Salons in the editor's order; the card shows the first one. */
   salons: SalonPin[]
   /** Card button label from the «Салоны» page. */
@@ -21,10 +21,10 @@ type Props = {
 const HEADING_ID = 'home-salons-title'
 
 /**
- * Home «#Фирменные салоны» (README §6.1 п.5): map with pins, card of the first salon,
+ * «#Фирменные салоны» (README §6.1 п.5): map with pins, card of the first salon,
  * «Карта / Список» (the list is the «Салоны» page). No salons — no section.
  */
-export function HomeSalons({ section, salons, ctaLabel, action }: Props) {
+export function SalonsSection({ section, salons, ctaLabel, action }: Props) {
   const first = salons[0]
   if (!first) return null
   const title = section?.title?.trim()
