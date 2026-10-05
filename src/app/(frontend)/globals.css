@@ -270,6 +270,11 @@
   --motion-burger: 350ms;
   --motion-fade-reduced: 200ms;
   --motion-dock: 350ms; /* README §5.4 */
+  /* Messenger choice (dock and contact buttons): closing, logo stagger, opacity in / out */
+  --motion-chooser-out: 220ms;
+  --motion-chooser-stagger: 40ms;
+  --motion-chooser-fade-in: 250ms; /* (dc) */
+  --motion-chooser-fade-out: 160ms; /* (dc) */
 
   /* Color and border transitions: 150–200ms ease-out (README §9); 200ms is duration-200 */
   --default-transition-duration: 150ms;
@@ -573,6 +578,70 @@
     &[data-hidden] {
       transform: none;
     }
+  }
+}
+
+/*
+ * Messenger choice opened in place: the dock and the contact buttons. Opening takes --motion-dock
+ * (opacity --motion-chooser-fade-in), closing --motion-chooser-out (opacity
+ * --motion-chooser-fade-out) without the stagger. Sizes animate only here — an agreed exception —
+ * inside a container with `contain: layout`, so nothing around is laid out again. Colours: 150ms
+ * ease-out. Reduced motion: opacity only.
+ */
+@utility chooser {
+  --chooser-move: var(--motion-chooser-out);
+  --chooser-fade: var(--motion-chooser-fade-out);
+  contain: layout;
+  &[data-open] {
+    --chooser-move: var(--motion-dock);
+    --chooser-fade: var(--motion-chooser-fade-in);
+  }
+}
+
+@utility chooser-motion {
+  transition-property:
+    width, margin, padding, max-width, scale, rotate, opacity, background-color, border-color;
+  transition-duration:
+    var(--chooser-move), var(--chooser-move), var(--chooser-move), var(--chooser-move),
+    var(--chooser-move), var(--chooser-move), var(--chooser-fade),
+    var(--default-transition-duration), var(--default-transition-duration);
+  transition-timing-function:
+    var(--ease-soft), var(--ease-soft), var(--ease-soft), var(--ease-soft), var(--ease-soft),
+    var(--ease-soft), ease, ease-out, ease-out;
+  @media (prefers-reduced-motion: reduce) {
+    scale: none !important;
+    rotate: none !important;
+    transition-property: opacity, background-color, border-color;
+    transition-duration:
+      var(--motion-fade-reduced), var(--default-transition-duration),
+      var(--default-transition-duration);
+    transition-timing-function: ease-out;
+  }
+}
+
+/* Logos come out one by one from «×» while opening: --i counts from the one next to it */
+@utility chooser-stagger {
+  [data-open] & {
+    --chooser-delay: calc(var(--motion-chooser-stagger) * var(--i));
+    transition-delay:
+      var(--chooser-delay), var(--chooser-delay), 0ms, 0ms, var(--chooser-delay),
+      var(--chooser-delay), var(--chooser-delay), 0ms, 0ms;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    [data-open] & {
+      transition-delay: 0ms;
+    }
+  }
+}
+
+/*
+ * The button label folds from its own width (any label from the CMS): --label-w is measured by
+ * the component, unitless; before that max-width is none.
+ */
+@utility chooser-label {
+  max-width: calc(var(--label-w) * 1px);
+  [data-open] & {
+    max-width: 0;
   }
 }
 

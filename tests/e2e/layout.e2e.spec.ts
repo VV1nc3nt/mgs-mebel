@@ -66,8 +66,8 @@ test.describe('layout: header and footer', () => {
           footer.getByRole('link', { name: settings.contacts.hotlinePhone }),
         ).toHaveAttribute('href', 'tel:88001001658')
         for (const [name, href] of [
-          ['Telegram', settings.messengers!.telegram],
           ['MAX', settings.messengers!.max],
+          ['Telegram', settings.messengers!.telegram],
           ['WhatsApp', settings.messengers!.whatsapp],
         ] as const) {
           const link = footer.getByRole('link', { name, exact: true })
@@ -145,7 +145,7 @@ test.describe('layout: header and footer', () => {
         'MGS MEBEL — на главную',
         ...Object.values(layout.nav).map((item) => item.shortLabel ?? item.label),
         settings.contacts.hotlinePhone,
-        `${layout.header!.ctaLabel} в WhatsApp`,
+        `${layout.header!.ctaLabel} в MAX`,
       ])
     })
 
@@ -156,10 +156,10 @@ test.describe('layout: header and footer', () => {
       await expect(page.locator('main#content')).toBeFocused()
     })
 
-    test('CTA opens WhatsApp in a new tab', async ({ page }) => {
+    test('CTA opens the first messenger in order (MAX) in a new tab', async ({ page }) => {
       await page.goto(`${BASE}/salons`)
-      const cta = page.getByRole('link', { name: `${layout.header!.ctaLabel} в WhatsApp` })
-      await expect(cta).toHaveAttribute('href', settings.messengers!.whatsapp!)
+      const cta = page.getByRole('link', { name: `${layout.header!.ctaLabel} в MAX` })
+      await expect(cta).toHaveAttribute('href', settings.messengers!.max!)
       await expect(cta).toHaveAttribute('target', '_blank')
     })
   })

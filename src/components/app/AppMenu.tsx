@@ -15,9 +15,6 @@ import { isActive } from '@/lib/routes'
 import { BurgerIcon } from './BurgerIcon'
 import { Logo } from './Logo'
 
-/** Menu order of the messenger buttons (design: MGSMenu). */
-const MESSENGERS = ['max', 'whatsapp', 'telegram'] as const
-
 const FOCUSABLE = 'a[href], button:not([disabled])'
 
 export type MenuChrome = Pick<SiteChrome, 'nav' | 'phone' | 'messengers' | 'menu'>
@@ -100,11 +97,7 @@ function MenuDialog({ chrome }: { chrome: MenuChrome }) {
     }
   }
 
-  const messengers = MESSENGERS.flatMap((kind) => {
-    const href = chrome.messengers[kind]
-    return href ? [{ kind, href }] : []
-  })
-  const { phone, menu } = chrome
+  const { phone, menu, messengers } = chrome
 
   return (
     <div

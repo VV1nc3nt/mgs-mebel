@@ -15,7 +15,8 @@ type Props = {
   salons: SalonPin[]
   /** Card button label from the «Салоны» page. */
   ctaLabel?: string | null
-  action: Messenger | undefined
+  /** Messengers of the card button, in order; none — no button. */
+  messengers: Messenger[]
 }
 
 const HEADING_ID = 'home-salons-title'
@@ -24,7 +25,7 @@ const HEADING_ID = 'home-salons-title'
  * «#Фирменные салоны» (README §6.1 п.5): map with pins, card of the first salon,
  * «Карта / Список» (the list is the «Салоны» page). No salons — no section.
  */
-export function SalonsSection({ section, salons, ctaLabel, action }: Props) {
+export function SalonsSection({ section, salons, ctaLabel, messengers }: Props) {
   const first = salons[0]
   if (!first) return null
   const title = section?.title?.trim()
@@ -55,7 +56,7 @@ export function SalonsSection({ section, salons, ctaLabel, action }: Props) {
               Список
             </Link>
           </div>
-          <SalonPanel salon={first} ctaLabel={ctaLabel} action={action} />
+          <SalonPanel salon={first} ctaLabel={ctaLabel} messengers={messengers} />
         </SalonMapSlot>
       </div>
     </section>

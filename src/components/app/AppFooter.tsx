@@ -4,9 +4,6 @@ import { MessengerIcon } from '@/components/icons/MessengerIcon'
 import { IconButton } from '@/components/ui/IconButton'
 import { MESSENGER_NAMES, type SiteChrome } from '@/lib/chrome'
 
-/** Footer order of the social buttons (design: <footer>). */
-const SOCIALS = ['telegram', 'max', 'whatsapp'] as const
-
 const currentYear = () =>
   new Intl.DateTimeFormat('ru-RU', { year: 'numeric', timeZone: 'Europe/Moscow' }).format(
     new Date(),
@@ -18,11 +15,7 @@ const currentYear = () =>
  * sits in the page container. The bottom padding leaves room for the dock.
  */
 export function AppFooter({ chrome }: { chrome: SiteChrome }) {
-  const { footer, phone, messengers } = chrome
-  const socials = SOCIALS.flatMap((kind) => {
-    const href = messengers[kind]
-    return href ? [{ kind, href }] : []
-  })
+  const { footer, phone, messengers: socials } = chrome
 
   return (
     <footer className="mt-section rounded-t-footer bg-surface-2 pt-10 pb-dock-clearance xl:pt-section-xl">

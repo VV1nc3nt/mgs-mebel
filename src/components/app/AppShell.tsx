@@ -39,7 +39,7 @@ export async function AppShell({
             </main>
             <AppFooter chrome={chrome} />
           </div>
-          <FloatingDock askLabel={chrome.askLabel} action={chrome.contactAction} />
+          <FloatingDock askLabel={chrome.askLabel} messengers={chrome.messengers} />
         </PageRoot>
         <AppMenu
           chrome={{

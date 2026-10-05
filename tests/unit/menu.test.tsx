@@ -294,7 +294,7 @@ describe('AppMenu', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Открыть меню' }))
   })
 
-  it('shows the hotline and messengers in menu order', () => {
+  it('shows the hotline and messengers in messenger order', () => {
     setup()
     const dialog = openMenu()
     expect(dialog.querySelector('a[href="tel:88001001658"]')?.textContent).toBe(
@@ -303,14 +303,14 @@ describe('AppMenu', () => {
     const messengers = [...dialog.querySelectorAll('ul.grid a')]
     expect(messengers.map((a) => a.getAttribute('aria-label'))).toEqual([
       'MAX',
-      'WhatsApp',
       'Telegram',
+      'WhatsApp',
     ])
     for (const a of messengers) expect(a.getAttribute('target')).toBe('_blank')
   })
 
   it('drops the bottom blocks without phone and messengers', () => {
-    setup(chrome({ phone: undefined, messengers: {}, menu: {} }))
+    setup(chrome({ phone: undefined, messengers: [], menu: {} }))
     const dialog = openMenu()
     expect(dialog.querySelector('a[href^="tel:"]')).toBeNull()
     expect(dialog.querySelector('ul.grid')).toBeNull()

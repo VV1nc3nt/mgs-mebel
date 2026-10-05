@@ -19,7 +19,7 @@ const whatsapp = { kind: 'whatsapp' as const, href: 'https://wa.me/79270963555' 
 
 describe('HeroSection', () => {
   it('renders the H1, text and a messenger CTA in a new tab', () => {
-    render(<HeroSection hero={hero} action={whatsapp} />)
+    render(<HeroSection hero={hero} messengers={[whatsapp]} />)
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Мы — MGS MEBEL')
     const cta = screen.getByRole('link', { name: 'Рассчитать проект в WhatsApp' })
     expect(cta.getAttribute('href')).toBe(whatsapp.href)
@@ -28,16 +28,18 @@ describe('HeroSection', () => {
   })
 
   it('has no CTA without a messenger or without a label', () => {
-    const { rerender } = render(<HeroSection hero={hero} action={undefined} />)
+    const { rerender } = render(<HeroSection hero={hero} messengers={[]} />)
     expect(screen.queryByRole('link')).toBeNull()
-    rerender(<HeroSection hero={{ ...hero, ctaLabel: ' ' }} action={whatsapp} />)
+    rerender(<HeroSection hero={{ ...hero, ctaLabel: ' ' }} messengers={[whatsapp]} />)
     expect(screen.queryByRole('link')).toBeNull()
   })
 
   it('is not rendered without a title (empty or partial global)', () => {
-    const { container } = render(<HeroSection hero={{ ...hero, title: '' }} action={whatsapp} />)
+    const { container } = render(
+      <HeroSection hero={{ ...hero, title: '' }} messengers={[whatsapp]} />,
+    )
     expect(container.innerHTML).toBe('')
-    expect(render(<HeroSection hero={undefined} action={undefined} />).container.innerHTML).toBe('')
+    expect(render(<HeroSection hero={undefined} messengers={[]} />).container.innerHTML).toBe('')
   })
 })
 

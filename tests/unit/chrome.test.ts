@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { contactLabel, resolveContactAction, toChrome } from '@/lib/chrome'
+import { contactLinkLabel, dockChooserLabel, MESSENGER_ORDER, toChrome } from '@/lib/chrome'
 import { globals } from '@/seed/data/globals'
 
 const seed = globals(() => 0)
@@ -17,7 +17,7 @@ describe('toChrome', () => {
       ['/news', 'Новости / новинки', 'Новости'],
     ])
     expect(chrome.phone).toEqual({ display: '8 800 100-16-58', href: 'tel:88001001658' })
-    expect(chrome.contactAction?.kind).toBe('whatsapp')
+    expect(chrome.messengers.map((m) => m.kind)).toEqual(['max', 'telegram', 'whatsapp'])
     expect(chrome.footer.sloganAccent).toBe('для жизни')
   })
 
@@ -26,8 +26,7 @@ describe('toChrome', () => {
     expect(chrome).toEqual({
       nav: [],
       phone: undefined,
-      messengers: {},
-      contactAction: undefined,
+      messengers: [],
       ctaLabel: undefined,
       menu: { hotlineLabel: undefined, messengersLabel: undefined },
       askLabel: undefined,
@@ -53,7 +52,7 @@ describe('toChrome', () => {
     ])
     expect(chrome.ctaLabel).toBeUndefined()
     expect(chrome.phone).toBeUndefined()
-    expect(chrome.messengers).toEqual({})
+    expect(chrome.messengers).toEqual([])
   })
 
   it('passes nothing beyond the chrome fields', () => {
@@ -65,21 +64,23 @@ describe('toChrome', () => {
   })
 })
 
-describe('contact action', () => {
-  it('prefers WhatsApp, then Telegram, else none', () => {
-    const wa = 'https://wa.me/1'
-    const tg = 'https://t.me/x'
-    expect(resolveContactAction({ whatsapp: wa, telegram: tg, max: 'https://max.ru/x' })).toEqual({
-      kind: 'whatsapp',
-      href: wa,
-    })
-    expect(resolveContactAction({ telegram: tg })).toEqual({ kind: 'telegram', href: tg })
-    expect(resolveContactAction({ max: 'https://max.ru/x' })).toBeUndefined()
+describe('messengers', () => {
+  it('come in one order, MAX · Telegram · WhatsApp, without blank links', () => {
+    expect(MESSENGER_ORDER).toEqual(['max', 'telegram', 'whatsapp'])
+    const { messengers } = toChrome(
+      {},
+      { messengers: { whatsapp: ' https://wa.me/1 ', telegram: ' ', max: 'https://max.ru/x' } },
+    )
+    expect(messengers).toEqual([
+      { kind: 'max', href: 'https://max.ru/x' },
+      { kind: 'whatsapp', href: 'https://wa.me/1' },
+    ])
   })
 
-  it('names where the button leads', () => {
-    expect(contactLabel('Рассчитать проект', { kind: 'telegram', href: 'https://t.me/x' })).toBe(
-      'Рассчитать проект в Telegram',
-    )
+  it('name the contact buttons', () => {
+    expect(
+      contactLinkLabel('Рассчитать проект', { kind: 'telegram', href: 'https://t.me/x' }),
+    ).toBe('Рассчитать проект в Telegram')
+    expect(dockChooserLabel('Спросить')).toBe('Спросить в мессенджере')
   })
 })

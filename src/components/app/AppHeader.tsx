@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/Button'
 import { HIT_AREA_Y } from '@/components/ui/hitArea'
-import { contactLabel, type SiteChrome } from '@/lib/chrome'
+import { contactLinkLabel, type SiteChrome } from '@/lib/chrome'
 import { BackLink } from './BackLink'
 import { HeaderNav } from './HeaderNav'
 import { HeaderShell } from './HeaderShell'
@@ -12,8 +12,10 @@ import { MenuButton } from './MenuButton'
  * CTA. Route-dependent parts (variant, «←», active section) are small client islands.
  */
 export function AppHeader({ chrome }: { chrome: SiteChrome }) {
-  const { phone, ctaLabel, contactAction } = chrome
-  const cta = ctaLabel && contactAction ? { label: ctaLabel, action: contactAction } : undefined
+  const { phone, ctaLabel, messengers } = chrome
+  // Until the contact buttons get the choice: the first messenger in order
+  const action = messengers[0]
+  const cta = ctaLabel && action ? { label: ctaLabel, action } : undefined
 
   return (
     <HeaderShell>
@@ -34,7 +36,7 @@ export function AppHeader({ chrome }: { chrome: SiteChrome }) {
             <Button
               href={cta.action.href}
               size={44}
-              aria-label={contactLabel(cta.label, cta.action)}
+              aria-label={contactLinkLabel(cta.label, cta.action)}
             >
               {cta.label}
             </Button>

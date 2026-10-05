@@ -21,6 +21,7 @@ import {
 } from '@/hooks/useMenu'
 import { useScrollLock } from '@/hooks/useScrollLock'
 import { DESKTOP_QUERY } from '@/lib/breakpoints'
+import { closeChooser } from '@/lib/chooser'
 import { setOverlay } from '@/lib/overlay'
 
 /** Menu state for the header button, the page wrapper and the dialog. */
@@ -56,6 +57,11 @@ export function MenuProvider({ children }: { children: ReactNode }) {
       unlock({ restore: model.reason !== 'navigate' })
     }
   }, [model.state, model.reason, lock, unlock])
+
+  // The menu closes any open messenger choice (dock, contact buttons).
+  useEffect(() => {
+    if (isMenuOpen(model.state)) closeChooser()
+  }, [model.state])
 
   // Background videos pause from the start of opening until closing has fully ended.
   useEffect(() => {

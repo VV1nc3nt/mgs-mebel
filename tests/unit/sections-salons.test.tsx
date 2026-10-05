@@ -19,7 +19,7 @@ const CTA = 'Заказать персональный дизайн'
 
 describe('SalonCard', () => {
   it('renders the name, address, a tel: link and a messenger CTA in a new tab', () => {
-    render(<SalonCard salon={salon} ctaLabel={CTA} action={whatsapp} />)
+    render(<SalonCard salon={salon} ctaLabel={CTA} messengers={[whatsapp]} />)
     expect(screen.getByText('Фирменный салон')).toBeTruthy()
     expect(screen.getByRole('heading', { level: 3 }).textContent).toBe(salon.name)
     expect(screen.getByText(salon.address)).toBeTruthy()
@@ -32,24 +32,24 @@ describe('SalonCard', () => {
   })
 
   it('has no «Телефон» row without a phone', () => {
-    render(<SalonCard salon={{ ...salon, phone: null }} ctaLabel={CTA} action={whatsapp} />)
+    render(<SalonCard salon={{ ...salon, phone: null }} ctaLabel={CTA} messengers={[whatsapp]} />)
     expect(screen.queryByText('Телефон')).toBeNull()
     expect(screen.queryByRole('link', { name: /tel:/ })).toBeNull()
     expect(screen.getByText('Адрес')).toBeTruthy()
   })
 
   it('has no CTA without a messenger or without a label', () => {
-    const { rerender } = render(<SalonCard salon={salon} ctaLabel={CTA} action={undefined} />)
+    const { rerender } = render(<SalonCard salon={salon} ctaLabel={CTA} messengers={[]} />)
     expect(screen.queryByRole('link', { name: new RegExp(CTA) })).toBeNull()
-    rerender(<SalonCard salon={salon} ctaLabel=" " action={whatsapp} />)
+    rerender(<SalonCard salon={salon} ctaLabel=" " messengers={[whatsapp]} />)
     expect(screen.queryByRole('link', { name: /WhatsApp/ })).toBeNull()
   })
 
   it('shows × only with onClose', () => {
     const onClose = vi.fn()
-    const { rerender } = render(<SalonCard salon={salon} action={undefined} />)
+    const { rerender } = render(<SalonCard salon={salon} messengers={[]} />)
     expect(screen.queryByRole('button', { name: 'Скрыть карточку салона' })).toBeNull()
-    rerender(<SalonCard salon={salon} action={undefined} onClose={onClose} />)
+    rerender(<SalonCard salon={salon} messengers={[]} onClose={onClose} />)
     fireEvent.click(screen.getByRole('button', { name: 'Скрыть карточку салона' }))
     expect(onClose).toHaveBeenCalledOnce()
   })
@@ -57,7 +57,7 @@ describe('SalonCard', () => {
 
 describe('SalonPanel', () => {
   it('moves focus between × and «Показать салон», not on mount', () => {
-    render(<SalonPanel salon={salon} ctaLabel={CTA} action={whatsapp} />)
+    render(<SalonPanel salon={salon} ctaLabel={CTA} messengers={[whatsapp]} />)
     const close = screen.getByRole('button', { name: 'Скрыть карточку салона' })
     expect(document.activeElement).not.toBe(close)
 
@@ -79,7 +79,7 @@ describe('SalonsSection', () => {
 
   it('renders nothing without salons', () => {
     const { container } = render(
-      <SalonsSection section={section} salons={[]} ctaLabel={CTA} action={whatsapp} />,
+      <SalonsSection section={section} salons={[]} ctaLabel={CTA} messengers={[whatsapp]} />,
     )
     expect(container.innerHTML).toBe('')
   })
@@ -87,7 +87,12 @@ describe('SalonsSection', () => {
   it('shows the H2, the view switch and the card of the first salon', () => {
     const second = { ...salon, id: 2, name: 'Химки', order: 2 }
     render(
-      <SalonsSection section={section} salons={[salon, second]} ctaLabel={CTA} action={whatsapp} />,
+      <SalonsSection
+        section={section}
+        salons={[salon, second]}
+        ctaLabel={CTA}
+        messengers={[whatsapp]}
+      />,
     )
     expect(screen.getByRole('region', { name: section.title })).toBeTruthy()
     const view = screen.getByRole('group', { name: 'Вид: карта или список' })

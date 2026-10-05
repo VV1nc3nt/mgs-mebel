@@ -3,7 +3,7 @@ import type { Ref } from 'react'
 
 import { Button } from '@/components/ui/Button'
 import { IconButton } from '@/components/ui/IconButton'
-import { contactLabel, type Messenger } from '@/lib/chrome'
+import { contactLinkLabel, type Messenger } from '@/lib/chrome'
 import { cn } from '@/lib/cn'
 import { telHref } from '@/lib/phone'
 import type { SalonPin } from '@/lib/queries'
@@ -12,8 +12,8 @@ type Props = {
   salon: Pick<SalonPin, 'name' | 'address' | 'phone'>
   /** Button label from the «Салоны» page (`map.cardCtaLabel`). */
   ctaLabel?: string | null
-  /** Messenger of the CTA; none — no button. */
-  action: Messenger | undefined
+  /** Messengers of the CTA, in order; none — no button. */
+  messengers: Messenger[]
   /** Shows the × button. */
   onClose?: () => void
   closeRef?: Ref<HTMLButtonElement>
@@ -24,10 +24,12 @@ type Props = {
  * Salon card over the map (README §6.1 п.5, §6.3): name, address, phone, messenger CTA.
  * Shared by the home page and the «Салоны» page.
  */
-export function SalonCard({ salon, ctaLabel, action, onClose, closeRef, className }: Props) {
+export function SalonCard({ salon, ctaLabel, messengers, onClose, closeRef, className }: Props) {
   const phone = salon.phone?.trim()
   const phoneHref = phone ? telHref(phone) : undefined
   const label = ctaLabel?.trim()
+  // Until the contact buttons get the choice: the first messenger in order
+  const action = messengers[0]
 
   return (
     <div
@@ -79,7 +81,7 @@ export function SalonCard({ salon, ctaLabel, action, onClose, closeRef, classNam
           size={48}
           width="full"
           arrow
-          aria-label={contactLabel(label, action)}
+          aria-label={contactLinkLabel(label, action)}
         >
           {label}
         </Button>
