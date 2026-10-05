@@ -1,8 +1,6 @@
-import type { Field, GlobalConfig, Tab } from 'payload'
+import type { GlobalConfig, Tab } from 'payload'
 
 import { contentEditors, publishedOrLoggedIn } from '@/access'
-import { imageField } from '@/fields/media'
-import { labelField, textField } from '@/fields/section'
 import { siteUrl } from '@/lib/site'
 
 // Live Preview iframe sizes: the three reference widths of the design (README §4).
@@ -46,35 +44,3 @@ export const pageGlobal = (
   access: { read: publishedOrLoggedIn, readVersions: contentEditors, update: contentEditors },
   fields: [{ type: 'tabs', tabs }],
 })
-
-/** Company history block (Home §6.1 п.3, About §6.2). */
-export const historyFields = (withLink: boolean): Field[] => [
-  labelField(),
-  imageField('photoMain', { label: 'Фото 3:4', required: true }),
-  {
-    type: 'row',
-    fields: [
-      {
-        name: 'yearValue',
-        type: 'text',
-        label: 'Плашка: год',
-        admin: { description: 'Например, 2001' },
-      },
-      { name: 'yearCaption', type: 'text', label: 'Плашка: подпись' },
-    ],
-  },
-  imageField('photoSecondary', { label: 'Фото 1:1' }),
-  { name: 'lead', type: 'textarea', label: 'Лид' },
-  textField(),
-  {
-    name: 'values',
-    type: 'array',
-    label: 'Ценности (чипы)',
-    labels: { singular: 'Ценность', plural: 'Ценности' },
-    maxRows: 6,
-    fields: [{ name: 'label', type: 'text', label: 'Текст', required: true }],
-  },
-  ...(withLink
-    ? [{ name: 'linkLabel', type: 'text', label: 'Ссылка «Подробнее»' } satisfies Field]
-    : []),
-]
