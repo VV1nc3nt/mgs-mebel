@@ -17,10 +17,19 @@ export type DockInput = {
   footerVisible: boolean
   /** Focus is inside the dock: never hide it from under the keyboard. */
   focusWithin: boolean
+  /** The messenger choice is open: it closes itself on a scroll, the dock waits for it. */
+  chooserOpen?: boolean
 }
 
-export function isDockVisible({ y, vh, dir, footerVisible, focusWithin }: DockInput): boolean {
-  if (focusWithin) return true
+export function isDockVisible({
+  y,
+  vh,
+  dir,
+  footerVisible,
+  focusWithin,
+  chooserOpen = false,
+}: DockInput): boolean {
+  if (focusWithin || chooserOpen) return true
   if (y < FIRST_SCREEN * vh) return false
   if (footerVisible) return false
   return dir === 'up'

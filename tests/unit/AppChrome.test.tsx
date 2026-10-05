@@ -49,10 +49,12 @@ describe('AppHeader', () => {
     expect(current.textContent).toBe('Новости')
   })
 
-  it('leads the CTA to a messenger and names it', () => {
+  it('leads the CTA to the first messenger in order and names it', () => {
     render(header(full))
-    const cta = screen.getByRole('link', { name: 'Рассчитать проект в WhatsApp' })
-    expect(cta.getAttribute('href')).toBe('https://wa.me/79270963555')
+    const cta = screen.getByRole('link', { name: 'Рассчитать проект в MAX' })
+    expect(cta.getAttribute('href')).toBe(
+      'https://max.ru/join/NT3_4HMbMu7LfvccQtmD3eV4-uv7nvlv6tv-Bm2mgaQ',
+    )
     expect(cta.getAttribute('target')).toBe('_blank')
     expect(screen.getByRole('link', { name: '8 800 100-16-58' }).getAttribute('href')).toBe(
       'tel:88001001658',
@@ -80,7 +82,7 @@ describe('AppHeader', () => {
 })
 
 describe('AppFooter', () => {
-  it('shows slogan, hotline, socials in footer order and the copyright with the year', () => {
+  it('shows slogan, hotline, socials in messenger order and the copyright with the year', () => {
     render(<AppFooter chrome={full} />)
     expect(screen.getByText('для жизни').className).toContain('text-accent')
     // A line break typed in the CMS becomes <br> (design: «Производитель<br>мебели»)
@@ -90,7 +92,7 @@ describe('AppFooter', () => {
     const socials = screen
       .getAllByRole('listitem')
       .map((li) => li.querySelector('a')?.getAttribute('aria-label'))
-    expect(socials).toEqual(['Telegram', 'MAX', 'WhatsApp'])
+    expect(socials).toEqual(['MAX', 'Telegram', 'WhatsApp'])
     for (const link of screen.getAllByRole('listitem').map((li) => li.querySelector('a')!)) {
       expect(link.getAttribute('target')).toBe('_blank')
       expect(link.getAttribute('rel')).toBe('noopener noreferrer')

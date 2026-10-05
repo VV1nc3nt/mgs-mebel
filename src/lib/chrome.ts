@@ -13,6 +13,13 @@ export const MESSENGER_NAMES: Record<MessengerKind, string> = {
 
 export type Messenger = { kind: MessengerKind; href: string }
 
+/** Order of the messengers everywhere: dock, contact buttons, menu, footer. */
+export const MESSENGER_ORDER = [
+  'max',
+  'telegram',
+  'whatsapp',
+] as const satisfies readonly MessengerKind[]
+
 export type NavItem = { key: NavKey; href: string; label: string; shortLabel: string }
 
 /**
@@ -22,10 +29,8 @@ export type NavItem = { key: NavKey; href: string; label: string; shortLabel: st
 export type SiteChrome = {
   nav: NavItem[]
   phone?: { display: string; href: string }
-  /** Keyed by kind; each component lists them in its own order. */
-  messengers: Partial<Record<MessengerKind, string>>
-  /** «Рассчитать проект» and «Спросить». */
-  contactAction?: Messenger
+  /** In MESSENGER_ORDER, without empty links. */
+  messengers: Messenger[]
   ctaLabel?: string
   menu: { hotlineLabel?: string; messengersLabel?: string }
   askLabel?: string
@@ -43,18 +48,18 @@ export type SettingsInput = Partial<Pick<Setting, 'contacts' | 'messengers'>>
 
 const text = (value: string | null | undefined): string | undefined => value?.trim() || undefined
 
-/** Where «Рассчитать проект» and «Спросить» lead: WhatsApp, else Telegram, else nowhere. */
-export const resolveContactAction = (
-  messengers: SiteChrome['messengers'],
-): Messenger | undefined => {
-  if (messengers.whatsapp) return { kind: 'whatsapp', href: messengers.whatsapp }
-  if (messengers.telegram) return { kind: 'telegram', href: messengers.telegram }
-  return undefined
-}
+/** Accessible name of a contact button with one messenger: the visible label plus where it leads. */
+export const contactLinkLabel = (label: string, messenger: Messenger): string =>
+  `${label} в ${MESSENGER_NAMES[messenger.kind]}`
 
-/** Accessible name of a contact button: the visible label plus where it leads. */
-export const contactLabel = (label: string, action: Messenger): string =>
-  `${label} в ${MESSENGER_NAMES[action.kind]}`
+/** Accessible name of the closed dock button with a choice of messengers. */
+export const dockChooserLabel = (label: string): string => `${label} в мессенджере`
+
+/** The open choice: the same button closes it. */
+export const CHOOSER_CLOSE_LABEL = 'Закрыть выбор мессенджера'
+
+/** The group of messenger logos in the dock. */
+export const DOCK_GROUP_LABEL = 'Спросить в мессенджере'
 
 export const toChrome = (layout: LayoutInput, settings: SettingsInput): SiteChrome => {
   const nav = NAV_ROUTES.flatMap(({ key, href }) => {
@@ -66,17 +71,15 @@ export const toChrome = (layout: LayoutInput, settings: SettingsInput): SiteChro
   const phoneText = text(settings.contacts?.hotlinePhone)
   const phoneHref = phoneText && telHref(phoneText)
 
-  const messengers: SiteChrome['messengers'] = {}
-  for (const kind of ['max', 'whatsapp', 'telegram'] as const) {
+  const messengers = MESSENGER_ORDER.flatMap((kind) => {
     const href = text(settings.messengers?.[kind])
-    if (href) messengers[kind] = href
-  }
+    return href ? [{ kind, href }] : []
+  })
 
   return {
     nav,
     phone: phoneText && phoneHref ? { display: phoneText, href: phoneHref } : undefined,
     messengers,
-    contactAction: resolveContactAction(messengers),
     ctaLabel: text(layout.header?.ctaLabel),
     menu: {
       hotlineLabel: text(layout.menu?.hotlineLabel),

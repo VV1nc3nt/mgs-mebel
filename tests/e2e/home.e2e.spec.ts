@@ -76,9 +76,9 @@ test.describe('home', () => {
       await expect(poster).toHaveAttribute('fetchpriority', 'high')
       await expect(poster).not.toHaveAttribute('loading', 'lazy')
 
-      // CTA → WhatsApp in a new tab
-      const cta = hero.getByRole('link', { name: `${home.hero.ctaLabel} в WhatsApp` })
-      await expect(cta).toHaveAttribute('href', /^https:\/\/wa\.me\//)
+      // CTA → the first messenger in order (MAX) in a new tab
+      const cta = hero.getByRole('link', { name: `${home.hero.ctaLabel} в MAX` })
+      await expect(cta).toHaveAttribute('href', /^https:\/\/max\.ru\//)
       await expect(cta).toHaveAttribute('target', '_blank')
       await expect(cta).toHaveAttribute('rel', 'noopener noreferrer')
 
@@ -152,8 +152,8 @@ test.describe('home', () => {
         'href',
         'tel:84957773575',
       )
-      const salonCta = salonsSection.getByRole('link', { name: `${SALON_CTA} в WhatsApp` })
-      await expect(salonCta).toHaveAttribute('href', /^https:\/\/wa\.me\//)
+      const salonCta = salonsSection.getByRole('link', { name: `${SALON_CTA} в MAX` })
+      await expect(salonCta).toHaveAttribute('href', /^https:\/\/max\.ru\//)
       await expect(salonCta).toHaveAttribute('target', '_blank')
       await expect(salonCta).toHaveAttribute('rel', 'noopener noreferrer')
       // The card (longest address) fits the map below the view switch
@@ -202,7 +202,7 @@ test.describe('home', () => {
 
       const header = page.locator('header')
       expect((await box(header.getByRole('link', { name: 'MGS MEBEL — на главную' }))).x).toBe(left)
-      const cta = await box(header.getByRole('link', { name: `${home.hero.ctaLabel} в WhatsApp` }))
+      const cta = await box(header.getByRole('link', { name: `${home.hero.ctaLabel} в MAX` }))
       expect(cta.x + cta.width).toBe(viewport - left)
       expect((await box(page.locator('h1'))).x).toBe(left)
       const stat = page.locator('ul').filter({ hasText: stats.items[0].label }).first()

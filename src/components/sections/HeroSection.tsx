@@ -1,26 +1,28 @@
 import { BgVideo } from '@/components/ui/BgVideo'
 import { Button } from '@/components/ui/Button'
 import { SectionLabel } from '@/components/ui/SectionLabel'
-import { contactLabel, type Messenger } from '@/lib/chrome'
+import { contactLinkLabel, type Messenger } from '@/lib/chrome'
 import { asMedia } from '@/lib/media'
 import type { SectionHeroCta } from '@/payload-types'
 
 type Props = {
   /** `hero` of a page global (heroTab); without the CTA label there is no button. */
   hero: Partial<SectionHeroCta> | undefined
-  /** «Рассчитать проект»: WhatsApp, else Telegram, else no button. */
-  action: Messenger | undefined
+  /** «Рассчитать проект»: messengers in order; none — no button. */
+  messengers: Messenger[]
 }
 
 /**
  * First screen (README §6.1 п.1): background video over the poster (the LCP image), the hero
  * overlay, label, H1, text, CTA. The header lies over it; the content sits at the bottom.
  */
-export function HeroSection({ hero, action }: Props) {
+export function HeroSection({ hero, messengers }: Props) {
   const title = hero?.title?.trim()
   if (!title) return null
   const poster = asMedia(hero?.poster)
   const ctaLabel = hero?.ctaLabel?.trim()
+  // Until the contact buttons get the choice: the first messenger in order
+  const action = messengers[0]
 
   return (
     <section
@@ -45,7 +47,7 @@ export function HeroSection({ hero, action }: Props) {
                 size={52}
                 width="mobile-full"
                 arrow
-                aria-label={contactLabel(ctaLabel, action)}
+                aria-label={contactLinkLabel(ctaLabel, action)}
               >
                 {ctaLabel}
               </Button>

@@ -10,14 +10,14 @@ import { SalonCard } from './SalonCard'
 type Props = {
   salon: SalonPin
   ctaLabel?: string | null
-  action: Messenger | undefined
+  messengers: Messenger[]
 }
 
 /**
  * Salon card over the map with × → «Показать салон» and back. Focus follows the toggle,
  * so keyboard users stay on the control that brings the other state back.
  */
-export function SalonPanel({ salon, ctaLabel, action }: Props) {
+export function SalonPanel({ salon, ctaLabel, messengers }: Props) {
   const [open, setOpen] = useState(true)
   const toggled = useRef(false)
   const closeRef = useRef<HTMLButtonElement>(null)
@@ -38,7 +38,7 @@ export function SalonPanel({ salon, ctaLabel, action }: Props) {
     <SalonCard
       salon={salon}
       ctaLabel={ctaLabel}
-      action={action}
+      messengers={messengers}
       onClose={() => toggle(false)}
       closeRef={closeRef}
       className="absolute inset-x-3 bottom-3"

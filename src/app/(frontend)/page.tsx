@@ -44,11 +44,11 @@ export default async function HomePage() {
     getSalons(),
     getHomeWorks(),
   ])
-  const { contactAction } = toChrome(layout, settings)
+  const { messengers } = toChrome(layout, settings)
 
   return (
     <>
-      <HeroSection hero={home.hero} action={contactAction} />
+      <HeroSection hero={home.hero} messengers={messengers} />
       <StatsSection items={stats.items} className="pt-2" />
       <HistorySection history={home.history} linkHref="/about" />
       <NewsSection section={home.news} news={news} />
@@ -56,7 +56,7 @@ export default async function HomePage() {
         section={home.salons}
         salons={salons}
         ctaLabel={salonsPage.map?.cardCtaLabel}
-        action={contactAction}
+        messengers={messengers}
       />
       <WorksSection section={home.works} panels={works} />
       <PreviewRefresh />
