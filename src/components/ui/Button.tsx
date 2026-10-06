@@ -9,7 +9,8 @@ export type ButtonVariant =
 
 export type ButtonSize = 40 | 44 | 48 | 52 | 56
 
-const VARIANT: Record<ButtonVariant, string> = {
+/** Classes of the variants and sizes, shared with the closed contact button (ContactChooser). */
+export const BUTTON_VARIANT: Record<ButtonVariant, string> = {
   primary: 'bg-accent text-on-accent hover:bg-accent-hover',
   outline: 'border border-border-strong text-text hover:border-text',
   // Over photo/video (README §5.2)
@@ -20,7 +21,7 @@ const VARIANT: Record<ButtonVariant, string> = {
   'inverse-outline': 'border border-bg text-bg',
 }
 
-const SIZE: Record<ButtonSize, string> = {
+export const BUTTON_SIZE: Record<ButtonSize, string> = {
   // 40 < 44: the hit area is extended by ::before without changing the layout
   40: `h-10 px-4.5 text-button-s ${HIT_AREA_Y}`,
   44: 'h-11 px-4.5 text-button-s',
@@ -64,8 +65,8 @@ export function Button({
         'relative inline-flex shrink-0 items-center justify-center gap-2.5 rounded-pill whitespace-nowrap transition-colors',
         'disabled:pointer-events-none disabled:border-transparent disabled:bg-surface-3 disabled:text-text-4',
         'aria-disabled:pointer-events-none aria-disabled:border-transparent aria-disabled:bg-surface-3 aria-disabled:text-text-4',
-        VARIANT[variant],
-        SIZE[size],
+        BUTTON_VARIANT[variant],
+        BUTTON_SIZE[size],
         WIDTH[width],
         className,
       )}

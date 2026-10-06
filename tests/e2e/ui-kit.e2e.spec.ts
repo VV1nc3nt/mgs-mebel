@@ -57,18 +57,27 @@ for (const width of WIDTHS) {
       await page.goto(URL)
       const count = await page
         .locator(INTERACTIVE)
-        .evaluateAll((els) => els.filter((el) => (el as HTMLElement).tabIndex >= 0).length)
+        // Folded messenger cells are inert: not Tab stops
+        .evaluateAll(
+          (els) =>
+            els.filter((el) => (el as HTMLElement).tabIndex >= 0 && !el.closest('[inert]')).length,
+        )
       expect(count).toBeGreaterThan(0)
       const ring = () =>
         page.evaluate(() => {
           const el = document.activeElement as HTMLElement
           const style = getComputedStyle(el)
-          return `${el.getAttribute('aria-label') ?? el.textContent?.trim()}: ${style.outlineStyle} ${style.outlineWidth} ${style.outlineColor}`
+          // A contact button on a lime surface has a dark ring: lime on lime is not seen
+          // (README of the buttons §4)
+          const onAccent = !!el.closest('.chooser')?.parentElement?.closest('.bg-accent')
+          return `${el.getAttribute('aria-label') ?? el.textContent?.trim()}: ${style.outlineStyle} ${style.outlineWidth} ${style.outlineColor}${onAccent ? ' on accent' : ''}`
         })
       for (let i = 0; i < count; i++) {
         await page.keyboard.press('Tab')
         // Read right away: the ring must not fade in.
-        expect(await ring()).toMatch(/: solid 2px rgb\(201, 215, 48\)$/)
+        expect(await ring()).toMatch(
+          /: solid 2px (rgb\(201, 215, 48\)|rgb\(20, 20, 19\) on accent)$/,
+        )
       }
     })
 
@@ -82,7 +91,9 @@ for (const width of WIDTHS) {
         const target = targets.nth(i)
         // WCAG 2.5.8: inline links inside a paragraph are exempt.
         const inline = await target.evaluate((el) => el.closest('p') !== null && el.tagName === 'A')
-        if (inline || !(await target.isVisible())) continue
+        // Inert (folded messenger cells) is not interactive
+        const inert = await target.evaluate((el) => el.closest('[inert]') !== null)
+        if (inline || inert || !(await target.isVisible())) continue
         const missed = await target.evaluate((el, hit) => {
           // Centre it: points near the viewport edge would miss for the wrong reason.
           el.scrollIntoView({ block: 'center', inline: 'center' })

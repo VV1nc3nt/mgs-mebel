@@ -52,14 +52,18 @@ const text = (value: string | null | undefined): string | undefined => value?.tr
 export const contactLinkLabel = (label: string, messenger: Messenger): string =>
   `${label} в ${MESSENGER_NAMES[messenger.kind]}`
 
+/** Accessible name of a closed contact button with a choice of messengers. */
+export const chooserLabel = (label: string): string => `${label} — выбрать мессенджер`
+
 /** Accessible name of the closed dock button with a choice of messengers. */
 export const dockChooserLabel = (label: string): string => `${label} в мессенджере`
 
 /** The open choice: the same button closes it. */
 export const CHOOSER_CLOSE_LABEL = 'Закрыть выбор мессенджера'
 
-/** The group of messenger logos in the dock. */
+/** The group of messenger logos: in the dock / of a contact button. */
 export const DOCK_GROUP_LABEL = 'Спросить в мессенджере'
+export const CHOOSER_GROUP_LABEL = 'Выбрать мессенджер'
 
 export const toChrome = (layout: LayoutInput, settings: SettingsInput): SiteChrome => {
   const nav = NAV_ROUTES.flatMap(({ key, href }) => {

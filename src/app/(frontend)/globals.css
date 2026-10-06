@@ -600,14 +600,15 @@
 
 @utility chooser-motion {
   transition-property:
-    width, margin, padding, max-width, scale, rotate, opacity, background-color, border-color;
+    width, height, margin, padding, max-width, scale, rotate, opacity, background-color,
+    border-color;
   transition-duration:
     var(--chooser-move), var(--chooser-move), var(--chooser-move), var(--chooser-move),
-    var(--chooser-move), var(--chooser-move), var(--chooser-fade),
+    var(--chooser-move), var(--chooser-move), var(--chooser-move), var(--chooser-fade),
     var(--default-transition-duration), var(--default-transition-duration);
   transition-timing-function:
     var(--ease-soft), var(--ease-soft), var(--ease-soft), var(--ease-soft), var(--ease-soft),
-    var(--ease-soft), ease, ease-out, ease-out;
+    var(--ease-soft), var(--ease-soft), ease, ease-out, ease-out;
   @media (prefers-reduced-motion: reduce) {
     scale: none !important;
     rotate: none !important;
@@ -624,7 +625,7 @@
   [data-open] & {
     --chooser-delay: calc(var(--motion-chooser-stagger) * var(--i));
     transition-delay:
-      var(--chooser-delay), var(--chooser-delay), 0ms, 0ms, var(--chooser-delay),
+      var(--chooser-delay), 0ms, var(--chooser-delay), 0ms, 0ms, var(--chooser-delay),
       var(--chooser-delay), var(--chooser-delay), 0ms, 0ms;
   }
   @media (prefers-reduced-motion: reduce) {
@@ -642,6 +643,49 @@
   max-width: calc(var(--label-w) * 1px);
   [data-open] & {
     max-width: 0;
+  }
+}
+
+/*
+ * Contact button capsule (README of the buttons §4): its size and the width of its button, unitless
+ * from lib/chooserGeometry.ts. Without them (before the first measurement) the capsule simply covers
+ * the place of the closed button.
+ */
+@utility chooser-capsule {
+  width: calc(var(--capsule-w) * 1px);
+  height: calc(var(--capsule-h) * 1px);
+}
+
+@utility chooser-button {
+  width: calc(var(--button-w) * 1px);
+}
+
+/*
+ * A neighbour that the open capsule grows onto (the header phone, left of the CTA) fades out while
+ * the choice is open and leaves the Tab order once faded; it stays in place, nothing shifts.
+ */
+@utility under-chooser {
+  transition:
+    opacity var(--motion-chooser-out) var(--ease-soft),
+    visibility 0s,
+    color var(--default-transition-duration) ease-out;
+  &:has(~ [data-open]) {
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity var(--motion-dock) var(--ease-soft),
+      visibility 0s var(--motion-dock),
+      color var(--default-transition-duration) ease-out;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &,
+    &:has(~ [data-open]) {
+      transition-timing-function: ease-out;
+      transition-duration: var(--motion-fade-reduced), 0s, var(--default-transition-duration);
+    }
+    &:has(~ [data-open]) {
+      transition-delay: 0s, var(--motion-fade-reduced), 0s;
+    }
   }
 }
 

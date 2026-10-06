@@ -76,11 +76,9 @@ test.describe('home', () => {
       await expect(poster).toHaveAttribute('fetchpriority', 'high')
       await expect(poster).not.toHaveAttribute('loading', 'lazy')
 
-      // CTA → the first messenger in order (MAX) in a new tab
-      const cta = hero.getByRole('link', { name: `${home.hero.ctaLabel} в MAX` })
-      await expect(cta).toHaveAttribute('href', /^https:\/\/max\.ru\//)
-      await expect(cta).toHaveAttribute('target', '_blank')
-      await expect(cta).toHaveAttribute('rel', 'noopener noreferrer')
+      // CTA: the choice of messengers (tests/e2e/contact.e2e.spec.ts)
+      const cta = hero.getByRole('button', { name: `${home.hero.ctaLabel} — выбрать мессенджер` })
+      await expect(cta).toHaveAttribute('aria-expanded', 'false')
 
       // Statistics: carousel on mobile, grid of 3 / 6
       const list = page.locator('ul').filter({ hasText: stats.items[0].label }).first()
@@ -152,10 +150,10 @@ test.describe('home', () => {
         'href',
         'tel:84957773575',
       )
-      const salonCta = salonsSection.getByRole('link', { name: `${SALON_CTA} в MAX` })
-      await expect(salonCta).toHaveAttribute('href', /^https:\/\/max\.ru\//)
-      await expect(salonCta).toHaveAttribute('target', '_blank')
-      await expect(salonCta).toHaveAttribute('rel', 'noopener noreferrer')
+      const salonCta = salonsSection.getByRole('button', {
+        name: `${SALON_CTA} — выбрать мессенджер`,
+      })
+      await expect(salonCta).toHaveAttribute('aria-expanded', 'false')
       // The card (longest address) fits the map below the view switch
       const cardBox = (await salonsSection.locator('.max-w-salon-card').boundingBox())!
       const viewBox = (await view.boundingBox())!
@@ -202,7 +200,9 @@ test.describe('home', () => {
 
       const header = page.locator('header')
       expect((await box(header.getByRole('link', { name: 'MGS MEBEL — на главную' }))).x).toBe(left)
-      const cta = await box(header.getByRole('link', { name: `${home.hero.ctaLabel} в MAX` }))
+      const cta = await box(
+        header.getByRole('button', { name: `${home.hero.ctaLabel} — выбрать мессенджер` }),
+      )
       expect(cta.x + cta.width).toBe(viewport - left)
       expect((await box(page.locator('h1'))).x).toBe(left)
       const stat = page.locator('ul').filter({ hasText: stats.items[0].label }).first()

@@ -8,12 +8,14 @@ import { MessengerIcon } from '@/components/icons/MessengerIcon'
 import { BgVideo } from '@/components/ui/BgVideo'
 import { Button } from '@/components/ui/Button'
 import { Chip } from '@/components/ui/Chip'
+import { ContactButton } from '@/components/ui/ContactButton'
 import { FilterChip } from '@/components/ui/FilterChip'
 import { IconButton } from '@/components/ui/IconButton'
 import { MediaCard } from '@/components/ui/MediaCard'
 import { SectionLabel } from '@/components/ui/SectionLabel'
 import { StatCard } from '@/components/ui/StatCard'
-import { MESSENGER_NAMES } from '@/lib/chrome'
+import { MESSENGER_NAMES, toChrome } from '@/lib/chrome'
+import { getSettings } from '@/lib/queries'
 import { getUiKitData } from './data'
 import { CatalogsSegmentDemo, ViewSegmentDemo, WorksSegmentDemo } from './SegmentDemo'
 
@@ -49,8 +51,10 @@ export default async function UiKitPage() {
   await connection()
   if (process.env.ENABLE_UI_KIT !== 'true') notFound()
 
-  const { news, newsCount, hero, history, mission, stats, workCounts, catalogCounts } =
-    await getUiKitData()
+  const [{ news, newsCount, hero, history, mission, stats, workCounts, catalogCounts }, settings] =
+    await Promise.all([getUiKitData(), getSettings()])
+  // Messengers from the settings, in their order; 1 / 2 / 3 of them for the variants
+  const { messengers } = toChrome({}, settings)
   const [first, second, third] = news
 
   return (
@@ -124,6 +128,70 @@ export default async function UiKitPage() {
             </Button>
           </div>
         </Row>
+      </Section>
+
+      <Section title="Кнопки связи">
+        {messengers.length === 0 && (
+          <p className="text-body-s text-text-3">Нет ссылок на мессенджеры в настройках.</p>
+        )}
+        {[1, 2, 3]
+          .filter((n) => n <= messengers.length)
+          .map((n) => (
+            <Row
+              key={n}
+              note={`${n} из ${messengers.length}: 44 (шапка, раскрывается влево) · 52 · 48`}
+            >
+              <ContactButton
+                caption="Рассчитать проект"
+                messengers={messengers.slice(0, n)}
+                size={44}
+                grow="start"
+              />
+              <ContactButton
+                caption="Рассчитать проект"
+                messengers={messengers.slice(0, n)}
+                size={52}
+                arrow
+              />
+              <ContactButton
+                caption="Рассчитать проект"
+                messengers={messengers.slice(0, n)}
+                size={48}
+              />
+            </Row>
+          ))}
+        {messengers.length > 0 && (
+          <>
+            <Row note="Лаймовый CTA новости: outline, 48">
+              <div className="flex rounded-card bg-accent p-6">
+                <ContactButton
+                  caption="Рассчитать проект"
+                  messengers={messengers}
+                  size={48}
+                  tone="outline"
+                />
+              </div>
+            </Row>
+            <Row note="Во всю ширину колонки: просмотрщик (52), карточка салона (48)">
+              <div className="flex w-full max-w-salon-card flex-col gap-3">
+                <ContactButton
+                  caption="Хочу такой же проект"
+                  messengers={messengers}
+                  size={52}
+                  fullWidth
+                  arrow
+                />
+                <ContactButton
+                  caption="Заказать персональный дизайн"
+                  messengers={messengers}
+                  size={48}
+                  fullWidth
+                  arrow
+                />
+              </div>
+            </Row>
+          </>
+        )}
       </Section>
 
       <Section title="IconButton">

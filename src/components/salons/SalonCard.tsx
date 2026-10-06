@@ -1,9 +1,9 @@
 import { X } from 'lucide-react'
 import type { Ref } from 'react'
 
-import { Button } from '@/components/ui/Button'
+import { ContactButton } from '@/components/ui/ContactButton'
 import { IconButton } from '@/components/ui/IconButton'
-import { contactLinkLabel, type Messenger } from '@/lib/chrome'
+import type { Messenger } from '@/lib/chrome'
 import { cn } from '@/lib/cn'
 import { telHref } from '@/lib/phone'
 import type { SalonPin } from '@/lib/queries'
@@ -27,9 +27,6 @@ type Props = {
 export function SalonCard({ salon, ctaLabel, messengers, onClose, closeRef, className }: Props) {
   const phone = salon.phone?.trim()
   const phoneHref = phone ? telHref(phone) : undefined
-  const label = ctaLabel?.trim()
-  // Until the contact buttons get the choice: the first messenger in order
-  const action = messengers[0]
 
   return (
     <div
@@ -74,18 +71,7 @@ export function SalonCard({ salon, ctaLabel, messengers, onClose, closeRef, clas
           </div>
         )}
       </dl>
-      {label && action && (
-        <Button
-          href={action.href}
-          variant="primary"
-          size={48}
-          width="full"
-          arrow
-          aria-label={contactLinkLabel(label, action)}
-        >
-          {label}
-        </Button>
-      )}
+      <ContactButton caption={ctaLabel} messengers={messengers} size={48} fullWidth arrow />
     </div>
   )
 }
