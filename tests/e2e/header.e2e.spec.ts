@@ -4,11 +4,11 @@ import { expect, test, type Page } from '@playwright/test'
 import { cls, settle, wheel } from '../helpers/scroll'
 
 // The smart header (a deviation from README §5.2): in place at the top, hidden while scrolling
-// down, fixed on glass while scrolling up. `/` puts it over the hero, /ui-kit in the flow and
+// down, fixed on glass while scrolling up. /about puts it over the hero, /ui-kit in the flow and
 // has the sticky segment bar. Both are long enough with the seedHome data.
 const BASE = 'http://localhost:3000'
 const PAGES = [
-  { path: '/', variant: 'hero', position: 'absolute' },
+  { path: '/about', variant: 'hero', position: 'absolute' },
   { path: '/ui-kit', variant: 'flow', position: 'relative' },
 ] as const
 const EMPTY_DB = !!process.env.E2E_EMPTY_DB
@@ -148,7 +148,7 @@ test.describe('smart header', () => {
       }
 
       test('Tab into the hidden header shows it', async ({ page }) => {
-        await page.goto(`${BASE}/`)
+        await page.goto(`${BASE}/about`)
         await jumpTo(page, 1500)
         await page.keyboard.press('Tab') // skip link
         await page.keyboard.press('Tab')
@@ -200,7 +200,7 @@ test.describe('smart header', () => {
 
       test('reduced motion: fades without sliding', async ({ page }) => {
         await page.emulateMedia({ reducedMotion: 'reduce' })
-        await page.goto(`${BASE}/`)
+        await page.goto(`${BASE}/about`)
         await jumpTo(page, 1500)
         expect(await style(page, 'transform')).toBe('none')
         expect(await style(page, 'opacity')).toBe('0')
@@ -219,7 +219,7 @@ test.describe('smart header', () => {
     test.use({ viewport: { width: 390, height: 844 } })
 
     test('opens, keeps the header pinned, Esc returns focus to ☰', async ({ page }) => {
-      await page.goto(`${BASE}/`)
+      await page.goto(`${BASE}/about`)
       await pin(page)
       const y = await page.evaluate(() => window.scrollY)
       await burger(page).click()
@@ -240,7 +240,7 @@ test.describe('smart header', () => {
     test('a section link navigates; the new page starts with the header in place', async ({
       page,
     }) => {
-      await page.goto(`${BASE}/`)
+      await page.goto(`${BASE}/about`)
       await pin(page)
       const link = sections(page).getByRole('link').nth(1)
       const href = (await link.getAttribute('href'))!
@@ -253,7 +253,7 @@ test.describe('smart header', () => {
   for (const width of [390, 834, 1440] as const) {
     test(`${width}: screenshot of the pinned header`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 })
-      await page.goto(`${BASE}/`)
+      await page.goto(`${BASE}/about`)
       await pin(page)
       await page.screenshot({ path: `test-results/header/header-pinned-${width}.png` })
     })

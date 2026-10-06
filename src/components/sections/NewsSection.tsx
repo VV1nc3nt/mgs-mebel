@@ -10,21 +10,22 @@ type Props = {
   section: Partial<SectionNews> | undefined
   /** The latest published news, newest first. */
   news: NewsSlide[]
+  /** Prefix of the heading ids: one per page (`home-…`, `about-…`). */
+  idPrefix?: string
 }
-
-const HEADING_ID = 'home-news-title'
 
 /**
  * «#Новости» (README §6.1 п.4): a slider of the latest news, one card per view
  * (440 / 560 / 640). The whole card links to the article; the title names the link.
  * No news — no section; one news — no arrows and segments.
  */
-export function NewsSection({ section, news }: Props) {
+export function NewsSection({ section, news, idPrefix = 'home' }: Props) {
   if (!news.length) return null
+  const headingId = `${idPrefix}-news-title`
   const title = section?.title?.trim()
 
   const slides = news.map((item) => {
-    const titleId = `home-news-${item.id}`
+    const titleId = `${idPrefix}-news-${item.id}`
     const date = formatDate(item.date)
     return (
       <MediaCard
@@ -52,8 +53,8 @@ export function NewsSection({ section, news }: Props) {
 
   return (
     <NewsSlider
-      heading={<SectionHeading label={section?.label} title={title} id={HEADING_ID} />}
-      headingId={title ? HEADING_ID : undefined}
+      heading={<SectionHeading label={section?.label} title={title} id={headingId} />}
+      headingId={title ? headingId : undefined}
       label={section?.label ?? undefined}
       slides={slides}
     />

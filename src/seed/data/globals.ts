@@ -26,6 +26,25 @@ const history = (id: MediaId) => ({
   values: ['Качество', 'Инновации', 'Долговечность'].map((label) => ({ label })),
 })
 
+// First screen and sections of the company page: the home page now, «О нас» after it.
+const companyHero = (id: MediaId) => ({
+  label: 'о нас',
+  title: 'Мы — MGS MEBEL',
+  text: HERO_TEXT,
+  ctaLabel: 'Рассчитать проект',
+  video: id('H1'),
+  poster: id('U1'),
+})
+
+const companySections = {
+  news: { label: 'новости', title: 'Что нового' },
+  salons: { label: 'фирменные салоны', title: '50+ салонов по России' },
+  works: { label: 'наши работы', title: 'Реальные проекты', buttonLabel: 'Смотреть все работы' },
+}
+
+const companyMeta = (id: MediaId) =>
+  seoMeta({ title: 'Мы — MGS MEBEL', description: HERO_TEXT, image: id('U1') })
+
 /** All texts come from the design prototype and README. */
 export const globals = (id: MediaId): SeedGlobals => ({
   layout: {
@@ -74,33 +93,16 @@ export const globals = (id: MediaId): SeedGlobals => ({
     ],
   },
   home: {
-    hero: {
-      label: 'о нас',
-      title: 'Мы — MGS MEBEL',
-      text: HERO_TEXT,
-      ctaLabel: 'Рассчитать проект',
-      video: id('H1'),
-      poster: id('U1'),
-    },
+    hero: companyHero(id),
     history: { ...history(id), linkLabel: 'Подробнее о компании' },
-    news: { label: 'новости', title: 'Что нового' },
-    salons: { label: 'фирменные салоны', title: '50+ салонов по России' },
-    works: { label: 'наши работы', title: 'Реальные проекты', buttonLabel: 'Смотреть все работы' },
-    meta: seoMeta({
-      title: 'Мы — MGS MEBEL',
-      description: HERO_TEXT,
-      image: id('U1'),
-    }),
+    ...companySections,
+    meta: companyMeta(id),
   },
+  // The former home page; mission, hardware and exhibitions are not rendered yet.
   about: {
-    hero: {
-      label: 'о нас',
-      title: 'Мы — MGS MEBEL',
-      text: HERO_TEXT,
-      video: id('H2'),
-      poster: id('U10'),
-    },
+    hero: companyHero(id),
     history: history(id),
+    ...companySections,
     mission: {
       label: 'миссия',
       title: 'Воплощаем мечты и идеи для жизни',
@@ -155,7 +157,7 @@ export const globals = (id: MediaId): SeedGlobals => ({
         },
       ],
     },
-    meta: seoMeta({ title: 'Мы — MGS MEBEL', description: HERO_TEXT, image: id('U10') }),
+    meta: companyMeta(id),
   },
   salonsPage: {
     hero: {

@@ -17,29 +17,30 @@ type Props = {
   ctaLabel?: string | null
   /** Messengers of the card button, in order; none — no button. */
   messengers: Messenger[]
+  /** Prefix of the heading ids: one per page (`home-…`, `about-…`). */
+  idPrefix?: string
 }
-
-const HEADING_ID = 'home-salons-title'
 
 /**
  * «#Фирменные салоны» (README §6.1 п.5): map with pins, card of the first salon,
  * «Карта / Список» (the list is the «Салоны» page). No salons — no section.
  */
-export function SalonsSection({ section, salons, ctaLabel, messengers }: Props) {
+export function SalonsSection({ section, salons, ctaLabel, messengers, idPrefix = 'home' }: Props) {
+  const headingId = `${idPrefix}-salons-title`
   const first = salons[0]
   if (!first) return null
   const title = section?.title?.trim()
 
   return (
     <section
-      aria-labelledby={title ? HEADING_ID : undefined}
+      aria-labelledby={title ? headingId : undefined}
       aria-label={title ? undefined : (section?.label ?? undefined)}
       className="flex flex-col gap-heading pt-section xl:pt-section-xl"
     >
       <SectionHeading
         label={section?.label}
         title={title}
-        id={HEADING_ID}
+        id={headingId}
         className="page-container"
       />
       <div className="page-container">

@@ -1,5 +1,5 @@
 /**
- * E2E data of the home page: the `home`, `salonsPage` and `stats` globals, news, projects and
+ * E2E data of the home page: the `home`, `about`, `salonsPage` and `stats` globals, news, projects and
  * salons with the seed
  * texts and media generated on the fly (no stock downloads, no binaries in git), then a draft
  * over the published home and a news draft for the «anonymous never sees drafts» checks.
@@ -125,13 +125,28 @@ try {
   }
   // Seed media keys: U1 — hero poster, U2 / U3 — history photos; no background video here.
   const byKey: Record<string, number> = { U1: ids.poster, U2: ids.main, U3: ids.secondary }
-  const { home, stats, salonsPage } = globals((key) => byKey[key] ?? ids.poster)
+  const { home, about, stats, salonsPage } = globals((key) => byKey[key] ?? ids.poster)
   const published = { ...home, hero: { ...home.hero, video: null } }
 
   await payload.updateGlobal({ slug: 'stats', data: stats, depth: 0 })
   await payload.updateGlobal({
     slug: 'home',
     data: { ...published, _status: 'published' },
+    depth: 0,
+  })
+  // «О нас»: the former home page, published without a draft; no background videos here.
+  await payload.updateGlobal({
+    slug: 'about',
+    data: {
+      ...about,
+      hero: { ...about.hero, video: null },
+      mission: { ...about.mission, video: null },
+      exhibitions: {
+        ...about.exhibitions,
+        items: about.exhibitions?.items?.map((item) => ({ ...item, video: null })),
+      },
+      _status: 'published',
+    },
     depth: 0,
   })
   // The home salon card takes its button label from the «Салоны» page.
@@ -203,7 +218,9 @@ try {
       depth: 0,
     })
   }
-  console.log('seedHome: stats, home (published + draft), salonsPage, news, projects, salons')
+  console.log(
+    'seedHome: stats, home (published + draft), about, salonsPage, news, projects, salons',
+  )
 } catch (error) {
   console.error(error)
   code = 1

@@ -74,7 +74,7 @@ export const photos: SeedFile[] = [
     'living-room-with-brown-sofa-and-glass-window-4_jQL4JCS98',
     'Collov Home Design',
     'Гостиная с коричневым диваном и панорамным окном',
-    'постер home.hero, выставка «Презентация 2025», обложка «Конкурс проектов с Korting», каталог «Декоры ALVIC 2026»',
+    'постер home.hero и about.hero, выставка «Презентация 2025», обложка «Конкурс проектов с Korting», каталог «Декоры ALVIC 2026»',
   ),
   unsplash(
     'U2',
@@ -164,7 +164,7 @@ export const photos: SeedFile[] = [
     'white-and-brown-living-room-set-9M66C_w_ToM',
     'Spacejoy',
     'Гостиная в бело-коричневых тонах',
-    'постеры about.hero и обзора салона «Румянцево», возможности №1, обложка «Открытие нового салона», каталог «Шкафы-купе»',
+    'постер обзора салона «Румянцево», возможности №1, обложка «Открытие нового салона», каталог «Шкафы-купе»',
   ),
   unsplash(
     'U11',
@@ -360,8 +360,15 @@ export const photos: SeedFile[] = [
 ]
 
 export const videos: SeedFile[] = [
-  pexels('H1', 'kitchen', 15887128, 'hd_1920_1080_30fps', 'Curtis Adams', 'home.hero', true),
-  pexels('H2', 'house', 5744424, 'hd_1280_720_30fps', 'Abdullah', 'about.hero', true),
+  pexels(
+    'H1',
+    'kitchen',
+    15887128,
+    'hd_1920_1080_30fps',
+    'Curtis Adams',
+    'home.hero, about.hero',
+    true,
+  ),
   pexels('H3', 'living-room', 5644364, 'hd_1280_720_25fps', 'Polina', 'about.mission', true),
   pexels(
     'H4',

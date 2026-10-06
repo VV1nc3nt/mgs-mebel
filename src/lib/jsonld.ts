@@ -1,6 +1,6 @@
 import type { SettingsInput } from './chrome'
 import { BRAND } from './seo'
-import { siteUrl } from './site'
+import { absoluteUrl, siteUrl } from './site'
 
 export type JsonLdData = Record<string, unknown>
 
@@ -32,3 +32,17 @@ export const organizationJsonLd = (settings: SettingsInput): JsonLdData => {
       : {}),
   }
 }
+
+export type Breadcrumb = { name: string; path: string }
+
+/** Path from the home page to the current one; the last item is the page itself. */
+export const breadcrumbJsonLd = (items: Breadcrumb[]): JsonLdData => ({
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: items.map((item, index) => ({
+    '@type': 'ListItem',
+    position: index + 1,
+    name: item.name,
+    item: absoluteUrl(item.path),
+  })),
+})

@@ -4,6 +4,6 @@ import { pageGlobal } from './shared'
 export const Home = pageGlobal(
   'home',
   'Главная',
-  [heroTab({ cta: true }), historyTab({ link: true }), newsTab(), salonsTab(), worksTab()],
+  [heroTab(), historyTab({ link: true }), newsTab(), salonsTab(), worksTab()],
   { previewPath: '/' },
 )
