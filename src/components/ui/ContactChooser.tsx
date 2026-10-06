@@ -57,8 +57,8 @@ const TONE: Record<ContactTone, string> = {
  * Contact button with a choice of messengers, opened in place (README of the buttons, variant
  * «Сегменты»): the button turns into a dark capsule with a cell per messenger and «×» at the end.
  * The closed button looks like Button; a hidden copy of its label keeps its place in the flow and
- * the capsule lies over it, so neighbours never move. The capsule appears only once the place is
- * measured: before that (server HTML, first frame) the button simply covers it.
+ * the capsule lies over it, so neighbours never move. The cells and the glass appear only once the
+ * place is measured: before that (server HTML, first frame) the button simply covers it.
  */
 export function ContactChooser({
   caption,
@@ -81,8 +81,11 @@ export function ContactChooser({
     return () => observer.disconnect()
   }, [rootRef])
 
+  const measured = width !== null
+  // Sizes in px only while open; closed, the capsule and the button take the place of the button
+  // (100%), so a late change of that place (a font loading) never leaves them a frame behind
   const geometry =
-    width === null ? null : chooserGeometry({ width, height: size, n: messengers.length, open })
+    open && measured ? chooserGeometry({ width, height: size, n: messengers.length, open }) : null
   const widthKey = fullWidth === 'mobile' ? 'mobile' : fullWidth ? 'full' : 'auto'
 
   return (
@@ -115,14 +118,15 @@ export function ContactChooser({
             : undefined
         }
         className={cn(
-          // Placed the same way before and after the measurement: only the size changes, from
-          // the place of the button (100%) to the same numbers, so nothing shifts
+          // Placed the same way in every state: only the size changes, between the place of the
+          // button (100%) and the open numbers, so nothing shifts
           'absolute top-1/2 flex -translate-y-1/2 items-center rounded-full group-data-open/chooser:p-1.25',
           grow === 'start' ? 'right-0' : 'left-0',
-          geometry ? 'chooser-capsule chooser-motion' : 'size-full',
+          geometry ? 'chooser-capsule' : 'size-full',
+          measured && 'chooser-motion',
         )}
       >
-        {geometry && (
+        {measured && (
           <>
             <span
               aria-hidden="true"

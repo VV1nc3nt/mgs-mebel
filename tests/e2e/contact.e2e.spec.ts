@@ -46,7 +46,8 @@ const chooser = (scope: Locator) => {
   return {
     root,
     button: root.locator('button[aria-expanded]'),
-    capsule: root.locator('.chooser-capsule'),
+    // The capsule: the parent of the button (sized in px only while open)
+    capsule: root.locator('button[aria-expanded] >> xpath=..'),
     links: root.getByRole('group', { name: 'Выбрать мессенджер' }).getByRole('link'),
   }
 }
@@ -57,9 +58,9 @@ const expectClosed = async (c: ReturnType<typeof chooser>, caption: string) => {
   await expect(c.button).toHaveAccessibleName(`${caption} — выбрать мессенджер`)
 }
 
-/** The capsule has appeared once the place of the button is measured. */
+/** Hydrated and measured: the cells are rendered once the place of the button is measured. */
 async function ready(c: ReturnType<typeof chooser>) {
-  await expect(c.capsule).toHaveCount(1)
+  await expect(c.root.locator('[role="group"]')).toHaveCount(1)
 }
 
 /** The open choice: three cells in order, every control ≥ 44, the capsule 54 high, centred. */
@@ -172,7 +173,8 @@ test.describe('contact buttons', () => {
       await expectClosed(c, CTA)
       const closed = await box(c.button)
       const title = await box(page.locator('h1'))
-      if (width === 390) expect(closed.width).toBe(350)
+      // Mobile: the width of the text column (README §5.6)
+      if (width === 390) expect(closed.width).toBe((await box(page.locator('h1'))).width)
 
       await clickOpen(page, c)
       await expectOpen(c, closed)

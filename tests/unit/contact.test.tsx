@@ -88,12 +88,15 @@ describe('ContactButton', () => {
     expect(group.querySelectorAll('a')).toHaveLength(2)
   })
 
-  it('the open capsule takes its measured size; closed it is the button', () => {
+  it('the open capsule takes its measured size; closed it is the place of the button', () => {
     const { container } = render(<ContactButton caption={CAPTION} messengers={[MAX, TG, WA]} />)
-    const capsule = container.querySelector<HTMLElement>('.chooser-capsule')!
-    // jsdom measures 0: closed — 0 wide, open — the narrowest capsule
-    expect(capsule.style.getPropertyValue('--capsule-w')).toBe('0')
+    const capsule = screen.getByRole('button').parentElement!
+    // Closed: 100% of the place, no sizes in px
+    expect(capsule.className).toContain('size-full')
+    expect(capsule.style.getPropertyValue('--capsule-w')).toBe('')
+    // jsdom measures 0: open — the narrowest capsule
     fireEvent.click(screen.getByRole('button'), { detail: 1 })
+    expect(container.querySelector('.chooser-capsule')).toBe(capsule)
     expect(capsule.style.getPropertyValue('--capsule-w')).toBe('198')
     expect(capsule.style.getPropertyValue('--capsule-h')).toBe('54')
     expect(capsule.style.getPropertyValue('--button-w')).toBe('44')
