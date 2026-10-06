@@ -19,6 +19,7 @@ env:
   E2E_SHARD_1: >-
     tests/e2e/menu.e2e.spec.ts
     tests/e2e/ui-kit.e2e.spec.ts
+    tests/e2e/about.e2e.spec.ts
   E2E_SHARD_2: >-
     tests/e2e/header.e2e.spec.ts
     tests/e2e/layout.e2e.spec.ts
@@ -203,7 +204,7 @@ jobs:
       # Fresh database: header and footer must render from empty globals.
       - name: Layout on empty globals
         if: matrix.shard == 1
-        run: pnpm test:e2e tests/e2e/layout.e2e.spec.ts tests/e2e/dock.e2e.spec.ts tests/e2e/not-found.e2e.spec.ts tests/e2e/preview.e2e.spec.ts tests/e2e/home.e2e.spec.ts tests/e2e/news-slug.e2e.spec.ts --grep @empty --reporter=list
+        run: pnpm test:e2e tests/e2e/layout.e2e.spec.ts tests/e2e/dock.e2e.spec.ts tests/e2e/not-found.e2e.spec.ts tests/e2e/preview.e2e.spec.ts tests/e2e/home.e2e.spec.ts tests/e2e/about.e2e.spec.ts tests/e2e/news-slug.e2e.spec.ts --grep @empty --reporter=list
         env:
           E2E_EMPTY_DB: 1
 

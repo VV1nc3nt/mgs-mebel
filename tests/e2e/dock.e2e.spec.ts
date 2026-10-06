@@ -4,10 +4,10 @@ import { expect, test, type Page } from '@playwright/test'
 import { globals } from '../../src/seed/data/globals'
 import { settle, wheel } from '../helpers/scroll'
 
-// The home page in its real context: hero on the first screen, long enough to scroll with the
+// «О нас» in its real context: hero on the first screen, long enough to scroll with the
 // seedHome data. On an empty database it is short, so the @empty check of the dock's content
 // stays on /ui-kit.
-const URL = 'http://localhost:3000/'
+const URL = 'http://localhost:3000/about'
 const UI_KIT = 'http://localhost:3000/ui-kit'
 const { layout, settings } = globals(() => 0)
 const EMPTY_DB = !!process.env.E2E_EMPTY_DB
@@ -324,7 +324,7 @@ test.describe('dock on an empty database @empty', () => {
     await expect(dock(page).getByRole('link')).toHaveCount(0)
   })
 
-  test('the short empty home page keeps the dock hidden, without errors', async ({ page }) => {
+  test('the short empty page keeps the dock hidden, without errors', async ({ page }) => {
     const errors: string[] = []
     page.on('pageerror', (error) => errors.push(error.message))
     await page.setViewportSize({ width: 390, height: 844 })

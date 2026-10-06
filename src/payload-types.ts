@@ -981,8 +981,11 @@ export interface SectionWorks {
  */
 export interface About {
   id: number;
-  hero: SectionHero;
+  hero: SectionHeroCta;
   history: SectionHistory;
+  news?: SectionNews;
+  salons?: SectionSalons;
+  works?: SectionWorks;
   mission: {
     /**
      * Без «#» — он добавляется автоматически.
@@ -1070,29 +1073,6 @@ export interface About {
   _status?: ('draft' | 'published') | null;
   updatedAt?: string | null;
   createdAt?: string | null;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "SectionHero".
- */
-export interface SectionHero {
-  /**
-   * Без «#» — он добавляется автоматически.
-   */
-  label?: string | null;
-  title: string;
-  /**
-   * Абзацы разделяются пустой строкой.
-   */
-  text?: string | null;
-  /**
-   * MP4 или WebM, 8–15 с, до 5 МБ, без звука. Необязательно.
-   */
-  video?: (number | null) | Media;
-  /**
-   * Показывается до загрузки видео и вместо него (экономия трафика, reduced motion).
-   */
-  poster: number | Media;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1568,8 +1548,11 @@ export interface SectionWorksSelect<T extends boolean = true> {
  * via the `definition` "about_select".
  */
 export interface AboutSelect<T extends boolean = true> {
-  hero?: T | SectionHeroSelect<T>;
+  hero?: T | SectionHeroCtaSelect<T>;
   history?: T | SectionHistorySelect<T>;
+  news?: T | SectionNewsSelect<T>;
+  salons?: T | SectionSalonsSelect<T>;
+  works?: T | SectionWorksSelect<T>;
   mission?:
     | T
     | {
@@ -1624,17 +1607,6 @@ export interface AboutSelect<T extends boolean = true> {
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "SectionHero_select".
- */
-export interface SectionHeroSelect<T extends boolean = true> {
-  label?: T;
-  title?: T;
-  text?: T;
-  video?: T;
-  poster?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

@@ -10,16 +10,16 @@ import { labelField, textField, titleField } from '@/fields/section'
  * change.
  */
 
-/** First screen (Home §6.1 п.1, About §6.2): with or without the CTA label. */
-export const heroTab = ({ cta }: { cta: boolean }): Tab => ({
+/** First screen (Home §6.1 п.1, About §6.2) with the CTA label. */
+export const heroTab = (): Tab => ({
   name: 'hero',
   label: 'Первый экран',
-  interfaceName: cta ? 'SectionHeroCta' : 'SectionHero',
+  interfaceName: 'SectionHeroCta',
   fields: [
     labelField(),
     titleField(true),
     textField(),
-    ...(cta ? [{ name: 'ctaLabel', type: 'text', label: 'Кнопка' } satisfies Field] : []),
+    { name: 'ctaLabel', type: 'text', label: 'Кнопка' },
     ...bgVideoFields(),
   ],
 })

@@ -5,12 +5,12 @@ import { globals } from '../../src/seed/data/globals'
 import { cls, settle, wheel } from '../helpers/scroll'
 
 // Contact buttons with the choice of messengers (README of the buttons, variant «Сегменты») on
-// the home page: header CTA (≥1280), hero CTA, salon card CTA. The seed has all three messengers.
-const URL = 'http://localhost:3000/'
+// «О нас»: header CTA (≥1280), hero CTA, salon card CTA. The seed has all three messengers.
+const URL = 'http://localhost:3000/about'
 const UI_KIT = 'http://localhost:3000/ui-kit'
 const EMPTY_DB = !!process.env.E2E_EMPTY_DB
-const { layout, home, salonsPage, settings } = globals(() => 0)
-const CTA = home.hero!.ctaLabel!
+const { layout, about, salonsPage, settings } = globals(() => 0)
+const CTA = about.hero!.ctaLabel!
 const SALON_CTA = salonsPage.map!.cardCtaLabel!
 const NAMES = ['MAX', 'Telegram', 'WhatsApp']
 const HREFS = (['max', 'telegram', 'whatsapp'] as const).map((kind) => settings.messengers![kind])
@@ -104,6 +104,11 @@ async function clickOpen(page: Page, c: ReturnType<typeof chooser>) {
 
 /** The salon card's button in the middle of the viewport, the page settled. */
 async function toSalonCard(page: Page) {
+  // Hydrated first (HeaderShell sets --header-h): a jump before it reads as a page opened
+  // mid-way, and the dock would miss the scroll up that follows
+  await page.waitForFunction(
+    () => document.documentElement.style.getPropertyValue('--header-h') !== '',
+  )
   await page
     .locator('.max-w-salon-card .chooser')
     .first()

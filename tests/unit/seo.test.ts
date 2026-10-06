@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { serializeJsonLd, organizationJsonLd } from '@/lib/jsonld'
+import { breadcrumbJsonLd, organizationJsonLd, serializeJsonLd } from '@/lib/jsonld'
 import { safePreviewPath } from '@/lib/preview'
 import { buildMetadata, ogImage } from '@/lib/seo'
 import { absoluteUrl, siteUrl } from '@/lib/site'
@@ -108,6 +108,23 @@ describe('JSON-LD', () => {
       },
     })
     expect(organizationJsonLd({})).not.toHaveProperty('contactPoint')
+  })
+
+  it('lists breadcrumbs from the home page with absolute URLs and positions from 1', () => {
+    vi.stubEnv('SITE_URL', 'https://mgs.example')
+    expect(
+      breadcrumbJsonLd([
+        { name: 'Главная', path: '/' },
+        { name: 'О нас', path: '/about/' },
+      ]),
+    ).toEqual({
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Главная', item: 'https://mgs.example' },
+        { '@type': 'ListItem', position: 2, name: 'О нас', item: 'https://mgs.example/about' },
+      ],
+    })
   })
 })
 
