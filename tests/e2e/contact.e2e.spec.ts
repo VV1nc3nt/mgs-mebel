@@ -115,7 +115,7 @@ test.describe('contact buttons', () => {
   test.skip(EMPTY_DB, 'needs tests/helpers/seedChrome.ts + seedHome.ts data')
 
   for (const width of [1280, 1440] as const) {
-    test(`header ${width}: grows to the left, the phone fades in place, screenshot, axe`, async ({
+    test(`header ${width}: grows to the left, the phone moves aside by the growth, axe`, async ({
       page,
     }) => {
       const errors = watchConsole(page)
@@ -129,7 +129,15 @@ test.describe('contact buttons', () => {
       const phone = header.locator('a[href^="tel:"]')
       const closed = await box(c.button)
       const phoneBox = await box(phone)
-      const logo = await box(header.getByRole('link', { name: 'MGS MEBEL — на главную' }))
+      const logoLink = header.getByRole('link', { name: 'MGS MEBEL — на главную' })
+      const nav = header.getByRole('navigation', { name: 'Разделы сайта' })
+      const logo = await box(logoLink)
+      const navBox = await box(nav)
+      // The phone's own transition (translate) runs outside the chooser
+      const phoneSettled = () =>
+        phone.evaluate((el) =>
+          Promise.all(el.getAnimations().map((animation) => animation.finished.catch(() => null))),
+        )
       await page.screenshot({
         path: `test-results/contact/header-${width}-closed.png`,
         clip: { x: width - 600, y: 0, width: 600, height: 100 },
@@ -140,11 +148,17 @@ test.describe('contact buttons', () => {
       const capsule = await box(c.capsule)
       // Right edges match: the capsule grew to the left
       expect(capsule.x + capsule.width).toBeCloseTo(closed.x + closed.width, 0)
-      // The phone is gone from view and from the Tab order, and nothing moved
-      await expect(phone).toHaveCSS('opacity', '0')
-      await expect(phone).toHaveCSS('visibility', 'hidden')
-      expect(await box(phone)).toEqual(phoneBox)
-      expect(await box(header.getByRole('link', { name: 'MGS MEBEL — на главную' }))).toEqual(logo)
+      // The phone moves left by exactly the growth of the capsule and stays clear of it; the
+      // sections and the logo stay
+      await phoneSettled()
+      const growth = capsule.width - closed.width
+      expect(growth).toBeCloseTo(30, 0)
+      const moved = await box(phone)
+      expect(moved.x).toBeCloseTo(phoneBox.x - growth, 0)
+      expect(moved.x + moved.width).toBeLessThan(capsule.x)
+      expect(await box(nav)).toEqual(navBox)
+      expect(await box(logoLink)).toEqual(logo)
+      await expect(phone).toBeVisible()
       await page.screenshot({
         path: `test-results/contact/header-${width}-open.png`,
         clip: { x: width - 600, y: 0, width: 600, height: 100 },
@@ -153,7 +167,8 @@ test.describe('contact buttons', () => {
 
       await page.keyboard.press('Escape')
       await expect(c.root).not.toHaveAttribute('data-open')
-      await expect(phone).toHaveCSS('visibility', 'visible')
+      await phoneSettled()
+      expect(await box(phone)).toEqual(phoneBox)
       expect(await cls(page)).toBeLessThan(0.1)
       expect(errors).toEqual([])
     })

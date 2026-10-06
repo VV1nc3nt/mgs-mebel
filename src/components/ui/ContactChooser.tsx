@@ -33,6 +33,11 @@ export type ContactChooserProps = {
   arrow: boolean
   /** Which way the open capsule grows: `start` — to the left (the header), `end` — to the right. */
   grow: 'start' | 'end'
+  /**
+   * The header: while open, the elements marked `chooser-shifted` in the nearest
+   * `[data-chooser-shift]` move aside by the growth of the capsule (transform only).
+   */
+  shiftNeighbours?: boolean
 }
 
 const WIDTH = { auto: '', full: 'w-full', mobile: 'w-full md:w-auto' } as const
@@ -68,6 +73,7 @@ export function ContactChooser({
   tone,
   arrow,
   grow,
+  shiftNeighbours = false,
 }: ContactChooserProps) {
   const { open, rootRef, groupRef, buttonRef, onButtonClick, onPick, onKeyDown } = useChooser()
   const [width, setWidth] = useState<number | null>(null)
@@ -86,6 +92,16 @@ export function ContactChooser({
   // (100%), so a late change of that place (a font loading) never leaves them a frame behind
   const geometry =
     open && measured ? chooserGeometry({ width, height: size, n: messengers.length, open }) : null
+  const growth = geometry && width !== null ? geometry.width - width : 0
+
+  useEffect(() => {
+    if (!shiftNeighbours) return
+    const row = rootRef.current?.closest<HTMLElement>('[data-chooser-shift]')
+    if (!row) return
+    row.style.setProperty('--chooser-shift', String(growth))
+    row.toggleAttribute('data-chooser-open', growth > 0)
+  }, [shiftNeighbours, growth, rootRef])
+
   const widthKey = fullWidth === 'mobile' ? 'mobile' : fullWidth ? 'full' : 'auto'
 
   return (

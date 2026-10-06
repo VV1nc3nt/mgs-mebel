@@ -19,6 +19,8 @@ type Props = {
   arrow?: boolean
   /** Which way the open choice grows: `start` — to the left, `end` — to the right. */
   grow?: 'start' | 'end'
+  /** Moves the neighbours aside by the growth of the capsule (ContactChooser). */
+  shiftNeighbours?: boolean
 }
 
 const LINK_WIDTH = { true: 'full', false: 'auto', mobile: 'mobile-full' } as const
@@ -36,6 +38,7 @@ export function ContactButton({
   tone = 'accent',
   arrow = false,
   grow = 'end',
+  shiftNeighbours = false,
 }: Props) {
   const label = caption?.trim()
   const [first] = messengers
@@ -65,6 +68,7 @@ export function ContactButton({
       tone={tone}
       arrow={arrow}
       grow={grow}
+      shiftNeighbours={shiftNeighbours}
     />
   )
 }

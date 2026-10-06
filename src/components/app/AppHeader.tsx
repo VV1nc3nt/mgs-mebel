@@ -25,14 +25,19 @@ export function AppHeader({ chrome }: { chrome: SiteChrome }) {
           {phone && (
             <a
               href={phone.href}
-              // Fades while the CTA's choice is open: the capsule grows over the number
-              className={`under-chooser relative text-button whitespace-nowrap hover:text-accent ${HIT_AREA_Y}`}
+              className={`relative text-button whitespace-nowrap chooser-shifted hover:text-accent ${HIT_AREA_Y}`}
             >
               {phone.display}
             </a>
           )}
           {/* At the right margin: the open choice grows to the left */}
-          <ContactButton caption={ctaLabel} messengers={messengers} size={44} grow="start" />
+          <ContactButton
+            caption={ctaLabel}
+            messengers={messengers}
+            size={44}
+            grow="start"
+            shiftNeighbours
+          />
         </div>
       )}
       {/* Without sections there is nothing to open: an empty slot keeps the logo centred */}

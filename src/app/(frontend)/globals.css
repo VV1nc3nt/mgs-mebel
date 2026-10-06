@@ -656,37 +656,25 @@
   height: calc(var(--capsule-h) * 1px);
 }
 
-@utility chooser-button {
-  width: calc(var(--button-w) * 1px);
-}
-
 /*
- * A neighbour that the open capsule grows onto (the header phone, left of the CTA) fades out while
- * the choice is open and leaves the Tab order once faded; it stays in place, nothing shifts.
+ * Neighbours of the header CTA: moved aside by the growth of its open capsule (--chooser-shift,
+ * unitless, set by ContactChooser on the row), with the timing of the capsule (variant B).
  */
-@utility under-chooser {
+@utility chooser-shifted {
+  translate: calc(var(--chooser-shift, 0) * -1px) 0;
   transition:
-    opacity var(--motion-chooser-out) var(--ease-soft),
-    visibility 0s,
+    translate var(--motion-chooser-out) var(--ease-soft),
     color var(--default-transition-duration) ease-out;
-  &:has(~ [data-open]) {
-    opacity: 0;
-    visibility: hidden;
-    transition:
-      opacity var(--motion-dock) var(--ease-soft),
-      visibility 0s var(--motion-dock),
-      color var(--default-transition-duration) ease-out;
+  [data-chooser-open] & {
+    transition-duration: var(--motion-dock), var(--default-transition-duration);
   }
   @media (prefers-reduced-motion: reduce) {
-    &,
-    &:has(~ [data-open]) {
-      transition-timing-function: ease-out;
-      transition-duration: var(--motion-fade-reduced), 0s, var(--default-transition-duration);
-    }
-    &:has(~ [data-open]) {
-      transition-delay: 0s, var(--motion-fade-reduced), 0s;
-    }
+    transition: color var(--default-transition-duration) ease-out;
   }
+}
+
+@utility chooser-button {
+  width: calc(var(--button-w) * 1px);
 }
 
 /*
