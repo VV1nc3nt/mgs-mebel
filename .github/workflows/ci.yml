@@ -14,6 +14,24 @@ concurrency:
 
 env:
   NEXT_TELEMETRY_DISABLED: 1
+  # E2E specs per shard, balanced by run time; shard 1 also runs the 404 check and the @empty pass.
+  # Every tests/e2e/*.spec.ts goes into exactly one list (checked by the E2E job).
+  E2E_SHARD_1: >-
+    tests/e2e/menu.e2e.spec.ts
+    tests/e2e/ui-kit.e2e.spec.ts
+  E2E_SHARD_2: >-
+    tests/e2e/header.e2e.spec.ts
+    tests/e2e/layout.e2e.spec.ts
+    tests/e2e/dock.e2e.spec.ts
+    tests/e2e/contact.e2e.spec.ts
+    tests/e2e/home.e2e.spec.ts
+    tests/e2e/not-found.e2e.spec.ts
+    tests/e2e/preview.e2e.spec.ts
+    tests/e2e/news-slug.e2e.spec.ts
+  # Scaffold specs, not run in CI.
+  E2E_NOT_IN_CI: >-
+    tests/e2e/admin.e2e.spec.ts
+    tests/e2e/frontend.e2e.spec.ts
 
 jobs:
   build:
@@ -104,10 +122,14 @@ jobs:
 
       - run: pnpm test:int
 
-  e2e:
-    name: E2E (Playwright on the standalone build)
+  e2e-shard:
+    name: E2E ${{ matrix.shard }}/2 (Playwright on the standalone build)
     needs: build
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     services:
       postgres:
         image: postgres:17-alpine
@@ -142,12 +164,28 @@ jobs:
           name: standalone
       - run: mkdir -p .next && tar -xf standalone.tar -C .next
 
+      # Browsers are cached per Playwright version; system packages are not, so they are
+      # installed on a cache hit too.
+      - name: Playwright version
+        id: playwright
+        run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        id: browsers
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      - if: steps.browsers.outputs.cache-hit != 'true'
+        run: pnpm exec playwright install --with-deps chromium
+      - if: steps.browsers.outputs.cache-hit == 'true'
+        run: pnpm exec playwright install-deps chromium
+
       # The server applies migrations on start (prodMigrations); no seed here, so media is empty
       # and the page must degrade gracefully.
       # /ui-kit: notFound() → (frontend)/not-found.tsx; an unmatched URL → global-not-found.tsx.
       # notFound() before the shell leaves the HTML body to the client, so only its <title> is
       # checked here; the unmatched URL is rendered on the server in full.
       - name: 404 pages without ENABLE_UI_KIT
+        if: matrix.shard == 1
         run: |
           PORT=3000 HOSTNAME=127.0.0.1 node .next/standalone/server.js > server.log 2>&1 &
           for i in $(seq 30); do curl -sf -o /dev/null http://127.0.0.1:3000/healthz && break; sleep 1; done
@@ -162,30 +200,66 @@ jobs:
           kill %1
           if [ "$fail" != 0 ]; then cat server.log; exit 1; fi
 
-      - run: pnpm exec playwright install --with-deps chromium
-
       # Fresh database: header and footer must render from empty globals.
       - name: Layout on empty globals
+        if: matrix.shard == 1
         run: pnpm test:e2e tests/e2e/layout.e2e.spec.ts tests/e2e/dock.e2e.spec.ts tests/e2e/not-found.e2e.spec.ts tests/e2e/preview.e2e.spec.ts tests/e2e/home.e2e.spec.ts tests/e2e/news-slug.e2e.spec.ts --grep @empty --reporter=list
         env:
           E2E_EMPTY_DB: 1
 
+      # The data cache of the empty-database server run is dropped so the fixture texts are read.
+      - name: Drop the data cache of the empty run
+        if: matrix.shard == 1
+        run: rm -rf .next/standalone/.next/cache
+
+      # No server has run on this database yet: the fixture needs the tables.
+      - name: Migrations
+        if: matrix.shard != 1
+        run: pnpm payload migrate
+
       # Layout and settings texts from the seed, no media, and an editor account; the home page
       # with generated images (seedHome). NODE_ENV=production keeps Payload from
       # pushing the schema, which would make the next server start ask about migrations.
-      # The data cache of the previous server run is dropped so the new texts are read.
       - name: Layout and settings fixture
         run: |
-          rm -rf .next/standalone/.next/cache
           pnpm payload run tests/helpers/seedChrome.ts
           pnpm payload run tests/helpers/seedHome.ts
         env:
           NODE_ENV: production
 
-      - run: pnpm test:e2e tests/e2e/ui-kit.e2e.spec.ts tests/e2e/layout.e2e.spec.ts tests/e2e/header.e2e.spec.ts tests/e2e/menu.e2e.spec.ts tests/e2e/dock.e2e.spec.ts tests/e2e/contact.e2e.spec.ts tests/e2e/not-found.e2e.spec.ts tests/e2e/preview.e2e.spec.ts tests/e2e/home.e2e.spec.ts tests/e2e/news-slug.e2e.spec.ts --grep-invert @empty --reporter=list
+      - name: E2E shard ${{ matrix.shard }}
+        run: |
+          files="E2E_SHARD_${{ matrix.shard }}"
+          pnpm test:e2e ${!files} --grep-invert @empty --reporter=list
       - if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: e2e-screenshots
+          name: e2e-screenshots-${{ matrix.shard }}
           path: test-results/
           retention-days: 7
+
+  # One status for all shards; also fails when a spec is in no shard list or in both.
+  e2e:
+    name: E2E
+    needs: e2e-shard
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: tests/e2e
+      - name: Every spec in exactly one shard
+        run: |
+          listed=$(printf '%s\n' $E2E_SHARD_1 $E2E_SHARD_2 $E2E_NOT_IN_CI | sort)
+          dupes=$(printf '%s\n' "$listed" | uniq -d)
+          missing=$(comm -23 <(ls tests/e2e/*.spec.ts | sort) <(printf '%s\n' "$listed" | sort -u))
+          unknown=$(comm -13 <(ls tests/e2e/*.spec.ts | sort) <(printf '%s\n' "$listed" | sort -u))
+          fail=0
+          for f in $missing; do echo "::error file=$f::$f is in no E2E shard: add it to E2E_SHARD_1 or E2E_SHARD_2 in .github/workflows/ci.yml"; fail=1; done
+          for f in $dupes; do echo "::error file=$f::$f is listed more than once in E2E_SHARD_1 / E2E_SHARD_2 / E2E_NOT_IN_CI"; fail=1; done
+          for f in $unknown; do echo "::error::$f is listed in .github/workflows/ci.yml but does not exist"; fail=1; done
+          exit $fail
+      - name: All shards passed
+        run: |
+          echo "e2e-shard: ${{ needs.e2e-shard.result }}"
+          [ "${{ needs.e2e-shard.result }}" = success ]
