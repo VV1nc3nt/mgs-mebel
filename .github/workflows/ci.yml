@@ -19,9 +19,9 @@ env:
   E2E_SHARD_1: >-
     tests/e2e/menu.e2e.spec.ts
     tests/e2e/ui-kit.e2e.spec.ts
-    tests/e2e/layout.e2e.spec.ts
   E2E_SHARD_2: >-
     tests/e2e/header.e2e.spec.ts
+    tests/e2e/layout.e2e.spec.ts
     tests/e2e/dock.e2e.spec.ts
     tests/e2e/contact.e2e.spec.ts
     tests/e2e/home.e2e.spec.ts
