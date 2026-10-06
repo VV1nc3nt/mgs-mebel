@@ -600,14 +600,15 @@
 
 @utility chooser-motion {
   transition-property:
-    width, margin, padding, max-width, scale, rotate, opacity, background-color, border-color;
+    width, height, margin, padding, max-width, scale, rotate, opacity, background-color,
+    border-color;
   transition-duration:
     var(--chooser-move), var(--chooser-move), var(--chooser-move), var(--chooser-move),
-    var(--chooser-move), var(--chooser-move), var(--chooser-fade),
+    var(--chooser-move), var(--chooser-move), var(--chooser-move), var(--chooser-fade),
     var(--default-transition-duration), var(--default-transition-duration);
   transition-timing-function:
     var(--ease-soft), var(--ease-soft), var(--ease-soft), var(--ease-soft), var(--ease-soft),
-    var(--ease-soft), ease, ease-out, ease-out;
+    var(--ease-soft), var(--ease-soft), ease, ease-out, ease-out;
   @media (prefers-reduced-motion: reduce) {
     scale: none !important;
     rotate: none !important;
@@ -624,7 +625,7 @@
   [data-open] & {
     --chooser-delay: calc(var(--motion-chooser-stagger) * var(--i));
     transition-delay:
-      var(--chooser-delay), var(--chooser-delay), 0ms, 0ms, var(--chooser-delay),
+      var(--chooser-delay), 0ms, var(--chooser-delay), 0ms, 0ms, var(--chooser-delay),
       var(--chooser-delay), var(--chooser-delay), 0ms, 0ms;
   }
   @media (prefers-reduced-motion: reduce) {
@@ -643,6 +644,37 @@
   [data-open] & {
     max-width: 0;
   }
+}
+
+/*
+ * Contact button capsule (README of the buttons §4): its size and the width of its button, unitless
+ * from lib/chooserGeometry.ts. Without them (before the first measurement) the capsule simply covers
+ * the place of the closed button.
+ */
+@utility chooser-capsule {
+  width: calc(var(--capsule-w) * 1px);
+  height: calc(var(--capsule-h) * 1px);
+}
+
+/*
+ * Neighbours of the header CTA: moved aside by the growth of its open capsule (--chooser-shift,
+ * unitless, set by ContactChooser on the row), with the timing of the capsule (variant B).
+ */
+@utility chooser-shifted {
+  translate: calc(var(--chooser-shift, 0) * -1px) 0;
+  transition:
+    translate var(--motion-chooser-out) var(--ease-soft),
+    color var(--default-transition-duration) ease-out;
+  [data-chooser-open] & {
+    transition-duration: var(--motion-dock), var(--default-transition-duration);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition: color var(--default-transition-duration) ease-out;
+  }
+}
+
+@utility chooser-button {
+  width: calc(var(--button-w) * 1px);
 }
 
 /*

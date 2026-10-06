@@ -49,13 +49,10 @@ describe('AppHeader', () => {
     expect(current.textContent).toBe('Новости')
   })
 
-  it('leads the CTA to the first messenger in order and names it', () => {
+  it('the CTA opens the choice of messengers', () => {
     render(header(full))
-    const cta = screen.getByRole('link', { name: 'Рассчитать проект в MAX' })
-    expect(cta.getAttribute('href')).toBe(
-      'https://max.ru/join/NT3_4HMbMu7LfvccQtmD3eV4-uv7nvlv6tv-Bm2mgaQ',
-    )
-    expect(cta.getAttribute('target')).toBe('_blank')
+    const cta = screen.getByRole('button', { name: 'Рассчитать проект — выбрать мессенджер' })
+    expect(cta.getAttribute('aria-expanded')).toBe('false')
     expect(screen.getByRole('link', { name: '8 800 100-16-58' }).getAttribute('href')).toBe(
       'tel:88001001658',
     )

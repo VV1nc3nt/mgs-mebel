@@ -1,7 +1,7 @@
 import { BgVideo } from '@/components/ui/BgVideo'
-import { Button } from '@/components/ui/Button'
+import { ContactButton } from '@/components/ui/ContactButton'
 import { SectionLabel } from '@/components/ui/SectionLabel'
-import { contactLinkLabel, type Messenger } from '@/lib/chrome'
+import type { Messenger } from '@/lib/chrome'
 import { asMedia } from '@/lib/media'
 import type { SectionHeroCta } from '@/payload-types'
 
@@ -21,8 +21,6 @@ export function HeroSection({ hero, messengers }: Props) {
   if (!title) return null
   const poster = asMedia(hero?.poster)
   const ctaLabel = hero?.ctaLabel?.trim()
-  // Until the contact buttons get the choice: the first messenger in order
-  const action = messengers[0]
 
   return (
     <section
@@ -40,17 +38,15 @@ export function HeroSection({ hero, messengers }: Props) {
           {hero?.text && (
             <p className="max-w-hero-text text-body text-pretty text-text-2">{hero.text}</p>
           )}
-          {ctaLabel && action && (
+          {ctaLabel && messengers.length > 0 && (
             <div className="flex pt-1.5">
-              <Button
-                href={action.href}
+              <ContactButton
+                caption={ctaLabel}
+                messengers={messengers}
                 size={52}
-                width="mobile-full"
+                fullWidth="mobile"
                 arrow
-                aria-label={contactLinkLabel(ctaLabel, action)}
-              >
-                {ctaLabel}
-              </Button>
+              />
             </div>
           )}
         </div>

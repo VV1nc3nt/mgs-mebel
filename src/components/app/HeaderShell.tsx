@@ -111,7 +111,11 @@ export function HeaderShell({ children }: { children: ReactNode }) {
         className={cn('z-header site-header', hero ? 'absolute inset-x-0 top-0' : 'relative')}
       >
         <div ref={barRef} className="header-bar">
-          <div className="page-container flex items-center justify-between gap-6 py-5">
+          {/* The CTA's open choice moves the phone aside (chooser-shifted) */}
+          <div
+            data-chooser-shift=""
+            className="page-container flex items-center justify-between gap-6 py-5"
+          >
             {children}
           </div>
         </div>

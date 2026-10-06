@@ -1,6 +1,6 @@
-import { Button } from '@/components/ui/Button'
+import { ContactButton } from '@/components/ui/ContactButton'
 import { HIT_AREA_Y } from '@/components/ui/hitArea'
-import { contactLinkLabel, type SiteChrome } from '@/lib/chrome'
+import type { SiteChrome } from '@/lib/chrome'
 import { BackLink } from './BackLink'
 import { HeaderNav } from './HeaderNav'
 import { HeaderShell } from './HeaderShell'
@@ -13,9 +13,7 @@ import { MenuButton } from './MenuButton'
  */
 export function AppHeader({ chrome }: { chrome: SiteChrome }) {
   const { phone, ctaLabel, messengers } = chrome
-  // Until the contact buttons get the choice: the first messenger in order
-  const action = messengers[0]
-  const cta = ctaLabel && action ? { label: ctaLabel, action } : undefined
+  const cta = Boolean(ctaLabel && messengers.length)
 
   return (
     <HeaderShell>
@@ -27,20 +25,19 @@ export function AppHeader({ chrome }: { chrome: SiteChrome }) {
           {phone && (
             <a
               href={phone.href}
-              className={`relative text-button whitespace-nowrap transition-colors hover:text-accent ${HIT_AREA_Y}`}
+              className={`relative text-button whitespace-nowrap chooser-shifted hover:text-accent ${HIT_AREA_Y}`}
             >
               {phone.display}
             </a>
           )}
-          {cta && (
-            <Button
-              href={cta.action.href}
-              size={44}
-              aria-label={contactLinkLabel(cta.label, cta.action)}
-            >
-              {cta.label}
-            </Button>
-          )}
+          {/* At the right margin: the open choice grows to the left */}
+          <ContactButton
+            caption={ctaLabel}
+            messengers={messengers}
+            size={44}
+            grow="start"
+            shiftNeighbours
+          />
         </div>
       )}
       {/* Without sections there is nothing to open: an empty slot keeps the logo centred */}

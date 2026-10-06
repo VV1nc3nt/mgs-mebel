@@ -145,7 +145,7 @@ test.describe('layout: header and footer', () => {
         'MGS MEBEL — на главную',
         ...Object.values(layout.nav).map((item) => item.shortLabel ?? item.label),
         settings.contacts.hotlinePhone,
-        `${layout.header!.ctaLabel} в MAX`,
+        `${layout.header!.ctaLabel} — выбрать мессенджер`,
       ])
     })
 
@@ -154,13 +154,6 @@ test.describe('layout: header and footer', () => {
       await page.keyboard.press('Tab')
       await page.keyboard.press('Enter')
       await expect(page.locator('main#content')).toBeFocused()
-    })
-
-    test('CTA opens the first messenger in order (MAX) in a new tab', async ({ page }) => {
-      await page.goto(`${BASE}/salons`)
-      const cta = page.getByRole('link', { name: `${layout.header!.ctaLabel} в MAX` })
-      await expect(cta).toHaveAttribute('href', settings.messengers!.max!)
-      await expect(cta).toHaveAttribute('target', '_blank')
     })
   })
 })

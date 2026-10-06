@@ -182,7 +182,7 @@ jobs:
         env:
           NODE_ENV: production
 
-      - run: pnpm test:e2e tests/e2e/ui-kit.e2e.spec.ts tests/e2e/layout.e2e.spec.ts tests/e2e/header.e2e.spec.ts tests/e2e/menu.e2e.spec.ts tests/e2e/dock.e2e.spec.ts tests/e2e/not-found.e2e.spec.ts tests/e2e/preview.e2e.spec.ts tests/e2e/home.e2e.spec.ts tests/e2e/news-slug.e2e.spec.ts --grep-invert @empty --reporter=list
+      - run: pnpm test:e2e tests/e2e/ui-kit.e2e.spec.ts tests/e2e/layout.e2e.spec.ts tests/e2e/header.e2e.spec.ts tests/e2e/menu.e2e.spec.ts tests/e2e/dock.e2e.spec.ts tests/e2e/contact.e2e.spec.ts tests/e2e/not-found.e2e.spec.ts tests/e2e/preview.e2e.spec.ts tests/e2e/home.e2e.spec.ts tests/e2e/news-slug.e2e.spec.ts --grep-invert @empty --reporter=list
       - if: always()
         uses: actions/upload-artifact@v7
         with:
