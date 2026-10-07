@@ -572,11 +572,57 @@ test.describe('home', () => {
       await page.mouse.click(x, y)
       await expect.poll(() => segment(page)).toBe(1)
       await expect(next).toBeFocused()
-      // The pointer leaves the hero (hover pauses on hover devices); the focus stays on →
-      await page.mouse.move(195, 1)
+      // The pointer stays over → (hover does not pause), the focus too (not from the keyboard)
       await expect.poll(() => segment(page), { timeout: 5000 }).toBe(0)
       await expect(next).toBeFocused()
     })
+
+    for (const [width, height] of [
+      [375, 667],
+      [390, 844],
+      [430, 932],
+    ] as const) {
+      test(`${width}: the progress line sits right above the label of either segment`, async ({
+        page,
+      }) => {
+        await page.setViewportSize({ width, height })
+        await page.goto(`${BASE}/`)
+        await hydrated(page)
+        const hero = heroSection(page)
+        /** Visible progress row of the active block: «01 … 02», the gap down to its label. */
+        const row = () =>
+          hero.locator('.hero-text:not([data-inactive])').evaluate((block) => {
+            const line = block.firstElementChild!
+            const label = line.nextElementSibling!
+            const numbers = [...line.children]
+              .filter((el) => el.textContent)
+              .map((el) => [el.textContent, getComputedStyle(el).color])
+            return {
+              gap: label.getBoundingClientRect().top - line.getBoundingClientRect().bottom,
+              numbers,
+            }
+          })
+        const first = await row()
+        const next = hero.getByRole('button', { name: 'Следующий раздел' })
+        const { x, y } = await center(next)
+        await page.mouse.click(x, y)
+        await expect.poll(() => segment(page)).toBe(1)
+        const second = await row()
+        expect(first.gap).toBeGreaterThan(0)
+        expect(second.gap).toBe(first.gap)
+        // «01 … 02»: the active number in accent, the other one dimmed
+        expect(first.numbers.map(([text]) => text)).toEqual(['01', '02'])
+        expect(second.numbers.map(([text]) => text)).toEqual(['01', '02'])
+        expect(first.numbers[0]![1]).toBe(second.numbers[1]![1])
+        expect(first.numbers[1]![1]).toBe(second.numbers[0]![1])
+        expect(first.numbers[0]![1]).not.toBe(first.numbers[1]![1])
+        // The link to «О нас» stays last, inside the hero
+        const link = (await hero.getByRole('link', { name: HERO.linkLabel! }).boundingBox())!
+        const box = (await hero.boundingBox())!
+        expect(link.height).toBeGreaterThanOrEqual(44)
+        expect(link.y + link.height).toBeLessThanOrEqual(box.y + box.height)
+      })
+    }
 
     test.describe('reduced motion', () => {
       test.use({ viewport: { width: 1440, height: 900 } })

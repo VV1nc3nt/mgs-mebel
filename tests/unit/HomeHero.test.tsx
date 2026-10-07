@@ -17,8 +17,9 @@ const section = (container: HTMLElement) => container.querySelector('section[dat
 const texts = (container: HTMLElement) => [...container.querySelectorAll('.hero-text')]
 const active = (container: HTMLElement) =>
   texts(container).findIndex((block) => !block.hasAttribute('data-inactive'))
-/** The visible progress fill: the mobile line (the rail is hidden by CSS, not in jsdom). */
-const progress = (container: HTMLElement) => container.querySelector('.hero-progress-x')!
+/** The mobile progress fill of the active segment (the rail is hidden by CSS, not in jsdom). */
+const progress = (container: HTMLElement) =>
+  texts(container)[active(container)]!.querySelector('.hero-progress-x')!
 
 describe('HomeHero', () => {
   it('is not rendered without a title in segment 01', () => {
@@ -111,6 +112,33 @@ describe('HomeHero', () => {
     expect(progress(container)).not.toBe(manual)
     fireEvent.animationEnd(progress(container))
     expect(active(container)).toBe(0)
+  })
+
+  it('mobile progress: in each block above the label, «01 … 02» with the own number lit', () => {
+    const { container } = render(<HomeHero hero={hero} messengers={[whatsapp]} />)
+    texts(container).forEach((block, i) => {
+      const row = block.firstElementChild!
+      expect(row.getAttribute('aria-hidden')).toBe('true')
+      expect(row.nextElementSibling?.textContent).toBe(`#${slides[i]!.label}`)
+      const [first, , last] = [...row.children]
+      expect([first!.textContent, last!.textContent]).toEqual(['01', '02'])
+      expect([first, last].map((n) => n!.classList.contains('text-accent'))).toEqual([
+        i === 0,
+        i === 1,
+      ])
+    })
+  })
+
+  it('the outgoing fill stays (frozen, fading out); only the active one switches', () => {
+    const { container } = render(<HomeHero hero={hero} messengers={[whatsapp]} />)
+    const outgoing = progress(container)
+    fireEvent.animationEnd(outgoing)
+    expect(active(container)).toBe(1)
+    // The same element in the now inactive block: no remount, so no jump to empty
+    expect(texts(container)[0]!.querySelector('.hero-progress-x')).toBe(outgoing)
+    // Its animationend does nothing
+    fireEvent.animationEnd(outgoing)
+    expect(active(container)).toBe(1)
   })
 
   it('pauses the progress off screen, in a hidden tab and under an overlay', () => {
