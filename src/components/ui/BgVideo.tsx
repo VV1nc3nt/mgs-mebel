@@ -21,12 +21,19 @@ export type BgVideoProps = {
   imageSize?: ImageSizeName
   /** Hero: the poster is the LCP image, the video starts loading at once. */
   priority?: boolean
+  /** Plays only while active (a hero slide); default true. */
+  active?: boolean
+  /** No video source until the first time it is active. */
+  lazySrc?: boolean
+  /** A new value rewinds the video to the start. */
+  restartKey?: string | number
   className?: string
 }
 
 /**
- * Decorative background video: autoplay, muted, loop, no controls, no pause button.
- * Fills the nearest positioned parent. The poster is rendered on the server.
+ * Decorative background video: muted, loop, no controls, no pause button; started from JS and
+ * replaced by the poster when it cannot play (README §1.3). Fills the nearest positioned parent.
+ * The poster is rendered on the server.
  */
 export function BgVideo({
   poster,
@@ -34,6 +41,9 @@ export function BgVideo({
   sizes,
   imageSize = 'hero',
   priority = false,
+  active,
+  lazySrc,
+  restartKey,
   className,
 }: BgVideoProps) {
   const image = imageSource(poster, imageSize)
@@ -56,7 +66,15 @@ export function BgVideo({
           style={{ objectPosition: focalPosition(poster) }}
         />
       )}
-      {source && <BgVideoPlayer {...source} priority={priority} />}
+      {source && (
+        <BgVideoPlayer
+          {...source}
+          priority={priority}
+          active={active}
+          lazySrc={lazySrc}
+          restartKey={restartKey}
+        />
+      )}
     </div>
   )
 }

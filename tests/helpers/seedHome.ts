@@ -71,7 +71,8 @@ const upsertImage = async (payload: Payload, image: ImageSpec) => {
 /**
  * The smallest file the upload accepts as an MP4: an `ftyp` box (ISO base media, brand isom)
  * and an empty `free` box after it (a file of `ftyp` alone is rejected). Enough for the upload
- * checks and the «video project» markers; it is never played.
+ * checks, the «video project» markers and the background video fallback of «О нас» (whether a
+ * browser can play it depends on its codecs, so the fallback checks intercept the request).
  */
 const MP4 = Buffer.concat([
   Buffer.from([0, 0, 0, 24]),
@@ -83,7 +84,7 @@ const MP4 = Buffer.concat([
 ])
 const VIDEO_FILE = 'e2e-reel.mp4'
 
-/** The video of the reels projects, or null if the upload rejects the minimal file. */
+/** The video of the reels projects and of the «О нас» hero, or null if the upload rejects it. */
 const upsertVideo = async (payload: Payload) => {
   const existing = await findMedia(payload, VIDEO_FILE)
   if (existing) return existing
@@ -123,7 +124,8 @@ try {
     main: await upsertImage(payload, IMAGES.main),
     secondary: await upsertImage(payload, IMAGES.secondary),
   }
-  // Seed media keys: U1 — hero poster, U2 / U3 — history photos; no background video here.
+  const videoId = await upsertVideo(payload)
+  // Seed media keys: U1 — hero poster, U2 / U3 — history photos; no background video on home.
   const byKey: Record<string, number> = { U1: ids.poster, U2: ids.main, U3: ids.secondary }
   const { home, about, stats, salonsPage } = globals((key) => byKey[key] ?? ids.poster)
   const published = { ...home, hero: { ...home.hero, video: null } }
@@ -134,12 +136,13 @@ try {
     data: { ...published, _status: 'published' },
     depth: 0,
   })
-  // «О нас»: the former home page, published without a draft; no background videos here.
+  // «О нас»: the former home page, published without a draft. Only the hero has a background
+  // video — the minimal file, for the poster fallback checks.
   await payload.updateGlobal({
     slug: 'about',
     data: {
       ...about,
-      hero: { ...about.hero, video: null },
+      hero: { ...about.hero, video: videoId },
       mission: { ...about.mission, video: null },
       exhibitions: {
         ...about.exhibitions,
@@ -164,7 +167,6 @@ try {
 
   // Seed media keys: V* / H* — videos, the rest — photos.
   const photoIds = await Promise.all(PHOTOS.map((image) => upsertImage(payload, image)))
-  const videoId = await upsertVideo(payload)
   const photoOf = (key: string) =>
     photoIds[[...key].reduce((sum, c) => sum + c.charCodeAt(0), 0) % photoIds.length]!
   const media = (key: string) => (/^[VH]\d/.test(key) && videoId ? videoId : photoOf(key))

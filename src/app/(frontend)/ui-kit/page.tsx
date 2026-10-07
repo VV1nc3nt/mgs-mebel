@@ -404,7 +404,7 @@ export default async function UiKitPage() {
       </Section>
 
       <Section title="BgVideo">
-        <Row note="Hero: постер — LCP (priority), видео стартует сразу. Reduced motion / Save-Data / ошибка автоплея — только постер.">
+        <Row note="Hero: постер — LCP (priority), видео стартует сразу. Reduced motion / Save-Data / медленная сеть / видео не стартовало — только постер.">
           <div className="relative isolate flex h-160 w-full flex-col justify-end overflow-hidden rounded-media p-5 md:h-195 md:p-8">
             {hero ? (
               <BgVideo

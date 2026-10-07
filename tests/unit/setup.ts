@@ -5,6 +5,7 @@ import { afterEach, beforeEach, vi } from 'vitest'
 export const env = {
   reducedMotion: false,
   saveData: false,
+  effectiveType: '4g',
   observers: [] as { callback: IntersectionObserverCallback; elements: Element[] }[],
 }
 
@@ -21,6 +22,7 @@ export const intersect = (isIntersecting: boolean) => {
 beforeEach(() => {
   env.reducedMotion = false
   env.saveData = false
+  env.effectiveType = '4g'
   env.observers = []
 
   window.matchMedia = vi.fn((query: string) => ({
@@ -36,7 +38,11 @@ beforeEach(() => {
 
   Object.defineProperty(navigator, 'connection', {
     configurable: true,
-    get: () => Object.assign(new EventTarget(), { saveData: env.saveData }),
+    get: () =>
+      Object.assign(new EventTarget(), {
+        saveData: env.saveData,
+        effectiveType: env.effectiveType,
+      }),
   })
 
   window.IntersectionObserver = class {

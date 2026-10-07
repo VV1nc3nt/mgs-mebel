@@ -1,6 +1,8 @@
 import { useSyncExternalStore } from 'react'
 
-type Connection = EventTarget & { saveData?: boolean }
+import { isLiteNetwork, type NetworkInfo } from '@/lib/bgVideo'
+
+type Connection = EventTarget & NetworkInfo
 
 const connection = (): Connection | undefined =>
   (navigator as Navigator & { connection?: Connection }).connection
@@ -11,11 +13,17 @@ const subscribe = (onChange: () => void) => {
   return () => conn?.removeEventListener('change', onChange)
 }
 
-/** Data Saver (`navigator.connection.saveData`). `true` on the server and during hydration. */
-export function useSaveData(): boolean {
+/**
+ * Data Saver or a slow connection (`navigator.connection`, `isLiteNetwork`). `true` on the server
+ * and during hydration (no video before hydration).
+ */
+export function useLiteNetwork(): boolean {
   return useSyncExternalStore(
     subscribe,
-    () => connection()?.saveData === true,
+    () => {
+      const conn = connection()
+      return conn ? isLiteNetwork(conn) : false
+    },
     () => true,
   )
 }
