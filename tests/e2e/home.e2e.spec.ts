@@ -616,11 +616,24 @@ test.describe('home', () => {
         expect(first.numbers[0]![1]).toBe(second.numbers[1]![1])
         expect(first.numbers[1]![1]).toBe(second.numbers[0]![1])
         expect(first.numbers[0]![1]).not.toBe(first.numbers[1]![1])
-        // The link to «О нас» stays last, inside the hero
-        const link = (await hero.getByRole('link', { name: HERO.linkLabel! }).boundingBox())!
+        // The link to «О нас» stays last: 32 as drawn, 14 under the arrows, 4 above the hero bottom
+        const linkLocator = hero.getByRole('link', { name: HERO.linkLabel! })
+        const link = (await linkLocator.boundingBox())!
         const box = (await hero.boundingBox())!
-        expect(link.height).toBeGreaterThanOrEqual(44)
-        expect(link.y + link.height).toBeLessThanOrEqual(box.y + box.height)
+        const arrow = (await next.boundingBox())!
+        expect(Math.round(link.height)).toBe(32)
+        expect(Math.round(link.y - (arrow.y + arrow.height))).toBe(14)
+        expect(Math.round(box.y + box.height - (link.y + link.height))).toBe(4)
+        // Hit area ≥ 44 from ::before: its top edge, above the link box, still hits the link
+        const hit = await linkLocator.evaluate((el) => {
+          const before = getComputedStyle(el, '::before')
+          const rect = el.getBoundingClientRect()
+          const top = rect.top + rect.height / 2 - parseFloat(before.height) / 2 + 1
+          const target = document.elementFromPoint(rect.left + rect.width / 2, top)
+          return { height: parseFloat(before.height), hits: !!target && el.contains(target) }
+        })
+        expect(hit.height).toBeGreaterThanOrEqual(44)
+        expect(hit.hits).toBe(true)
       })
     }
 

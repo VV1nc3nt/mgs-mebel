@@ -1,7 +1,9 @@
 import Link from 'next/link'
 
 import { ContactButton } from '@/components/ui/ContactButton'
+import { HIT_AREA_Y } from '@/components/ui/hitArea'
 import type { Messenger } from '@/lib/chrome'
+import { cn } from '@/lib/cn'
 import type { SectionHeroSlides } from '@/payload-types'
 import { HomeHeroStage, type HeroSegment } from './HomeHeroStage'
 
@@ -56,7 +58,11 @@ export function HomeHero({ hero, messengers, idPrefix = 'home' }: Props) {
         linkLabel && (
           <Link
             href="/about"
-            className="flex min-h-hit basis-full items-center justify-center gap-2.5 text-button transition-colors hover:text-accent md:basis-auto"
+            // Mobile: as high as drawn (the 32 arrow circle), the 44 hit area from ::before
+            className={cn(
+              'relative flex basis-full items-center justify-center gap-2.5 text-button transition-colors hover:text-accent md:min-h-hit md:basis-auto',
+              HIT_AREA_Y,
+            )}
           >
             {linkLabel}
             <span
