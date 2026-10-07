@@ -282,7 +282,8 @@ test.describe('home', () => {
       expect((await box(page.locator('h1'))).x).toBe(left)
       // The tab rail keeps to the right edge of the container
       const rail = await box(heroSection(page).getByRole('tab').first())
-      expect(Math.round(rail.x + rail.width)).toBe(viewport - left)
+      // Half pixels with an odd containing block (the Linux scrollbar gutter): within 1px
+      expect(Math.abs(rail.x + rail.width - (viewport - left))).toBeLessThanOrEqual(1)
       expect((await box(page.locator('footer p').first())).x).toBe(left)
       // The salon map is not a background: it keeps to the container
       const map = await box(page.getByRole('region', { name: SALONS_TITLE }).locator('.bg-map-bg'))
