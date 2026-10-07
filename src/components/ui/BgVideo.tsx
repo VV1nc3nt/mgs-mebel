@@ -21,6 +21,8 @@ export type BgVideoProps = {
   imageSize?: ImageSizeName
   /** Hero: the poster is the LCP image, the video starts loading at once. */
   priority?: boolean
+  /** Without `priority`: `low` for a poster in the viewport that is not shown yet (hero segment 02). */
+  fetchPriority?: 'low' | 'auto'
   /** Plays only while active (a hero slide); default true. */
   active?: boolean
   /** No video source until the first time it is active. */
@@ -41,6 +43,7 @@ export function BgVideo({
   sizes,
   imageSize = 'hero',
   priority = false,
+  fetchPriority,
   active,
   lazySrc,
   restartKey,
@@ -61,7 +64,7 @@ export function BgVideo({
           fill
           sizes={imageSizes(sizes)}
           preload={priority}
-          fetchPriority={priority ? 'high' : undefined}
+          fetchPriority={priority ? 'high' : fetchPriority}
           className="object-cover"
           style={{ objectPosition: focalPosition(poster) }}
         />

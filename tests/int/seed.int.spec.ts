@@ -86,6 +86,12 @@ describe('seed cache, offline', () => {
   })
 })
 
+/** H1 of a page hero: the first segment of the home scene or the single hero of other pages. */
+const heroTitle = (hero: unknown) => {
+  const h = hero as { title?: string; slides?: { title?: string }[] } | undefined
+  return h?.slides ? h.slides[0]?.title : h?.title
+}
+
 describe('seed manifest and data', () => {
   const known = new Set(seedFiles.map((file) => file.key))
   const id: MediaId = (key) => {
@@ -283,7 +289,7 @@ describe('seed: page globals', () => {
     for (const slug of slugs) {
       const stored = await payload.findGlobal({ slug, depth: 0, overrideAccess: false })
       expect(stored._status, slug).toBe('published')
-      expect(stored.hero?.title, slug).toBe(data[slug].hero?.title)
+      expect(heroTitle(stored.hero), slug).toBe(heroTitle(data[slug].hero))
       expect(first).toMatch(new RegExp(`${slug}\\s+created\\s+0\\s+updated\\s+1\\s+skipped\\s+0`))
     }
     const second = await run()

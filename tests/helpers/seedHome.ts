@@ -29,8 +29,10 @@ if (!isLocalDatabaseUrl(process.env.DATABASE_URL)) {
 }
 
 // A light poster: the menu and the hero text are checked over a bright photo (README §3).
+// The second hero segment gets a poster of its own.
 const IMAGES = {
   poster: { file: 'e2e-home-poster.png', width: 1920, height: 1080, color: '#e8e4dc' },
+  poster2: { file: 'e2e-home-poster-2.png', width: 1920, height: 1080, color: '#cfc6b8' },
   main: { file: 'e2e-home-history-main.png', width: 900, height: 1200, color: '#b9a48c' },
   secondary: { file: 'e2e-home-history-secondary.png', width: 900, height: 900, color: '#8c9aa4' },
 } as const
@@ -121,14 +123,23 @@ let code = 0
 try {
   const ids = {
     poster: await upsertImage(payload, IMAGES.poster),
+    poster2: await upsertImage(payload, IMAGES.poster2),
     main: await upsertImage(payload, IMAGES.main),
     secondary: await upsertImage(payload, IMAGES.secondary),
   }
   const videoId = await upsertVideo(payload)
-  // Seed media keys: U1 — hero poster, U2 / U3 — history photos; no background video on home.
-  const byKey: Record<string, number> = { U1: ids.poster, U2: ids.main, U3: ids.secondary }
+  // Seed media keys: P1 / P2 — home hero posters, U1 — «О нас» hero poster, U2 / U3 — history
+  // photos. No background videos on the home page.
+  const byKey: Record<string, number> = {
+    P1: ids.poster,
+    P2: ids.poster2,
+    U1: ids.poster,
+    U2: ids.main,
+    U3: ids.secondary,
+  }
   const { home, about, stats, salonsPage } = globals((key) => byKey[key] ?? ids.poster)
-  const published = { ...home, hero: { ...home.hero, video: null } }
+  const slides = home.hero?.slides?.map((slide) => ({ ...slide, video: null })) ?? []
+  const published = { ...home, hero: { ...home.hero, slides } }
 
   await payload.updateGlobal({ slug: 'stats', data: stats, depth: 0 })
   await payload.updateGlobal({
@@ -160,7 +171,13 @@ try {
   })
   await payload.updateGlobal({
     slug: 'home',
-    data: { ...published, hero: { ...published.hero, title: HOME_DRAFT_TITLE } },
+    data: {
+      ...published,
+      hero: {
+        ...published.hero,
+        slides: slides.map((slide, i) => (i === 0 ? { ...slide, title: HOME_DRAFT_TITLE } : slide)),
+      },
+    },
     draft: true,
     depth: 0,
   })

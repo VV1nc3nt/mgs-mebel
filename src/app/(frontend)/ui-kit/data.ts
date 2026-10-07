@@ -1,12 +1,13 @@
-import type { About, Catalog, Home, News, Project, Stat } from '@/payload-types'
+import type { About, Catalog, News, Project, Stat } from '@/payload-types'
 
 import { getPayloadClient } from '@/lib/payload'
 
 export type UiKitData = {
   news: News[]
   newsCount: { all: number; news: number; new: number } | null
-  hero: Home['hero'] | null
-  history: Home['history'] | null
+  /** «О нас»: a single hero and the history (the home page has the hero scene instead). */
+  hero: About['hero'] | null
+  history: About['history'] | null
   mission: About['mission'] | null
   stats: NonNullable<Stat['items']>
   /** Works per category; `reels` — projects that start with a video. */
@@ -39,14 +40,13 @@ export async function getUiKitData(): Promise<UiKitData> {
   try {
     const payload = await getPayloadClient()
     const published = { _status: { equals: 'published' } } as const
-    const [news, newsTotal, onlyNews, home, about, stats, projects, catalogs] = await Promise.all([
+    const [news, newsTotal, onlyNews, about, stats, projects, catalogs] = await Promise.all([
       payload.find({ collection: 'news', where: published, sort: '-date', limit: 3, depth: 1 }),
       payload.count({ collection: 'news', where: published }),
       payload.count({
         collection: 'news',
         where: { and: [published, { type: { equals: 'news' } }] },
       }),
-      payload.findGlobal({ slug: 'home', depth: 1 }),
       payload.findGlobal({ slug: 'about', depth: 1 }),
       payload.findGlobal({ slug: 'stats', depth: 0 }),
       payload.find({
@@ -69,8 +69,8 @@ export async function getUiKitData(): Promise<UiKitData> {
         news: onlyNews.totalDocs,
         new: newsTotal.totalDocs - onlyNews.totalDocs,
       },
-      hero: home.hero,
-      history: home.history,
+      hero: about.hero,
+      history: about.history,
       mission: about.mission,
       stats: stats.items ?? [],
       workCounts: {

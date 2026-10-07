@@ -1,34 +1,28 @@
-import Link from 'next/link'
-
 import { Chip } from '@/components/ui/Chip'
-import { HIT_AREA_Y } from '@/components/ui/hitArea'
 import { MediaCard } from '@/components/ui/MediaCard'
 import { SectionLabel } from '@/components/ui/SectionLabel'
 import { cn } from '@/lib/cn'
 import { asMedia } from '@/lib/media'
 import { paragraphs } from '@/lib/text'
-import type { SectionHistoryLink } from '@/payload-types'
+import type { SectionHistory } from '@/payload-types'
 
 type Props = {
-  /** `history` of a page global (historyTab); the link label exists only in the link variant. */
-  history: Partial<SectionHistoryLink> | undefined
-  /** «Подробнее о компании»: shown when the page passes it and the label is filled in. */
-  linkHref?: string
+  /** `history` of a page global (historyTab). */
+  history: Partial<SectionHistory> | undefined
   className?: string
 }
 
 /**
  * Company history (README §6.1 п.3, §6.2): asymmetric photo grid — 3:4 photo, the accent year
- * plate and a 1:1 photo — next to the lead, text, value chips and the link to «О нас».
+ * plate and a 1:1 photo — next to the lead, text and value chips.
  * A column on mobile/tablet, two columns from desktop.
  */
-export function HistorySection({ history, linkHref, className }: Props) {
+export function HistorySection({ history, className }: Props) {
   const photoMain = asMedia(history?.photoMain)
   const photoSecondary = asMedia(history?.photoSecondary)
   const text = paragraphs(history?.text)
   if (!photoMain && !history?.lead && !text.length) return null
   const values = history?.values?.filter((v) => v.label.trim()) ?? []
-  const linkLabel = linkHref ? history?.linkLabel?.trim() : undefined
 
   return (
     <section
@@ -80,25 +74,6 @@ export function HistorySection({ history, linkHref, className }: Props) {
               </li>
             ))}
           </ul>
-        )}
-        {linkHref && linkLabel && (
-          <div className="flex pt-2">
-            <Link
-              href={linkHref}
-              className={cn(
-                'relative inline-flex items-center gap-2.5 text-button transition-colors hover:text-accent',
-                HIT_AREA_Y,
-              )}
-            >
-              {linkLabel}
-              <span
-                aria-hidden="true"
-                className="flex size-8 items-center justify-center rounded-full bg-surface-3"
-              >
-                →
-              </span>
-            </Link>
-          </div>
         )}
       </div>
     </section>

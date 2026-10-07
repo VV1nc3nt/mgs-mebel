@@ -420,7 +420,7 @@ export default async function UiKitPage() {
             <div className="absolute inset-0 -z-10 bg-overlay-hero" />
             <div className="flex max-w-2xl flex-col gap-4">
               {hero?.label && <SectionLabel>{hero.label}</SectionLabel>}
-              <h3 className="text-h2 md:text-h2-md">{hero?.title ?? 'Пустой глобал home'}</h3>
+              <h3 className="text-h2 md:text-h2-md">{hero?.title ?? 'Пустой глобал about'}</h3>
               {hero?.text && <p className="text-body text-text-2">{hero.text}</p>}
               {hero?.ctaLabel && (
                 <Button width="mobile-full" arrow>

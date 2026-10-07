@@ -11,7 +11,7 @@ export const About = pageGlobal(
   'О нас',
   [
     heroTab(),
-    historyTab({ link: false }),
+    historyTab(),
     newsTab(),
     salonsTab(),
     worksTab(),

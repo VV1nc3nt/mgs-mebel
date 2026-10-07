@@ -64,21 +64,16 @@ describe('HistorySection', () => {
     lead: 'Лид',
     text: 'Первый абзац.\n\nВторой абзац.',
     values: [{ label: 'Качество' }],
-    linkLabel: 'Подробнее о компании',
   }
 
-  it('splits the text into paragraphs and links to «О нас»', () => {
-    render(<HistorySection history={history} linkHref="/about" />)
+  it('splits the text into paragraphs, without a link', () => {
+    render(<HistorySection history={history} />)
     expect(screen.getByText('Первый абзац.')).toBeTruthy()
     expect(screen.getByText('Второй абзац.')).toBeTruthy()
-    expect(screen.getByRole('link', { name: /Подробнее о компании/ }).getAttribute('href')).toBe(
-      '/about',
-    )
+    expect(screen.queryByRole('link')).toBeNull()
   })
 
-  it('has no link without linkHref or label, and renders nothing when empty', () => {
-    render(<HistorySection history={{ ...history, linkLabel: null }} linkHref="/about" />)
-    expect(screen.queryByRole('link')).toBeNull()
+  it('renders nothing when empty', () => {
     expect(render(<HistorySection history={{}} />).container.innerHTML).toBe('')
   })
 })

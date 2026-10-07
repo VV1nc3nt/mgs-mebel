@@ -26,7 +26,13 @@ const history = (id: MediaId) => ({
   values: ['Качество', 'Инновации', 'Долговечность'].map((label) => ({ label })),
 })
 
-// First screen and sections of the company page: the home page now, «О нас» after it.
+// Home hero, segment 01 (home README §8).
+const HOME_TITLE = 'Дизайнерская мебель, доступная каждому'
+const HOME_TEXT =
+  'Мебельная фабрика, специализирующаяся на производстве комплексных заказов.'
+
+// First screen and sections of «О нас» (the former home page); news, salons and works headings
+// are the same on the home page.
 const companyHero = (id: MediaId) => ({
   label: 'о нас',
   title: 'Мы — MGS MEBEL',
@@ -92,11 +98,30 @@ export const globals = (id: MediaId): SeedGlobals => ({
       { value: '2000+', label: 'декоров в ассортименте' },
     ],
   },
+  // Hero scene (home README §8): segment 02 texts are drafts until the client confirms them.
   home: {
-    hero: companyHero(id),
-    history: { ...history(id), linkLabel: 'Подробнее о компании' },
+    hero: {
+      ctaLabel: 'Рассчитать проект',
+      linkLabel: 'Подробнее о компании',
+      slides: [
+        {
+          label: 'о нас',
+          title: HOME_TITLE,
+          text: HOME_TEXT,
+          video: id('H9'),
+          poster: id('P1'),
+        },
+        {
+          label: 'наши возможности',
+          title: 'Производство полного цикла',
+          text: '20 000 м² производственных площадей и 1000+ изделий ежедневно.',
+          video: id('H10'),
+          poster: id('P2'),
+        },
+      ],
+    },
     ...companySections,
-    meta: companyMeta(id),
+    meta: seoMeta({ title: HOME_TITLE, description: HOME_TEXT, image: id('P1') }),
   },
   // The former home page; mission, hardware and exhibitions are not rendered yet.
   about: {
