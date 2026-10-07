@@ -39,6 +39,11 @@ type View = {
   dir: 1 | -1
   /** Every switch restarts the progress (a new key) and the segment's video. */
   run: number
+  /**
+   * Run at which each segment was last switched to: the key of its mobile progress fill. The
+   * outgoing fill keeps its key, so it freezes where it was and fades out with its text.
+   */
+  starts: number[]
   /** Switched by the visitor: announced politely; automatic switching is not announced. */
   manual: boolean
 }
@@ -47,7 +52,7 @@ const number = (n: number) => String(n).padStart(2, '0')
 
 /**
  * The hero scene (home README §1.2–1.6). The progress fill is a CSS animation: its `animationend`
- * switches to the next segment, and pausing it (hover, keyboard focus, `data-paused`) pauses the
+ * switches to the next segment, and pausing it (keyboard focus, `data-paused`) pauses the
  * automatic switching — no timers, no state updates while it runs. Any switch, manual or automatic,
  * restarts the progress and the new segment's video; automatic switching goes on after manual
  * switches. One segment: a plain hero without controls.
@@ -55,19 +60,29 @@ const number = (n: number) => String(n).padStart(2, '0')
 export function HomeHeroStage({ segments, titleId, cta, link }: Props) {
   const count = segments.length
   const multi = count > 1
-  const [view, setView] = useState<View>({ index: 0, dir: 1, run: 0, manual: false })
+  const [view, setView] = useState<View>(() => ({
+    index: 0,
+    dir: 1,
+    run: 0,
+    manual: false,
+    starts: segments.map(() => 0),
+  }))
   const reducedMotion = useReducedMotion()
   const sectionRef = useRef<HTMLElement>(null)
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
   const { index } = view
 
   const go = (target: number, manual: boolean) =>
-    setView((v) => ({
-      index: wrapIndex(target, count),
-      dir: target > v.index ? 1 : -1,
-      run: v.run + 1,
-      manual,
-    }))
+    setView((v) => {
+      const next = wrapIndex(target, count)
+      return {
+        index: next,
+        dir: target > v.index ? 1 : -1,
+        run: v.run + 1,
+        manual,
+        starts: v.starts.map((start, i) => (i === next ? v.run + 1 : start)),
+      }
+    })
 
   useHeroStep({
     enabled: multi,
@@ -148,22 +163,8 @@ export function HomeHeroStage({ segments, titleId, cta, link }: Props) {
       })}
       <div aria-hidden="true" className="absolute inset-0 bg-overlay-hero" />
 
-      <div className="absolute inset-x-0 bottom-6 page-container">
+      <div className="absolute inset-x-0 hero-content-bottom page-container">
         <div className="flex flex-col gap-4 md:max-w-hero">
-          {multi && (
-            <div aria-hidden="true" className="flex items-center gap-2.5 text-label font-bold md:hidden">
-              <span className="text-accent">{number(index + 1)}</span>
-              <span className="relative h-0.5 flex-1 overflow-hidden rounded-full bg-text/25">
-                <span
-                  key={view.run}
-                  onAnimationEnd={next}
-                  className="absolute inset-0 hero-progress hero-progress-x bg-accent"
-                />
-              </span>
-              <span className="text-text-3">{number(count)}</span>
-            </div>
-          )}
-
           <div
             aria-live={multi ? (view.manual ? 'polite' : 'off') : undefined}
             // Clipped vertically only (the outgoing text moves up by 40px): a single word wider
@@ -182,8 +183,27 @@ export function HomeHeroStage({ segments, titleId, cta, link }: Props) {
                   aria-hidden={inactive || undefined}
                   inert={inactive}
                   data-inactive={inactive ? '' : undefined}
-                  className="hero-text flex flex-col justify-end gap-4"
+                  className="hero-text flex flex-col justify-end gap-3 md:gap-4"
                 >
+                  {/* Mobile progress: in each block, so it always sits right above the label */}
+                  {multi && (
+                    <div
+                      aria-hidden="true"
+                      className="flex items-center gap-2.5 text-label font-bold md:hidden"
+                    >
+                      <span className={i === 0 ? 'text-accent' : 'text-text-3'}>{number(1)}</span>
+                      <span className="relative h-0.5 flex-1 overflow-hidden rounded-full bg-text/25">
+                        <span
+                          key={view.starts[i]}
+                          onAnimationEnd={inactive ? undefined : next}
+                          className="absolute inset-0 hero-progress hero-progress-x bg-accent"
+                        />
+                      </span>
+                      <span className={i === count - 1 ? 'text-accent' : 'text-text-3'}>
+                        {number(count)}
+                      </span>
+                    </div>
+                  )}
                   {segment.label && <SectionLabel>{segment.label}</SectionLabel>}
                   <Heading
                     id={i === 0 ? titleId : undefined}
@@ -202,7 +222,7 @@ export function HomeHeroStage({ segments, titleId, cta, link }: Props) {
           </div>
 
           {(cta || multi || link) && (
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-3 pt-1.5 md:gap-x-6">
+            <div className="flex flex-wrap items-center gap-2 md:gap-x-6 md:gap-y-3 md:pt-1.5">
               {cta && <div className="flex min-w-0 flex-1 md:flex-none">{cta}</div>}
               {multi && (
                 <>

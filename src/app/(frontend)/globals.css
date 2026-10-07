@@ -342,22 +342,27 @@
 /*
  * Progress of the active segment: fills in --motion-hero-progress; its animationend switches to
  * the next segment. Paused while the hero is paused from JS ([data-paused]: hidden tab, overlay,
- * off screen), under the pointer (hover devices only) and with keyboard focus inside. Reduced
- * motion: full, no animation — so no automatic switching.
+ * off screen) and with keyboard focus inside; the mobile fill of an outgoing segment freezes in
+ * place ([data-inactive]) while its text fades. Reduced motion: full, no animation — so no
+ * automatic switching.
  */
 @utility hero-progress {
   animation: hero-progress var(--motion-hero-progress) linear forwards;
   [data-paused] &,
+  [data-inactive] &,
   [data-hero]:has(:focus-visible) & {
     animation-play-state: paused;
   }
-  @media (hover: hover) {
-    [data-hero]:hover & {
-      animation-play-state: paused;
-    }
-  }
   @media (prefers-reduced-motion: reduce) {
     animation: none;
+  }
+}
+
+/* Bottom of the hero content: 12 + the home indicator area on mobile, 24 from tablet */
+@utility hero-content-bottom {
+  bottom: calc(var(--spacing) * 3 + env(safe-area-inset-bottom));
+  @variant md {
+    bottom: calc(var(--spacing) * 6);
   }
 }
 
