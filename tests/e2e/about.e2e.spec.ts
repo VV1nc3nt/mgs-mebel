@@ -229,6 +229,61 @@ test.describe('about', () => {
     })
   }
 
+  // Background video fallback (README §1.3). The hero has the minimal fixture mp4; whether a
+  // browser plays it depends on its codecs, so the failures are made deterministic by routing.
+  test.describe('hero background video', () => {
+    const MP4 = '**/*.mp4'
+    const heroOf = (page: Page) => page.locator('section[aria-labelledby="about-hero-title"]')
+    const hydrated = (page: Page) =>
+      page.waitForFunction(
+        () => document.documentElement.style.getPropertyValue('--header-h') !== '',
+      )
+
+    test('reduced motion: the poster only, no video requested', async ({ page }) => {
+      const requests: string[] = []
+      page.on('request', (request) => {
+        if (new globalThis.URL(request.url()).pathname.endsWith('.mp4'))
+          requests.push(request.url())
+      })
+      await page.emulateMedia({ reducedMotion: 'reduce' })
+      await page.goto(URL)
+      await hydrated(page)
+      await page.waitForLoadState('networkidle')
+      await expect(heroOf(page).locator('img').first()).toBeVisible()
+      await expect(heroOf(page).locator('video')).toHaveCount(0)
+      expect(requests).toEqual([])
+    })
+
+    test('a failed request: back to the poster on error', async ({ page }) => {
+      await page.emulateMedia({ reducedMotion: 'no-preference' })
+      await page.route(MP4, (route) => route.abort())
+      const requested = page.waitForRequest((r) => r.url().endsWith('.mp4'))
+      await page.goto(URL)
+      await requested
+      const failedAt = Date.now()
+      // On error, well before the 4 s start timeout
+      await expect(heroOf(page).locator('video')).toHaveCount(0, { timeout: 3000 })
+      expect(Date.now() - failedAt).toBeLessThan(3000)
+      await expect(heroOf(page).locator('img').first()).toBeVisible()
+    })
+
+    test('no response: back to the poster without playing', async ({ page }) => {
+      await page.emulateMedia({ reducedMotion: 'no-preference' })
+      // Never answered: the video neither plays nor reports an error.
+      await page.route(MP4, () => {})
+      const requested = page.waitForRequest((r) => r.url().endsWith('.mp4'))
+      await page.goto(URL)
+      await requested
+      const startedAt = Date.now()
+      await expect(heroOf(page).locator('video')).toHaveCount(1)
+      await expect(heroOf(page).locator('video')).toHaveCount(0, { timeout: 6000 })
+      // The 4 s start timeout (counted from the play attempt, just before the request is seen)
+      expect(Date.now() - startedAt).toBeGreaterThan(3500)
+      await expect(heroOf(page).locator('img').first()).toBeVisible()
+      await page.unrouteAll({ behavior: 'ignoreErrors' })
+    })
+  })
+
   test('breadcrumbs: Главная → О нас', async ({ page }) => {
     await page.goto(URL)
     const data = await page

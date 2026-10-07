@@ -275,10 +275,16 @@
   --motion-chooser-stagger: 40ms;
   --motion-chooser-fade-in: 250ms; /* (dc) */
   --motion-chooser-fade-out: 160ms; /* (dc) */
+  --motion-video-in: 400ms; /* background video appears on `playing` (README §1.3) */
 
   /* Color and border transitions: 150–200ms ease-out (README §9); 200ms is duration-200 */
   --default-transition-duration: 150ms;
   --default-transition-timing-function: ease-out;
+}
+
+/* Background video over its poster: fades in once it plays (opacity is set by the component) */
+@utility bg-video-fade {
+  transition: opacity var(--motion-video-in) ease-out;
 }
 
 /* Media overlays: text on photo/video always sits on one of these */
