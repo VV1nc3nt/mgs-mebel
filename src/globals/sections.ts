@@ -1,4 +1,4 @@
-import type { Field, Tab } from 'payload'
+import type { Tab } from 'payload'
 
 import { bgVideoFields, imageField } from '@/fields/media'
 import { labelField, textField, titleField } from '@/fields/section'
@@ -10,7 +10,7 @@ import { labelField, textField, titleField } from '@/fields/section'
  * change.
  */
 
-/** First screen (Home §6.1 п.1, About §6.2) with the CTA label. */
+/** First screen (About §6.2) with the CTA label. */
 export const heroTab = (): Tab => ({
   name: 'hero',
   label: 'Первый экран',
@@ -24,11 +24,43 @@ export const heroTab = (): Tab => ({
   ],
 })
 
-/** Company history (Home §6.1 п.3, About §6.2): with or without the «Подробнее» link label. */
-export const historyTab = ({ link }: { link: boolean }): Tab => ({
+/**
+ * Home hero scene (home README §1): one or two segments over background videos, a shared CTA and
+ * the link to «О нас».
+ */
+export const heroSlidesTab = (): Tab => ({
+  name: 'hero',
+  label: 'Первый экран',
+  interfaceName: 'SectionHeroSlides',
+  fields: [
+    {
+      type: 'row',
+      fields: [
+        { name: 'ctaLabel', type: 'text', label: 'Кнопка' },
+        { name: 'linkLabel', type: 'text', label: 'Ссылка «Подробнее о компании»' },
+      ],
+    },
+    {
+      name: 'slides',
+      type: 'array',
+      label: 'Сегменты',
+      labels: { singular: 'Сегмент', plural: 'Сегменты' },
+      minRows: 1,
+      maxRows: 2,
+      admin: {
+        description:
+          'Один сегмент — обычный первый экран; два — сцена с переключением. Заголовок первого — H1 страницы.',
+      },
+      fields: [labelField(), titleField(true), textField(), ...bgVideoFields()],
+    },
+  ],
+})
+
+/** Company history (About §6.2). */
+export const historyTab = (): Tab => ({
   name: 'history',
   label: 'История',
-  interfaceName: link ? 'SectionHistoryLink' : 'SectionHistory',
+  interfaceName: 'SectionHistory',
   fields: [
     labelField(),
     imageField('photoMain', { label: 'Фото 3:4', required: true }),
@@ -55,9 +87,6 @@ export const historyTab = ({ link }: { link: boolean }): Tab => ({
       maxRows: 6,
       fields: [{ name: 'label', type: 'text', label: 'Текст', required: true }],
     },
-    ...(link
-      ? [{ name: 'linkLabel', type: 'text', label: 'Ссылка «Подробнее»' } satisfies Field]
-      : []),
   ],
 })
 

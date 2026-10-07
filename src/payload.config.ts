@@ -74,10 +74,12 @@ export default buildConfig({
       uploadsCollection: 'media',
       tabbedUI: true,
       generateTitle: ({ doc }) => {
-        const title = doc?.title ?? doc?.hero?.title
+        // Home: the hero is a list of segments, the first one names the page.
+        const title = doc?.title ?? doc?.hero?.title ?? doc?.hero?.slides?.[0]?.title
         return title ? `${String(title).replace(/\s+/g, ' ')} — MGS MEBEL` : 'MGS MEBEL'
       },
-      generateDescription: ({ doc }) => doc?.lead ?? doc?.hero?.lead ?? doc?.hero?.text ?? '',
+      generateDescription: ({ doc }) =>
+        doc?.lead ?? doc?.hero?.lead ?? doc?.hero?.text ?? doc?.hero?.slides?.[0]?.text ?? '',
     }),
     // Media goes to S3 only when S3_BUCKET is set; otherwise files stay on disk (Media.upload.staticDir).
     s3Storage({

@@ -64,6 +64,26 @@ const pexels = (
   background,
 })
 
+/** Poster frame of a Pexels video (the image Pexels shows for it), 1920 wide. */
+const pexelsPhoto = (
+  key: string,
+  name: string,
+  videoId: number,
+  author: string,
+  alt: string,
+  usedIn: string,
+): SeedFile => ({
+  key,
+  filename: `mgs-seed-${key.toLowerCase()}-${name}.jpg`,
+  kind: 'image',
+  url: `https://images.pexels.com/videos/${videoId}/pexels-photo-${videoId}.jpeg?auto=compress&cs=tinysrgb&w=1920`,
+  sourcePage: `https://www.pexels.com/video/${videoId}/`,
+  author,
+  license: 'Pexels License',
+  usedIn,
+  alt,
+})
+
 export const photos: SeedFile[] = [
   // From the design prototype (U1 and U5 are replacements: their Unsplash pages could not be found).
   unsplash(
@@ -74,7 +94,7 @@ export const photos: SeedFile[] = [
     'living-room-with-brown-sofa-and-glass-window-4_jQL4JCS98',
     'Collov Home Design',
     'Гостиная с коричневым диваном и панорамным окном',
-    'постер home.hero и about.hero, выставка «Презентация 2025», обложка «Конкурс проектов с Korting», каталог «Декоры ALVIC 2026»',
+    'постер about.hero, выставка «Презентация 2025», обложка «Конкурс проектов с Korting», каталог «Декоры ALVIC 2026»',
   ),
   unsplash(
     'U2',
@@ -357,6 +377,24 @@ export const photos: SeedFile[] = [
     'Гостиная с мягкой мебелью и большим окном',
     'проекты',
   ),
+  // Posters of the home hero segments: frames of their videos, so the picture does not change
+  // when the video starts.
+  pexelsPhoto(
+    'P1',
+    'kitchen-island',
+    19227878,
+    'Curtis Adams',
+    'Светлая кухня с белыми фасадами и длинным островом с барными стульями',
+    'постер home.hero, сегмент 01 (кадр видео H9)',
+  ),
+  pexelsPhoto(
+    'P2',
+    'woodworking',
+    5973221,
+    'Ono Kosuki',
+    'Мастер обрабатывает деревянную рейку ручным стругом',
+    'постер home.hero, сегмент 02 (кадр видео H10)',
+  ),
 ]
 
 export const videos: SeedFile[] = [
@@ -366,7 +404,7 @@ export const videos: SeedFile[] = [
     15887128,
     'hd_1920_1080_30fps',
     'Curtis Adams',
-    'home.hero, about.hero',
+    'about.hero',
     true,
   ),
   pexels('H3', 'living-room', 5644364, 'hd_1280_720_25fps', 'Polina', 'about.mission', true),
@@ -413,6 +451,25 @@ export const videos: SeedFile[] = [
     'hd_1920_1080_30fps',
     'Curtis Adams',
     'новость «Выставка ARTDOM 2026»: видео на всю ширину',
+  ),
+  pexels(
+    'H9',
+    'kitchen-island',
+    19227878,
+    'hd_1920_1080_30fps',
+    'Curtis Adams',
+    'home.hero, сегмент 01',
+    true,
+  ),
+  // 1280×720: Pexels has no 1920 version of this video (2560 is 14.5 MB).
+  pexels(
+    'H10',
+    'woodworking',
+    5973221,
+    'hd_1280_720_25fps',
+    'Ono Kosuki',
+    'home.hero, сегмент 02',
+    true,
   ),
   pexels('V1', 'dining-kitchen', 5823681, 'hd_720_1280_24fps', 'Charlotte May', 'видео-проекты'),
   pexels('V2', 'home-decor', 5824191, 'hd_720_1280_24fps', 'Charlotte May', 'видео-проекты'),

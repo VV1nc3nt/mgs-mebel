@@ -871,8 +871,7 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
  */
 export interface Home {
   id: number;
-  hero: SectionHeroCta;
-  history: SectionHistoryLink;
+  hero?: SectionHeroSlides;
   news?: SectionNews;
   salons?: SectionSalons;
   works?: SectionWorks;
@@ -890,56 +889,36 @@ export interface Home {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "SectionHeroCta".
+ * via the `definition` "SectionHeroSlides".
  */
-export interface SectionHeroCta {
-  /**
-   * Без «#» — он добавляется автоматически.
-   */
-  label?: string | null;
-  title: string;
-  /**
-   * Абзацы разделяются пустой строкой.
-   */
-  text?: string | null;
+export interface SectionHeroSlides {
   ctaLabel?: string | null;
+  linkLabel?: string | null;
   /**
-   * MP4 или WebM, 8–15 с, до 5 МБ, без звука. Необязательно.
+   * Один сегмент — обычный первый экран; два — сцена с переключением. Заголовок первого — H1 страницы.
    */
-  video?: (number | null) | Media;
-  /**
-   * Показывается до загрузки видео и вместо него (экономия трафика, reduced motion).
-   */
-  poster: number | Media;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "SectionHistoryLink".
- */
-export interface SectionHistoryLink {
-  /**
-   * Без «#» — он добавляется автоматически.
-   */
-  label?: string | null;
-  photoMain: number | Media;
-  /**
-   * Например, 2001
-   */
-  yearValue?: string | null;
-  yearCaption?: string | null;
-  photoSecondary?: (number | null) | Media;
-  lead?: string | null;
-  /**
-   * Абзацы разделяются пустой строкой.
-   */
-  text?: string | null;
-  values?:
+  slides?:
     | {
-        label: string;
+        /**
+         * Без «#» — он добавляется автоматически.
+         */
+        label?: string | null;
+        title: string;
+        /**
+         * Абзацы разделяются пустой строкой.
+         */
+        text?: string | null;
+        /**
+         * MP4 или WebM, 8–15 с, до 5 МБ, без звука. Необязательно.
+         */
+        video?: (number | null) | Media;
+        /**
+         * Показывается до загрузки видео и вместо него (экономия трафика, reduced motion).
+         */
+        poster: number | Media;
         id?: string | null;
       }[]
     | null;
-  linkLabel?: string | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1073,6 +1052,30 @@ export interface About {
   _status?: ('draft' | 'published') | null;
   updatedAt?: string | null;
   createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "SectionHeroCta".
+ */
+export interface SectionHeroCta {
+  /**
+   * Без «#» — он добавляется автоматически.
+   */
+  label?: string | null;
+  title: string;
+  /**
+   * Абзацы разделяются пустой строкой.
+   */
+  text?: string | null;
+  ctaLabel?: string | null;
+  /**
+   * MP4 или WebM, 8–15 с, до 5 МБ, без звука. Необязательно.
+   */
+  video?: (number | null) | Media;
+  /**
+   * Показывается до загрузки видео и вместо него (экономия трафика, reduced motion).
+   */
+  poster: number | Media;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1469,8 +1472,7 @@ export interface Setting {
  * via the `definition` "home_select".
  */
 export interface HomeSelect<T extends boolean = true> {
-  hero?: T | SectionHeroCtaSelect<T>;
-  history?: T | SectionHistoryLinkSelect<T>;
+  hero?: T | SectionHeroSlidesSelect<T>;
   news?: T | SectionNewsSelect<T>;
   salons?: T | SectionSalonsSelect<T>;
   works?: T | SectionWorksSelect<T>;
@@ -1488,35 +1490,21 @@ export interface HomeSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "SectionHeroCta_select".
+ * via the `definition` "SectionHeroSlides_select".
  */
-export interface SectionHeroCtaSelect<T extends boolean = true> {
-  label?: T;
-  title?: T;
-  text?: T;
+export interface SectionHeroSlidesSelect<T extends boolean = true> {
   ctaLabel?: T;
-  video?: T;
-  poster?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "SectionHistoryLink_select".
- */
-export interface SectionHistoryLinkSelect<T extends boolean = true> {
-  label?: T;
-  photoMain?: T;
-  yearValue?: T;
-  yearCaption?: T;
-  photoSecondary?: T;
-  lead?: T;
-  text?: T;
-  values?:
+  linkLabel?: T;
+  slides?:
     | T
     | {
         label?: T;
+        title?: T;
+        text?: T;
+        video?: T;
+        poster?: T;
         id?: T;
       };
-  linkLabel?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1607,6 +1595,18 @@ export interface AboutSelect<T extends boolean = true> {
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "SectionHeroCta_select".
+ */
+export interface SectionHeroCtaSelect<T extends boolean = true> {
+  label?: T;
+  title?: T;
+  text?: T;
+  ctaLabel?: T;
+  video?: T;
+  poster?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

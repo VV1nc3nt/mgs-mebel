@@ -276,6 +276,13 @@
   --motion-chooser-fade-in: 250ms; /* (dc) */
   --motion-chooser-fade-out: 160ms; /* (dc) */
   --motion-video-in: 400ms; /* background video appears on `playing` (README §1.3) */
+  /* Home hero scene (home README §1.2, §1.5): background crossfade, text fade and shift, tab bar,
+     one segment's time before the next one */
+  --motion-hero-fade: 900ms;
+  --motion-hero-text-fade: 500ms;
+  --motion-hero-text-move: 600ms;
+  --motion-hero-tab: 500ms;
+  --motion-hero-progress: 8s;
 
   /* Color and border transitions: 150–200ms ease-out (README §9); 200ms is duration-200 */
   --default-transition-duration: 150ms;
@@ -285,6 +292,93 @@
 /* Background video over its poster: fades in once it plays (opacity is set by the component) */
 @utility bg-video-fade {
   transition: opacity var(--motion-video-in) ease-out;
+}
+
+/*
+ * Home hero scene (home README §1). Background layers crossfade; texts share one grid cell, the
+ * outgoing one fades and moves by 40px against the direction (--hero-dir: 1 forward, −1 back).
+ * Inactive parts carry data-inactive. Reduced motion: opacity only, 200ms.
+ */
+@utility hero-layer {
+  transition: opacity var(--motion-hero-fade) var(--ease-soft);
+  &[data-inactive] {
+    opacity: 0;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition: opacity var(--motion-fade-reduced) ease-out;
+  }
+}
+
+@utility hero-text {
+  grid-area: 1 / 1;
+  transition:
+    opacity var(--motion-hero-text-fade) var(--ease-soft),
+    transform var(--motion-hero-text-move) var(--ease-soft);
+  &[data-inactive] {
+    opacity: 0;
+    transform: translateY(calc(var(--hero-dir, 1) * -40px));
+    pointer-events: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition: opacity var(--motion-fade-reduced) ease-out;
+    &[data-inactive] {
+      transform: none;
+    }
+  }
+}
+
+/* Tab bar: 56 when active, 20 otherwise — by scale from the top, never by height */
+@utility hero-tab-bar {
+  transform-origin: top;
+  transition: transform var(--motion-hero-tab) var(--ease-soft);
+  &[data-inactive] {
+    transform: scaleY(calc(20 / 56));
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+/*
+ * Progress of the active segment: fills in --motion-hero-progress; its animationend switches to
+ * the next segment. Paused while the hero is paused from JS ([data-paused]: hidden tab, overlay,
+ * off screen), under the pointer (hover devices only) and with keyboard focus inside. Reduced
+ * motion: full, no animation — so no automatic switching.
+ */
+@utility hero-progress {
+  animation: hero-progress var(--motion-hero-progress) linear forwards;
+  [data-paused] &,
+  [data-hero]:has(:focus-visible) & {
+    animation-play-state: paused;
+  }
+  @media (hover: hover) {
+    [data-hero]:hover & {
+      animation-play-state: paused;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+/* Fill direction: the mobile line from the left, the tab bar from the top */
+@utility hero-progress-x {
+  --hero-progress-from: scaleX(0);
+  transform-origin: left;
+}
+
+@utility hero-progress-y {
+  --hero-progress-from: scaleY(0);
+  transform-origin: top;
+}
+
+@keyframes hero-progress {
+  from {
+    transform: var(--hero-progress-from);
+  }
+  to {
+    transform: none;
+  }
 }
 
 /* Media overlays: text on photo/video always sits on one of these */

@@ -1,15 +1,19 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 
 import { globals } from '../../src/seed/data/globals'
 import { news } from '../../src/seed/data/news'
 import { salons } from '../../src/seed/data/salons'
 import { cls } from '../helpers/scroll'
 import { E2E_NEWS_COUNT, E2E_SALONS, HOME_DRAFT_TITLE, NEWS_DRAFT_TITLE } from '../helpers/e2eHome'
+import { e2eEditor } from '../helpers/e2eEditor'
 
 const BASE = 'http://localhost:3000'
 const EMPTY_DB = !!process.env.E2E_EMPTY_DB
-const { home, stats, salonsPage } = globals(() => 0)
+const { home, salonsPage } = globals(() => 0)
+const HERO = home.hero!
+const SEGMENTS = HERO.slides!
+const CTA_LABEL = HERO.ctaLabel!
 
 /** Fails the test on hydration mismatches and other console errors. */
 const watchConsole = (page: Page) => {
@@ -46,60 +50,131 @@ const MAP = { 390: 500, 834: 560, 1440: 640 } as const
 const HEIGHTS = { 390: 844, 834: 1194, 1440: 900 } as const
 const NEWS_CARD = { 390: 440, 834: 560, 1440: 640 } as const
 const WORK_COLUMNS = { 390: 2, 834: 4, 1440: 4 } as const
-const HERO = { 390: 640, 834: 780, 1440: 900 } as const
-const STAT_COLUMNS = { 390: 0, 834: 3, 1440: 6 } as const
+// home README §1: 100svh (min 640) on mobile, 780 on tablet, 100vh (min 780) on desktop
+const HERO_HEIGHT = { 390: 844, 834: 780, 1440: 900 } as const
+
+const heroSection = (page: Page) => page.locator('section[data-hero]')
+
+/** Index of the segment whose text is shown. */
+const segment = (page: Page) =>
+  heroSection(page)
+    .locator('.hero-text')
+    .evaluateAll((blocks) => blocks.findIndex((b) => !b.hasAttribute('data-inactive')))
+
+/** The hero scene listens once hydrated: wait for it before wheels, swipes and keys. */
+const hydrated = async (page: Page) => {
+  await page.waitForFunction(() => {
+    const hero = document.querySelector('section[data-hero]')
+    return (
+      document.documentElement.style.getPropertyValue('--header-h') !== '' &&
+      !!hero &&
+      Object.keys(hero).some((key) => key.startsWith('__reactFiber'))
+    )
+  })
+  // Effects run after the hydration commit
+  await page.evaluate(
+    () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))),
+  )
+}
+
+// After a step every event is swallowed for 600 ms and its inertia tail is recognised: wait past it
+const AFTER_STEP_MS = 700
+
+const scrollY = (page: Page) => page.evaluate(() => window.scrollY)
+
+const center = async (locator: Locator) => {
+  const box = (await locator.boundingBox())!
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+}
 
 test.describe('home', () => {
   test.skip(EMPTY_DB, 'needs tests/helpers/seedChrome.ts + seedHome.ts data')
 
   for (const width of [390, 834, 1440] as const) {
-    test(`${width}: hero, statistics, history; axe, CLS, console`, async ({ page }) => {
+    test(`${width}: hero scene, news, works, salons; axe, CLS, console`, async ({ page }) => {
       const errors = watchConsole(page)
       await page.setViewportSize({ width, height: HEIGHTS[width] })
       await page.goto(`${BASE}/`)
 
-      // One H1: the published hero title, never the draft
+      // One H1: segment 01 of the published hero, never the draft; segment 02 is an H2
       await expect(page.locator('h1')).toHaveCount(1)
-      await expect(page.locator('h1')).toHaveText(home.hero.title)
+      await expect(page.locator('h1')).toHaveText(SEGMENTS[0]!.title)
       await expect(page.getByText(HOME_DRAFT_TITLE)).toHaveCount(0)
+      const hero = heroSection(page)
+      await expect(hero).toHaveAttribute('aria-roledescription', 'карусель')
+      await expect(hero).toHaveAttribute('aria-label', 'О компании')
+      await expect(hero.getByRole('heading', { level: 2, includeHidden: true })).toHaveText(
+        SEGMENTS[1]!.title,
+      )
+      await expect(hero.getByRole('group', { name: '2 из 2', includeHidden: true })).toHaveAttribute(
+        'aria-hidden',
+        'true',
+      )
 
-      // Hero: README §4 heights; the header lies over it; the content sits below the header
-      const hero = page.locator('section[aria-labelledby="home-hero-title"]')
-      expect(Math.round((await hero.boundingBox())!.height)).toBe(HERO[width])
+      // Long words are never cut: the text of H1 and H2 (both segments) fits every ancestor that
+      // clips horizontally. scrollWidth does not show it: the heading box itself does not overflow.
+      const clipped = await hero.locator('h1, h2').evaluateAll((headings) =>
+        headings.flatMap((heading) => {
+          const range = document.createRange()
+          range.selectNodeContents(heading)
+          const text = range.getBoundingClientRect()
+          const cuts: string[] = []
+          for (let el = heading.parentElement; el; el = el.parentElement) {
+            if (getComputedStyle(el).overflowX === 'visible') continue
+            const box = el.getBoundingClientRect()
+            if (text.left < box.left - 0.5 || text.right > box.right + 0.5) {
+              cuts.push(`${heading.textContent} cut by ${el.tagName}.${el.className}`)
+            }
+          }
+          if (text.right > document.documentElement.clientWidth) cuts.push(`${heading.textContent} off screen`)
+          return cuts
+        }),
+      )
+      expect(clipped).toEqual([])
+
+      // Heights of home README §1; the header lies over the hero, the content sits below it
+      expect(Math.round((await hero.boundingBox())!.height)).toBe(HERO_HEIGHT[width])
       await expect(page.locator('header')).toHaveAttribute('data-variant', 'hero')
       const headerBottom = (await page.locator('header').boundingBox())!.y + 80
-      const labelTop = (await hero.getByText(`#${home.hero.label}`).boundingBox())!.y
+      const labelTop = (await hero.getByText(`#${SEGMENTS[0]!.label}`).boundingBox())!.y
       expect(labelTop, 'hero content starts below the header').toBeGreaterThanOrEqual(headerBottom)
 
-      // LCP image: the poster, preloaded with high priority
-      const poster = hero.locator('img').first()
-      await expect(poster).toHaveAttribute('fetchpriority', 'high')
-      await expect(poster).not.toHaveAttribute('loading', 'lazy')
+      // LCP image: the poster of segment 01, preloaded with high priority; segment 02 — low
+      const posters = hero.locator('img')
+      await expect(posters).toHaveCount(2)
+      await expect(posters.first()).toHaveAttribute('fetchpriority', 'high')
+      await expect(posters.first()).not.toHaveAttribute('loading', 'lazy')
+      await expect(posters.nth(1)).toHaveAttribute('fetchpriority', 'low')
 
-      // CTA: the choice of messengers (tests/e2e/contact.e2e.spec.ts)
-      const cta = hero.getByRole('button', { name: `${home.hero.ctaLabel} — выбрать мессенджер` })
+      // CTA (the choice of messengers, tests/e2e/contact.e2e.spec.ts) and the link to «О нас»
+      const cta = hero.getByRole('button', { name: `${CTA_LABEL} — выбрать мессенджер` })
       await expect(cta).toHaveAttribute('aria-expanded', 'false')
-
-      // Statistics: carousel on mobile, grid of 3 / 6
-      const list = page.locator('ul').filter({ hasText: stats.items[0].label }).first()
-      await expect(list.locator('li')).toHaveCount(stats.items.length)
-      const layout = await list.evaluate((el) => ({
-        columns: getComputedStyle(el).gridTemplateColumns.split(' ').filter(Boolean).length,
-        display: getComputedStyle(el).display,
-        scrolls: el.scrollWidth > el.clientWidth,
-      }))
-      if (width === 390) expect(layout).toMatchObject({ display: 'flex', scrolls: true })
-      else expect(layout).toMatchObject({ display: 'grid', columns: STAT_COLUMNS[width] })
-
-      // History: year plate, values, link to «О нас»
-      await expect(page.getByText(home.history.yearValue!, { exact: true })).toBeVisible()
-      for (const value of home.history.values!) {
-        await expect(page.getByText(value.label, { exact: true })).toBeVisible()
-      }
-      await expect(page.getByRole('link', { name: home.history.linkLabel! })).toHaveAttribute(
+      await expect(hero.getByRole('link', { name: HERO.linkLabel! })).toHaveAttribute(
         'href',
         '/about',
       )
+
+      // Controls: arrows next to the CTA on mobile, the vertical tab rail from tablet
+      const tabs = hero.getByRole('tab')
+      const next = hero.getByRole('button', { name: 'Следующий раздел' })
+      if (width === 390) {
+        await expect(tabs).toHaveCount(0)
+        await expect(next).toHaveCount(1)
+        const arrow = (await next.boundingBox())!
+        expect([arrow.width, arrow.height]).toEqual([52, 52])
+        expect(Math.round(arrow.y)).toBe(Math.round((await cta.boundingBox())!.y))
+      } else {
+        await expect(tabs).toHaveCount(2)
+        await expect(hero.getByRole('tablist', { name: 'Разделы' })).toHaveAttribute(
+          'aria-orientation',
+          'vertical',
+        )
+        await expect(tabs.first()).toHaveAttribute('aria-selected', 'true')
+        await expect(tabs.first()).toHaveAccessibleName(`01 ${SEGMENTS[0]!.label!}`)
+        await expect(tabs.nth(1)).toHaveAccessibleName(`02 ${SEGMENTS[1]!.label!}`)
+        const arrow = (await next.boundingBox())!
+        expect([arrow.width, arrow.height]).toEqual([44, 44])
+      }
 
       // News: one card per view of README §6.1 heights, the latest published only
       const slider = page.getByRole('region', { name: NEWS_TITLE })
@@ -193,7 +268,7 @@ test.describe('home', () => {
       const left = (viewport - 1600) / 2 + 64
       const box = async (locator: ReturnType<Page['locator']>) => (await locator.boundingBox())!
 
-      const hero = await box(page.locator('section[aria-labelledby="home-hero-title"]'))
+      const hero = await box(heroSection(page))
       expect([hero.x, hero.width]).toEqual([0, viewport])
       const footer = await box(page.locator('footer'))
       expect([footer.x, footer.width]).toEqual([0, viewport])
@@ -201,12 +276,13 @@ test.describe('home', () => {
       const header = page.locator('header')
       expect((await box(header.getByRole('link', { name: 'MGS MEBEL — на главную' }))).x).toBe(left)
       const cta = await box(
-        header.getByRole('button', { name: `${home.hero.ctaLabel} — выбрать мессенджер` }),
+        header.getByRole('button', { name: `${CTA_LABEL} — выбрать мессенджер` }),
       )
       expect(cta.x + cta.width).toBe(viewport - left)
       expect((await box(page.locator('h1'))).x).toBe(left)
-      const stat = page.locator('ul').filter({ hasText: stats.items[0].label }).first()
-      expect((await box(stat.locator('li').first())).x).toBe(left)
+      // The tab rail keeps to the right edge of the container
+      const rail = await box(heroSection(page).getByRole('tab').first())
+      expect(Math.round(rail.x + rail.width)).toBe(viewport - left)
       expect((await box(page.locator('footer p').first())).x).toBe(left)
       // The salon map is not a background: it keeps to the container
       const map = await box(page.getByRole('region', { name: SALONS_TITLE }).locator('.bg-map-bg'))
@@ -230,16 +306,9 @@ test.describe('home', () => {
     })
   }
 
-  test('390: carousels start at the page gutter', async ({ page }) => {
+  test('390: the news carousel starts at the page gutter', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto(`${BASE}/`)
-    const stat = page.locator('ul').filter({ hasText: stats.items[0].label }).first()
-    expect(await stat.evaluate((el) => getComputedStyle(el).scrollPaddingLeft)).toBe('20px')
-    expect((await stat.locator('li').first().boundingBox())!.x).toBe(20)
-    // One card further: snap brings the second card to the gutter
-    await stat.evaluate((el) => el.scrollBy({ left: 120, behavior: 'instant' }))
-    await expect.poll(async () => (await stat.locator('li').nth(1).boundingBox())!.x).toBe(20)
-
     const track = page.getByRole('region', { name: NEWS_TITLE }).locator('.snap-x')
     expect((await track.getByRole('group').first().boundingBox())!.x).toBe(20)
   })
@@ -365,11 +434,212 @@ test.describe('home', () => {
     await expect(page).toHaveURL(`${BASE}/salons`)
   })
 
+  test.describe('hero scene', () => {
+    test('1440: one wheel — one step, the page stays; then the wheel scrolls; up at the top → 01', async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 1440, height: 900 })
+      await page.goto(`${BASE}/`)
+      await hydrated(page)
+      await page.mouse.move(400, 450)
+
+      await page.mouse.wheel(0, 100)
+      await expect.poll(() => segment(page)).toBe(1)
+      expect(await scrollY(page)).toBe(0)
+
+      // A new gesture down on 02 scrolls the page
+      await page.waitForTimeout(AFTER_STEP_MS)
+      await page.mouse.wheel(0, 100)
+      await expect.poll(() => scrollY(page)).toBeGreaterThan(0)
+      expect(await segment(page)).toBe(1)
+
+      // Back at the top, a gesture up returns to 01 and the page stays
+      await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }))
+      await page.waitForTimeout(AFTER_STEP_MS)
+      await page.mouse.wheel(0, -100)
+      await expect.poll(() => segment(page)).toBe(0)
+      expect(await scrollY(page)).toBe(0)
+      await expect(heroSection(page).getByRole('tab').first()).toHaveAttribute(
+        'aria-selected',
+        'true',
+      )
+    })
+
+    test('1440: page keys step the scene; shortcuts and focused controls keep their keys', async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 1440, height: 900 })
+      await page.goto(`${BASE}/`)
+      await hydrated(page)
+
+      const steps: [string, number][] = [
+        ['ArrowDown', 1],
+        ['ArrowUp', 0],
+        ['PageDown', 1],
+        ['PageUp', 0],
+        ['Space', 1],
+        ['Shift+Space', 0],
+      ]
+      for (const [key, expected] of steps) {
+        await page.keyboard.press(key)
+        await expect.poll(() => segment(page), key).toBe(expected)
+        expect(await scrollY(page), key).toBe(0)
+        await page.waitForTimeout(AFTER_STEP_MS)
+      }
+
+      // ⌘↓ / Ctrl+↓ are not taken over: no step
+      for (const key of ['Meta+ArrowDown', 'Control+ArrowDown']) {
+        await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }))
+        await page.keyboard.press(key)
+        await page.waitForTimeout(200)
+        expect(await segment(page), key).toBe(0)
+      }
+      await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }))
+
+      // Space on the CTA opens the choice of messengers, the scene stays
+      const cta = heroSection(page).getByRole('button', {
+        name: `${CTA_LABEL} — выбрать мессенджер`,
+      })
+      await cta.focus()
+      await page.keyboard.press('Space')
+      await expect(
+        heroSection(page).getByRole('button', { name: 'Закрыть выбор мессенджера' }),
+      ).toHaveAttribute('aria-expanded', 'true')
+      expect(await segment(page)).toBe(0)
+      await page.keyboard.press('Escape')
+    })
+
+    test('834: tabs from the keyboard go round with roving focus', async ({ page }) => {
+      await page.setViewportSize({ width: 834, height: 1194 })
+      await page.goto(`${BASE}/`)
+      await hydrated(page)
+      const tabs = heroSection(page).getByRole('tab')
+      await tabs.first().focus()
+
+      await page.keyboard.press('ArrowDown')
+      await expect(tabs.nth(1)).toBeFocused()
+      await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true')
+      await expect(tabs.first()).toHaveAttribute('tabindex', '-1')
+      expect(await segment(page)).toBe(1)
+      await page.keyboard.press('ArrowRight')
+      await expect(tabs.first()).toBeFocused()
+      expect(await segment(page)).toBe(0)
+      await page.keyboard.press('ArrowUp')
+      await expect(tabs.nth(1)).toBeFocused()
+      expect(await segment(page)).toBe(1)
+      expect(await scrollY(page)).toBe(0)
+    })
+
+    test.describe('390 touch', () => {
+      test.use({ viewport: { width: 390, height: 844 }, hasTouch: true })
+
+      test('one swipe — one step, the page stays', async ({ page }) => {
+        await page.goto(`${BASE}/`)
+        await hydrated(page)
+        const cdp = await page.context().newCDPSession(page)
+        const swipe = async (from: number, to: number) => {
+          await cdp.send('Input.dispatchTouchEvent', {
+            type: 'touchStart',
+            touchPoints: [{ x: 195, y: from }],
+          })
+          for (let i = 1; i <= 6; i++) {
+            await cdp.send('Input.dispatchTouchEvent', {
+              type: 'touchMove',
+              touchPoints: [{ x: 195, y: from + ((to - from) * i) / 6 }],
+            })
+          }
+          await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+        }
+
+        await swipe(500, 380)
+        await expect.poll(() => segment(page)).toBe(1)
+        expect(await scrollY(page)).toBe(0)
+        await page.waitForTimeout(AFTER_STEP_MS)
+        await swipe(380, 500)
+        await expect.poll(() => segment(page)).toBe(0)
+        expect(await scrollY(page)).toBe(0)
+      })
+    })
+
+    test('a mouse click on → does not stop the automatic switching', async ({ page }) => {
+      await page.setViewportSize({ width: 390, height: 844 })
+      await page.goto(`${BASE}/`)
+      await page.addStyleTag({ content: ':root { --motion-hero-progress: 1s }' })
+      await hydrated(page)
+      const next = heroSection(page).getByRole('button', { name: 'Следующий раздел' })
+      const { x, y } = await center(next)
+      await page.mouse.click(x, y)
+      await expect.poll(() => segment(page)).toBe(1)
+      await expect(next).toBeFocused()
+      // The pointer leaves the hero (hover pauses on hover devices); the focus stays on →
+      await page.mouse.move(195, 1)
+      await expect.poll(() => segment(page), { timeout: 5000 }).toBe(0)
+      await expect(next).toBeFocused()
+    })
+
+    test.describe('reduced motion', () => {
+      test.use({ viewport: { width: 1440, height: 900 } })
+
+      test('no progress animation, so no switching; no video requests', async ({ page }) => {
+        const videos: string[] = []
+        page.on('request', (r) => {
+          if (/\.(mp4|webm)(\?|$)/.test(r.url())) videos.push(r.url())
+        })
+        await page.emulateMedia({ reducedMotion: 'reduce' })
+        await page.goto(`${BASE}/`)
+        await hydrated(page)
+        const fill = heroSection(page).locator('.hero-progress:visible')
+        await expect(fill).toHaveCount(1)
+        expect(await fill.evaluate((el) => getComputedStyle(el).animationName)).toBe('none')
+        expect(await fill.evaluate((el) => getComputedStyle(el).transform)).toBe('none')
+        expect(await segment(page)).toBe(0)
+        expect(videos).toEqual([])
+      })
+    })
+
+    // A single segment is a plain hero: no rail, no arrows, the wheel scrolls the page. Checked on
+    // a draft in draft mode (published pages are cached), then the draft is put back.
+    test('one segment: no controls, the wheel scrolls the page', async ({ page }) => {
+      await page.setViewportSize({ width: 1440, height: 900 })
+      const login = await page.request.post(`${BASE}/api/users/login`, {
+        data: { email: e2eEditor.email, password: e2eEditor.password },
+      })
+      expect(login.ok()).toBe(true)
+      const url = `${BASE}/api/globals/home?draft=true&depth=0`
+      const draft = await (await page.request.get(url)).json()
+      const save = (hero: unknown) =>
+        page.request.post(`${BASE}/api/globals/home?draft=true`, {
+          data: { ...draft, hero, _status: 'draft' },
+        })
+      try {
+        expect(
+          (await save({ ...draft.hero, slides: draft.hero.slides.slice(0, 1) })).ok(),
+        ).toBe(true)
+        await page.goto(`${BASE}/preview?path=/`)
+        await hydrated(page)
+        const hero = heroSection(page)
+        await expect(page.locator('h1')).toHaveText(HOME_DRAFT_TITLE)
+        await expect(hero).not.toHaveAttribute('aria-roledescription')
+        await expect(hero).toHaveAttribute('aria-labelledby', 'home-hero-title')
+        await expect(hero.getByRole('tab')).toHaveCount(0)
+        await expect(hero.getByRole('button', { name: /раздел$/ })).toHaveCount(0)
+        await expect(hero.locator('.hero-progress')).toHaveCount(0)
+
+        await page.mouse.move(400, 450)
+        await page.mouse.wheel(0, 100)
+        await expect.poll(() => scrollY(page)).toBeGreaterThan(0)
+      } finally {
+        expect((await save(draft.hero)).ok()).toBe(true)
+        await page.request.get(`${BASE}/preview/exit?path=/`, { maxRedirects: 0 })
+      }
+    })
+  })
+
   test('anonymous API never gets the home draft', async ({ request }) => {
     for (const query of ['', '?draft=true']) {
       const response = await request.get(`${BASE}/api/globals/home${query}`)
       expect(response.ok()).toBe(true)
-      expect((await response.json()).hero.title).toBe(home.hero.title)
+      expect((await response.json()).hero.slides[0].title).toBe(SEGMENTS[0]!.title)
     }
   })
 })
@@ -380,7 +650,7 @@ test('home on an empty database renders without sections @empty', async ({ page 
   const response = await page.goto(`${BASE}/`)
   expect(response?.status()).toBe(200)
   await expect(page.locator('main#content')).toHaveCount(1)
-  await expect(page.locator('section[aria-labelledby="home-hero-title"]')).toHaveCount(0)
+  await expect(page.locator('section[data-hero]')).toHaveCount(0)
   await expect(page.locator('section[aria-labelledby="home-salons-title"]')).toHaveCount(0)
   await expect(page.getByRole('group', { name: 'Вид: карта или список' })).toHaveCount(0)
   expect(await axe(page)).toEqual([])

@@ -152,11 +152,15 @@ test('reduced motion: poster only, no video element and no video requests', asyn
 
 test('without reduced motion: background videos mount and play', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
+  // The files stay unanswered: the player is mounted until its 4 s start timeout, whether or not
+  // this browser could play them (the e2e fixture is a minimal mp4)
+  await page.route('**/*.mp4', () => {})
   await page.goto(URL)
   const withVideo = page.locator('[data-bg-video]')
-  // CI has no seed media: nothing to play, the posters are covered by the test above.
+  // Without background videos in the database there is nothing to play; the posters are covered
+  // by the test above.
   test.skip((await withVideo.count()) === 0, 'no background video in the database')
-  await scrollThrough(page)
+  // The first one is the hero sample: priority, mounted at once
   await expect(page.locator('[data-bg-video] video').first()).toBeAttached()
   const hero = page.locator('[data-bg-video] video').first()
   await expect(hero).toHaveJSProperty('muted', true)
