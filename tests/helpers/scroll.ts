@@ -67,3 +67,46 @@ export const cls = (page: Page) =>
         setTimeout(() => resolve(total), 500)
       }),
   )
+
+export type LayoutShift = { value: number; at: number; sources: string[] }
+
+/**
+ * Layout shifts since navigation (buffered entries included), without those right after input:
+ * each with what moved — `tag#id.classes «text»: x, y, w, h before→after` — so a failing check
+ * names the source.
+ */
+export const layoutShifts = (page: Page) =>
+  page.evaluate(
+    () =>
+      new Promise<LayoutShift[]>((resolve) => {
+        const shifts: LayoutShift[] = []
+        new PerformanceObserver((list) => {
+          for (const entry of list.getEntries() as (PerformanceEntry & {
+            value: number
+            hadRecentInput: boolean
+            sources: { node?: Node; previousRect: DOMRectReadOnly; currentRect: DOMRectReadOnly }[]
+          })[]) {
+            if (entry.hadRecentInput) continue
+            shifts.push({
+              value: Number(entry.value.toFixed(4)),
+              at: Math.round(entry.startTime),
+              sources: entry.sources.map(({ node, previousRect: a, currentRect: b }) => {
+                const el = node instanceof Element ? node : node?.parentElement
+                const name = el
+                  ? el.tagName.toLowerCase() +
+                    (el.id ? `#${el.id}` : '') +
+                    [...el.classList].map((c) => `.${c}`).join('')
+                  : String(node?.nodeName ?? '?')
+                const text = ((el as HTMLElement | null)?.innerText ?? node?.textContent ?? '')
+                  .replace(/\s+/g, ' ')
+                  .trim()
+                  .slice(0, 30)
+                const r = Math.round
+                return `${name} «${text}»: x ${r(a.x)}→${r(b.x)} y ${r(a.y)}→${r(b.y)} w ${r(a.width)}→${r(b.width)} h ${r(a.height)}→${r(b.height)}`
+              }),
+            })
+          }
+        }).observe({ type: 'layout-shift', buffered: true })
+        setTimeout(() => resolve(shifts), 500)
+      }),
+  )

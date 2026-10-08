@@ -4,7 +4,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test'
 import { globals } from '../../src/seed/data/globals'
 import { news } from '../../src/seed/data/news'
 import { salons } from '../../src/seed/data/salons'
-import { cls } from '../helpers/scroll'
+import { cls, layoutShifts } from '../helpers/scroll'
 import { E2E_NEWS_COUNT, E2E_SALONS, HOME_DRAFT_TITLE, NEWS_DRAFT_TITLE } from '../helpers/e2eHome'
 import { e2eEditor } from '../helpers/e2eEditor'
 
@@ -306,6 +306,49 @@ test.describe('home', () => {
       expect(await axe(page)).toEqual([])
     })
   }
+
+  // `display: 'optional'` (fonts.ts): a woff2 that arrives after the first paint must not reflow
+  // the page — the browser keeps the already-painted fallback for the rest of the document.
+  test.describe('fonts', () => {
+    /** What actually painted the element, not the declared `font-family` list (next/font always
+     * lists `"manrope", "manrope Fallback"` whether or not the woff2 made it in time). */
+    const paintedFont = async (page: Page, selector: string) => {
+      const cdp = await page.context().newCDPSession(page)
+      await cdp.send('DOM.enable')
+      await cdp.send('CSS.enable')
+      const { root } = await cdp.send('DOM.getDocument')
+      const { nodeId } = await cdp.send('DOM.querySelector', { nodeId: root.nodeId, selector })
+      const { fonts } = await cdp.send('CSS.getPlatformFontsForNode', { nodeId })
+      return fonts.map((f) => f.familyName).join(', ')
+    }
+
+    test('the page is painted with Manrope', async ({ page }) => {
+      await page.goto(`${BASE}/`)
+      await expect(page.locator('h1')).toBeVisible()
+      await page.waitForTimeout(300)
+      expect(await paintedFont(page, 'h1')).toMatch(/^Manrope/i)
+      expect(await page.evaluate(() => document.fonts.check('16px Manrope'))).toBe(true)
+      const family = await page.locator('h1').evaluate((el) => getComputedStyle(el).fontFamily)
+      expect(family.toLowerCase().startsWith('manrope')).toBe(true)
+    })
+
+    for (const width of [390, 834, 1440] as const) {
+      test(`${width}: a late font falls back to Arial without a layout shift`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 })
+        await page.route('**/*.woff2', async (route) => {
+          await new Promise((resolve) => setTimeout(resolve, 300))
+          await route.continue()
+        })
+        await page.goto(`${BASE}/`)
+        await expect(page.locator('h1')).toBeVisible()
+        await page.waitForTimeout(500)
+        expect(await layoutShifts(page), 'layout shifts: value, start, what moved').toEqual([])
+        // `optional`: a font that misses its ~100ms window is not swapped in later
+        expect(await paintedFont(page, 'h1')).not.toMatch(/^Manrope/i)
+        await page.unrouteAll({ behavior: 'ignoreErrors' })
+      })
+    }
+  })
 
   test('390: the news carousel starts at the page gutter', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
