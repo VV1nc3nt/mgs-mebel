@@ -3,6 +3,7 @@
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 
+import { BgVideoActiveProvider } from '@/components/ui/BgVideoActive'
 import { HIT_AREA_Y } from '@/components/ui/hitArea'
 import { IconButton } from '@/components/ui/IconButton'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
@@ -25,7 +26,8 @@ const VISIBLE = 0.6
 /**
  * News slider (README §6.1 п.4): one card per view on a native scroll-snap track, arrows
  * in the section head going round, one set of progress segments over the track. Swipes and
- * keyboard scrolling move the segments too (IntersectionObserver on the slides).
+ * keyboard scrolling move the segments too (IntersectionObserver on the slides). A cover video plays
+ * only on the active slide; the first one is active on the server and on hydration.
  */
 export function NewsSlider({ heading, headingId, label, slides }: Props) {
   const track = useRef<HTMLDivElement>(null)
@@ -102,7 +104,7 @@ export function NewsSlider({ heading, headingId, label, slides }: Props) {
                 aria-label={`${i + 1} из ${count}`}
                 className="w-full shrink-0 snap-center"
               >
-                {slide}
+                <BgVideoActiveProvider value={i === active}>{slide}</BgVideoActiveProvider>
               </div>
             ))}
           </div>

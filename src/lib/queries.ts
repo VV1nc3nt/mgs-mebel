@@ -117,7 +117,10 @@ export async function getStats() {
   return statsCached()
 }
 
-export type NewsSlide = Pick<News, 'id' | 'title' | 'slug' | 'date' | 'lead' | 'cover'>
+export type NewsSlide = Pick<
+  News,
+  'id' | 'title' | 'slug' | 'date' | 'lead' | 'cover' | 'coverVideo'
+>
 
 const latestNewsCached = unstable_cache(
   async (limit: number): Promise<NewsSlide[]> => {
@@ -131,7 +134,7 @@ const latestNewsCached = unstable_cache(
       depth: 1,
       draft: false,
       overrideAccess: false,
-      select: { title: true, slug: true, date: true, lead: true, cover: true },
+      select: { title: true, slug: true, date: true, lead: true, cover: true, coverVideo: true },
     })
     return docs
   },

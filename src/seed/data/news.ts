@@ -53,6 +53,7 @@ export const news = (id: MediaId): NewsData[] => {
       date: day('2026-02-19'),
       lead: 'MGS MEBEL — официальный партнёр ALVIC CENTER на международной дизайнерской выставке ARTDOM.',
       cover: id('U4'),
+      coverVideo: id('H5'),
       body: [
         p(ARTDOM.intro),
         p(ARTDOM.stand),
@@ -103,6 +104,7 @@ export const news = (id: MediaId): NewsData[] => {
       date: day('2026-01-23'),
       lead: 'Выбираем лучший проект кухонного гарнитура MGS MEBEL с техникой Korting.',
       cover: id('U1'),
+      coverVideo: id('H3'),
       body: [
         p('Выбираем лучший проект кухонного гарнитура MGS MEBEL с техникой Korting.'),
         { blockType: 'video', embedUrl: EMBED.rutube, poster: id('U1'), duration: '11:52' },

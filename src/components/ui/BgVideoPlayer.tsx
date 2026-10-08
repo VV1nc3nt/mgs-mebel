@@ -8,11 +8,15 @@ import { VIDEO_START_TIMEOUT_MS, videoAllowed } from '@/lib/bgVideo'
 import { cn } from '@/lib/cn'
 import { VIDEO_MOUNT_MARGIN, type VideoSource } from '@/lib/media'
 import { isOverlayOpen, subscribeOverlay } from '@/lib/overlay'
+import { useBgVideoActive } from './BgVideoActive'
 
 type Props = VideoSource & {
   /** Hero (LCP): mounts at once with preload="auto". Others mount near the viewport. */
   priority?: boolean
-  /** Plays only while active; inactive — paused, the start timeout cancelled. */
+  /**
+   * Plays only while active (and while its slide is, see `BgVideoActiveProvider`); inactive —
+   * paused, the start timeout cancelled.
+   */
   active?: boolean
   /** No source until the first time it is active (an inactive slide does not download). */
   lazySrc?: boolean
@@ -32,10 +36,11 @@ export function BgVideoPlayer({
   src,
   type,
   priority = false,
-  active = true,
+  active: activeProp = true,
   lazySrc = false,
   restartKey,
 }: Props) {
+  const active = useBgVideoActive() && activeProp
   const reducedMotion = useReducedMotion()
   const liteNetwork = useLiteNetwork()
   const [near, setNear] = useState(priority)

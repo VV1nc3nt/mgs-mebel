@@ -23,13 +23,19 @@ describe('home page and news queries', () => {
     const image = await createImage(payload)
     const video = await createVideo(payload)
 
-    const news = (title: string, date: string, status: 'published' | 'draft') => {
+    const news = (
+      title: string,
+      date: string,
+      status: 'published' | 'draft',
+      coverVideo?: number,
+    ) => {
       const data = {
         title: `${PREFIX} ${title}`,
         slug: `${PREFIX}-${title}`,
         type: 'news' as const,
         date,
         cover: image.id,
+        coverVideo,
       }
       return status === 'draft'
         ? payload.create({ collection: 'news', data, draft: true, depth: 0 })
@@ -40,7 +46,7 @@ describe('home page and news queries', () => {
           })
     }
     await news('older', day(1), 'published')
-    await news('newer', day(2), 'published')
+    await news('newer', day(2), 'published', video.id)
     await news('draft', day(3), 'draft')
     // Published, then a draft edit with a newer title: visitors keep the published one
     const edited = await news('edited', day(4), 'published')
@@ -97,6 +103,12 @@ describe('home page and news queries', () => {
   it('latest news: published only, newest first, never a draft edit', async () => {
     const titles = (await getLatestNews(3)).map((n) => n.title)
     expect(titles).toEqual([`${PREFIX} edited`, `${PREFIX} newer`, `${PREFIX} older`])
+  })
+
+  it('latest news: the cover video is populated, empty without one', async () => {
+    const [edited, newer] = await getLatestNews(3)
+    expect(newer!.coverVideo).toMatchObject({ mimeType: 'video/mp4' })
+    expect(edited!.coverVideo ?? null).toBeNull()
   })
 
   it('news by slug: published only, never a draft or a draft edit', async () => {

@@ -55,8 +55,13 @@ const INSET = {
 export type MediaCardProps = {
   /** Image from Payload Media. An id (not populated) or nothing renders an empty surface. */
   media: MediaValue
-  /** Background video over `media` as its poster (exhibitions, salon reviews, #mission). */
+  /** Background video over `media` as its poster (exhibitions, salon reviews, #mission, news covers). */
   video?: MediaValue
+  /**
+   * No video source until the card is first active (a slide of the news slider): only the card in
+   * view downloads and plays, a card left resumes where it was paused.
+   */
+  videoLazy?: boolean
   /** Payload size used as the optimizer source: thumb 480, card 960, hero 1920. */
   imageSize?: ImageSizeName
   /** Rendered width per breakpoint, e.g. `{ base: '100vw', md: '50vw', xl: '33vw' }`. */
@@ -91,6 +96,7 @@ export type MediaCardProps = {
 export function MediaCard({
   media,
   video,
+  videoLazy,
   imageSize = 'card',
   sizes,
   ratio,
@@ -119,6 +125,7 @@ export function MediaCard({
             sizes={sizes}
             imageSize={imageSize}
             priority={priority}
+            lazySrc={videoLazy}
           />
         ) : (
           image && (

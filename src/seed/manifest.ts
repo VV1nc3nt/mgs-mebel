@@ -407,7 +407,15 @@ export const videos: SeedFile[] = [
     'about.hero',
     true,
   ),
-  pexels('H3', 'living-room', 5644364, 'hd_1280_720_25fps', 'Polina', 'about.mission', true),
+  pexels(
+    'H3',
+    'living-room',
+    5644364,
+    'hd_1280_720_25fps',
+    'Polina',
+    'about.mission, видео обложки «Конкурс проектов с Korting»',
+    true,
+  ),
   pexels(
     'H4',
     'kitchen-interior',
@@ -423,7 +431,7 @@ export const videos: SeedFile[] = [
     15887297,
     'hd_1920_1080_30fps',
     'не подтверждён (страница за Cloudflare)',
-    'designers.project, выставка «ARTDOM 2026»',
+    'designers.project, выставка «ARTDOM 2026», видео обложки «Выставка ARTDOM 2026»',
     true,
   ),
   pexels(

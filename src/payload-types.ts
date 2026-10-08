@@ -274,6 +274,10 @@ export interface News {
   lead?: string | null;
   cover: number | Media;
   /**
+   * MP4/WebM, 8–15 с, до 5 МБ, без звука. Необязательно; поверх обложки
+   */
+  coverVideo?: (number | null) | Media;
+  /**
    * Считается автоматически: слова / 180.
    */
   readingTime?: number | null;
@@ -610,6 +614,7 @@ export interface NewsSelect<T extends boolean = true> {
   date?: T;
   lead?: T;
   cover?: T;
+  coverVideo?: T;
   readingTime?: T;
   body?:
     | T
