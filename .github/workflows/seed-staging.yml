@@ -27,6 +27,8 @@ concurrency:
 jobs:
   seed:
     runs-on: ubuntu-latest
+    # About 4 minutes with the seed cache; a cold cache downloads the stock (its step: up to 15)
+    timeout-minutes: 40
     environment:
       name: staging
       url: https://staging.tmprl.ru
