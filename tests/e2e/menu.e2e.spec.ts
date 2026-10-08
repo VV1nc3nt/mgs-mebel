@@ -2,6 +2,7 @@ import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
 import { globals } from '../../src/seed/data/globals'
+import { settle, wheel } from '../helpers/scroll'
 
 const BASE = 'http://localhost:3000'
 const { layout } = globals(() => 0)
@@ -114,20 +115,18 @@ test.describe('menu behaviour', () => {
     }
   })
 
-  test('Esc: focus on the menu button at once, scroll back after the animation', async ({
-    page,
-  }) => {
+  test('Esc: focus on the menu button at once, unlocked after the animation', async ({ page }) => {
     await page.goto(`${BASE}/salons`)
     await scrollTo(page, Y)
     await openMenu(page)
     await page.keyboard.press('Escape')
-    // Right after Esc, before the 450ms closing animation: focus is back, the page is still fixed
+    // Right after Esc, before the 450ms closing animation: focus is back, the page still locked
     const start = await page.evaluate(() => ({
       focus: document.activeElement?.getAttribute('aria-label'),
       locked: document.documentElement.dataset.scrollLocked ?? null,
     }))
     expect(start).toEqual({ focus: 'Открыть меню', locked: '' })
-    // End of the animation: unlocked and scrolled back in one go
+    // End of the animation: unlocked, the position never changed
     await expect(dialog(page)).toHaveCount(0)
     await expect(page.locator('html')).not.toHaveAttribute('data-scroll-locked')
     expect(await scrollY(page)).toBe(Y)
@@ -292,5 +291,94 @@ test.describe('menu behaviour', () => {
     await page.goto(`${BASE}/salons`)
     await expect(page.locator('#app-menu')).toHaveCount(0)
     await expect(burger(page)).not.toHaveAttribute('aria-controls')
+  })
+})
+
+/**
+ * Mid-page, 1–2 screens down /about: the lock does not move the page (a fixed <body> shifted by
+ * the offset made iOS Safari rebuild its layers, and every backdrop-filter flashed for a frame).
+ */
+test.describe('menu mid-page', () => {
+  test.use({ viewport: { width: 390, height: 844 } })
+
+  const header = (page: Page) => page.locator('header')
+
+  /** Down to `y` (the header goes away), then a wheel up: pinned, its slide-in finished. */
+  async function pinAt(page: Page, y: number) {
+    await page.goto(`${BASE}/about`)
+    // Hydrated first: a jump before it reads as a page opened mid-way
+    await page.waitForFunction(
+      () => document.documentElement.style.getPropertyValue('--header-h') !== '',
+    )
+    await settle(page)
+    await page.evaluate((top) => window.scrollTo({ top, behavior: 'instant' }), y)
+    await expect(header(page)).toHaveAttribute('data-state', 'away')
+    await settle(page)
+    await wheel(page, -300)
+    await expect(header(page)).toHaveAttribute('data-state', 'pinned')
+    await expect
+      .poll(() => page.locator('.header-bar').evaluate((el) => getComputedStyle(el).transform))
+      .toBe('none')
+    return scrollY(page)
+  }
+
+  /** scrollY and the tops of the header bar and the dock, in whole pixels (an expression). */
+  const SNAPSHOT = `({
+    y: window.scrollY,
+    header: Math.round(document.querySelector('.header-bar').getBoundingClientRect().top),
+    dock: Math.round(document.querySelector('.dock').getBoundingClientRect().top),
+  })`
+
+  test('opening keeps the page in place in every frame; nothing under it scrolls', async ({
+    page,
+  }) => {
+    const y = await pinAt(page, 1500)
+    const before = await page.evaluate(SNAPSHOT)
+    // Every frame from the click to the end of the circle's 650ms. A string: the test transpiler
+    // wraps named functions inside evaluate() in __name()
+    await page.evaluate(`{
+      window.menuFrames = []
+      const start = performance.now()
+      const tick = () => {
+        window.menuFrames.push(${SNAPSHOT})
+        if (performance.now() - start < 900) requestAnimationFrame(tick)
+      }
+      requestAnimationFrame(tick)
+    }`)
+    await openMenu(page)
+    const frames = await page.evaluate<unknown[]>('window.menuFrames')
+    expect(frames.length).toBeGreaterThan(10)
+    for (const frame of frames) expect(frame).toEqual(before)
+    expect(await page.evaluate(() => document.body.getAttribute('style'))).toBeNull()
+
+    await page.mouse.move(200, 400)
+    await page.mouse.wheel(0, 600)
+    await page.keyboard.press('PageDown')
+    await page.waitForTimeout(300)
+    expect(await page.evaluate(SNAPSHOT)).toEqual(before)
+
+    await page.getByRole('button', { name: 'Закрыть меню' }).click()
+    await expect(dialog(page)).toHaveCount(0)
+    await expect(page.locator('html')).not.toHaveAttribute('data-scroll-locked')
+    expect(await scrollY(page)).toBe(y)
+    await expect(header(page)).toHaveAttribute('data-state', 'pinned')
+  })
+
+  test('Esc keeps the position', async ({ page }) => {
+    const y = await pinAt(page, 1500)
+    await openMenu(page)
+    await page.keyboard.press('Escape')
+    await expect(dialog(page)).toHaveCount(0)
+    expect(await scrollY(page)).toBe(y)
+  })
+
+  test('a link to another page opens it at the top', async ({ page }) => {
+    await pinAt(page, 1500)
+    await openMenu(page)
+    await dialog(page).getByRole('link', { name: 'MGS MEBEL — на главную' }).click()
+    await expect(page).toHaveURL(`${BASE}/`)
+    await expect(dialog(page)).toHaveCount(0)
+    await expect(page.locator('html')).not.toHaveAttribute('data-scroll-locked')
+    await expect.poll(() => scrollY(page)).toBe(0)
   })
 })

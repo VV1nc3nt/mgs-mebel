@@ -94,26 +94,25 @@ describe('lockScroll', () => {
   })
   afterEach(() => scrollTo.mockRestore())
 
-  it('fixes the body at the scroll offset and restores it', () => {
+  it('hides the overflow in place, without moving the body, and releases it', () => {
     const release = lockScroll()
     const { documentElement: html, body } = document
     expect(html.style.overflow).toBe('hidden')
-    expect(body.style.position).toBe('fixed')
-    expect(body.style.top).toBe('-240px')
+    expect(html.style.overscrollBehavior).toBe('none')
+    expect(body.getAttribute('style')).toBeNull()
     expect(html.dataset.scrollLocked).toBe('')
 
-    release({ restore: true })
+    release({ toTop: false })
     expect(html.style.overflow).toBe('')
-    expect(body.style.position).toBe('')
-    expect(body.style.top).toBe('')
+    expect(html.style.overscrollBehavior).toBe('')
     expect(html.dataset.scrollLocked).toBeUndefined()
-    expect(scrollTo).toHaveBeenCalledWith({ top: 240, left: 0, behavior: 'instant' })
+    expect(scrollTo).not.toHaveBeenCalled()
   })
 
-  it('leaves the position alone when navigating away', () => {
-    lockScroll()({ restore: false })
-    expect(scrollTo).not.toHaveBeenCalled()
-    expect(document.body.style.position).toBe('')
+  it('leaves the page at the top when navigating away', () => {
+    lockScroll()({ toTop: true })
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: 'instant' })
+    expect(document.documentElement.style.overflow).toBe('')
   })
 })
 
@@ -195,11 +194,11 @@ describe('AppMenu', () => {
     expect(document.documentElement.dataset.scrollLocked).toBe('')
     expect(scrollTo).not.toHaveBeenCalled()
 
-    // End of closing: unmounted, unlocked and scrolled back in the same commit
+    // End of closing: unmounted and unlocked in the same commit; the page never moved
     await waitFor(() => expect(screen.queryByRole('dialog', { hidden: true })).toBeNull())
     expect(document.documentElement.dataset.scrollLocked).toBeUndefined()
-    expect(document.body.style.position).toBe('')
-    expect(scrollTo).toHaveBeenCalledTimes(1)
+    expect(document.documentElement.style.overflow).toBe('')
+    expect(scrollTo).not.toHaveBeenCalled()
   })
 
   it('pauses background videos from the start of opening until closing has ended', async () => {
