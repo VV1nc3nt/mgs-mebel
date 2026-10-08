@@ -222,7 +222,7 @@ export function HomeHeroStage({ segments, titleId, cta, link }: Props) {
           </div>
 
           {(cta || multi || link) && (
-            <div className="flex flex-wrap items-center gap-2 md:gap-x-6 md:gap-y-3 md:pt-1.5">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-3.5 md:gap-x-6 md:gap-y-3 md:pt-1.5">
               {cta && <div className="flex min-w-0 flex-1 md:flex-none">{cta}</div>}
               {multi && (
                 <>
