@@ -44,17 +44,17 @@ export function MenuProvider({ children }: { children: ReactNode }) {
   }, [])
 
   // Runs after the commit that removed `inert` from the page: the button can take focus.
-  // The start of closing does only that; the page stays fixed under the overlay (already in
-  // place thanks to `top: -y`) and is released in one go once the animation has ended.
+  // The start of closing does only that; the page stays locked under the overlay, in place, and
+  // is released once the animation has ended.
   useLayoutEffect(() => {
     if (isMenuOpen(model.state)) {
       lock()
     } else if (model.state === 'closing') {
       if (model.reason === 'dismiss') buttonRef.current?.focus({ preventScroll: true })
-      // Leaving for another page: Next scrolls it, the old position must not come back.
-      if (model.reason === 'navigate') unlock({ restore: false })
+      // Leaving for another page, still under the full circle: the new page opens at the top.
+      if (model.reason === 'navigate') unlock({ toTop: true })
     } else {
-      unlock({ restore: model.reason !== 'navigate' })
+      unlock({ toTop: false })
     }
   }, [model.state, model.reason, lock, unlock])
 
