@@ -38,6 +38,7 @@ jobs:
   build:
     name: Lint, typecheck, build
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
 
@@ -81,6 +82,7 @@ jobs:
   migrate:
     name: Migrations, schema drift, integration tests
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     services:
       postgres:
         image: postgres:17-alpine
@@ -127,6 +129,8 @@ jobs:
     name: E2E ${{ matrix.shard }}/2 (Playwright on the standalone build)
     needs: build
     runs-on: ubuntu-latest
+    # About 4 minutes, plus up to 22 for the install-deps attempts and lock cleanup below
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -177,8 +181,21 @@ jobs:
           key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
       - if: steps.browsers.outputs.cache-hit != 'true'
         run: pnpm exec playwright install --with-deps chromium
+      # apt on the runner sometimes hangs: up to three attempts of 5 minutes each
       - if: steps.browsers.outputs.cache-hit == 'true'
-        run: pnpm exec playwright install-deps chromium
+        run: |
+          for attempt in 1 2 3; do
+            timeout -k 10 300 pnpm exec playwright install-deps chromium && exit 0
+            echo "::warning::playwright install-deps: attempt $attempt failed (exit $?)"
+            [ "$attempt" = 3 ] && break
+            # Free the dpkg/apt lock for the next attempt: end leftover apt processes, finish a
+            # half-done dpkg; both bounded so this cannot hang either
+            sudo pkill -x apt-get || true
+            sudo timeout 60 bash -c \
+              'while fuser /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/lib/apt/lists/lock >/dev/null 2>&1; do sleep 2; done' || true
+            sudo timeout -k 10 120 dpkg --configure -a || true
+          done
+          exit 1
 
       # The server applies migrations on start (prodMigrations); no seed here, so media is empty
       # and the page must degrade gracefully.
@@ -245,6 +262,7 @@ jobs:
     needs: e2e-shard
     if: always()
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
         with:
