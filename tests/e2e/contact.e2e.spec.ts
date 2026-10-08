@@ -95,6 +95,12 @@ async function expectOpen(c: ReturnType<typeof chooser>, closed: Box) {
   }
 }
 
+/** Two animation frames: the header re-evaluates its state a frame after a change. */
+const frames = (page: Page) =>
+  page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  )
+
 /** Opens by a pointer click at the centre of the button (no scroll by Playwright first). */
 async function clickOpen(page: Page, c: ReturnType<typeof chooser>) {
   await ready(c)
@@ -341,9 +347,42 @@ test.describe('contact buttons', () => {
       const c = chooser(page.locator('header'))
       await clickOpen(page, c)
       await expect(c.root).toHaveAttribute('data-open', '')
+      // The click left focus on the button: it does not hold the header (not :focus-visible)
+      await expect(c.button).toBeFocused()
       await wheel(page, 300)
       await expect(c.root).not.toHaveAttribute('data-open')
-      await expect(page.locator('header')).toHaveAttribute('data-state', /away|hidden/)
+      const header = page.locator('header')
+      await expect(header).toHaveAttribute('data-state', /away|hidden/)
+      // The header re-evaluates a frame after every change: still out of view after it
+      await frames(page)
+      await expect(c.button).toBeFocused()
+      await expect(header).toHaveAttribute('data-state', /away|hidden/)
+    })
+
+    test('keyboard: Esc returns focus to the header button and keeps the header pinned', async ({
+      page,
+    }) => {
+      await page.goto(URL)
+      await settle(page)
+      const header = page.locator('header')
+      const c = chooser(header)
+      await ready(c)
+      // Out of view, then a wheel up: pinned
+      await page.evaluate(() => window.scrollTo({ top: 1500, behavior: 'instant' }))
+      await expect(header).toHaveAttribute('data-state', 'away')
+      await wheel(page, -300)
+      await expect(header).toHaveAttribute('data-state', 'pinned')
+      await c.button.focus()
+      await page.keyboard.press('Enter')
+      await expect(c.root).toHaveAttribute('data-open', '')
+      await expect(c.links.first()).toBeFocused()
+      await page.keyboard.press('Escape')
+      await expect(c.root).not.toHaveAttribute('data-open')
+      await expect(c.button).toBeFocused()
+      // Keyboard focus holds the header, even on a scroll down
+      await wheel(page, 300)
+      await frames(page)
+      await expect(header).toHaveAttribute('data-state', 'pinned')
     })
   })
 

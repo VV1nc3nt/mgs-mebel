@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from 'react'
 
+import { useKeyboardFocusWithin } from '@/hooks/useKeyboardFocusWithin'
 import { useMenu } from '@/hooks/useMenu'
 import { usePageScroll, type PageScroll } from '@/hooks/usePageScroll'
 import { useRoutePath } from '@/hooks/useRoutePath'
@@ -26,9 +27,9 @@ export const useHeaderOverMedia = () => use(OverMediaContext)
 /**
  * <header> of every page. At the top it is where README §5.2 puts it: absolute over the hero,
  * elsewhere in the flow. Further down it is a smart header (a deviation from README §5.2):
- * hidden while scrolling down, fixed on glass while scrolling up or holding focus, back in place
- * at the top (states: lib/headerState.ts). The <header> keeps its place in the flow and the bar
- * inside it turns fixed, so nothing shifts. The pathname is known during SSR, so the HTML
+ * hidden while scrolling down, fixed on glass while scrolling up or holding keyboard focus, back
+ * in place at the top (states: lib/headerState.ts). The <header> keeps its place in the flow and
+ * the bar inside it turns fixed, so nothing shifts. The pathname is known during SSR, so the HTML
  * already has the right variant.
  */
 export function HeaderShell({ children }: { children: ReactNode }) {
@@ -38,6 +39,7 @@ export function HeaderShell({ children }: { children: ReactNode }) {
   const headerRef = useRef<HTMLElement>(null)
   const barRef = useRef<HTMLDivElement>(null)
   const scroll = useRef<PageScroll | null>(null)
+  /** Keyboard focus is inside: never hides from under it (useKeyboardFocusWithin). */
   const focusWithin = useRef(false)
   const menuOpenRef = useRef(menuOpen)
 
@@ -58,6 +60,7 @@ export function HeaderShell({ children }: { children: ReactNode }) {
     }
     setState((prev) => nextHeaderState(prev, input))
   }, [])
+  const focusHandlers = useKeyboardFocusWithin(focusWithin, update)
 
   usePageScroll((next) => {
     scroll.current = next
@@ -99,15 +102,7 @@ export function HeaderShell({ children }: { children: ReactNode }) {
         ref={headerRef}
         data-variant={hero ? 'hero' : 'flow'}
         data-state={state}
-        onFocus={() => {
-          focusWithin.current = true
-          update()
-        }}
-        onBlur={(event) => {
-          if (event.currentTarget.contains(event.relatedTarget as Node | null)) return
-          focusWithin.current = false
-          update()
-        }}
+        {...focusHandlers}
         className={cn('z-header site-header', hero ? 'absolute inset-x-0 top-0' : 'relative')}
       >
         <div ref={barRef} className="header-bar">

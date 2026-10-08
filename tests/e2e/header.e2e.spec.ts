@@ -232,6 +232,30 @@ test.describe('smart header', () => {
       await expect(header(page)).toHaveAttribute('data-state', 'pinned')
       expect(await page.evaluate(() => window.scrollY)).toBe(y)
     })
+
+    test('closed with the mouse: focus back on ☰ does not hold the header', async ({ page }) => {
+      await page.goto(`${BASE}/about`)
+      await pin(page)
+      // Pointer clicks at the centre (a Playwright click would scroll the page first)
+      const click = async (name: string) => {
+        const b = (await page.getByRole('button', { name }).boundingBox())!
+        await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2)
+      }
+      await click('Открыть меню')
+      const dialog = page.getByRole('dialog', { name: 'Меню' })
+      await expect(dialog).toBeVisible()
+      await click('Закрыть меню')
+      await expect(dialog).toHaveCount(0)
+      await expect(page.locator('html')).not.toHaveAttribute('data-scroll-locked')
+      await expect(burger(page)).toBeFocused()
+      await wheel(page, 300)
+      await expect(header(page)).toHaveAttribute('data-state', 'hidden')
+      // Not pinned again by the re-evaluation a frame later
+      await page.evaluate(
+        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+      )
+      await expect(header(page)).toHaveAttribute('data-state', 'hidden')
+    })
   })
 
   test.describe('desktop sections from the pinned header', () => {

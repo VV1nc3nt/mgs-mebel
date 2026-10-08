@@ -7,6 +7,7 @@ import { MessengerIcon } from '@/components/icons/MessengerIcon'
 import { Action } from '@/components/ui/Action'
 import { IconButton } from '@/components/ui/IconButton'
 import { useChooser } from '@/hooks/useChooser'
+import { useKeyboardFocusWithin } from '@/hooks/useKeyboardFocusWithin'
 import { usePageScroll, type PageScroll } from '@/hooks/usePageScroll'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
 import { DOCK_GROUP_LABEL, MESSENGER_NAMES, type Messenger } from '@/lib/chrome'
@@ -33,7 +34,7 @@ export function FloatingDock({
   const [visible, setVisible] = useState(false)
   const scroll = useRef<PageScroll | null>(null)
   const footerVisible = useRef(false)
-  /** Keyboard focus is inside: the dock never hides from under it. */
+  /** Keyboard focus is inside: never hides from under it (useKeyboardFocusWithin). */
   const focusWithin = useRef(false)
   const {
     open: chooserOpen,
@@ -62,6 +63,7 @@ export function FloatingDock({
       }),
     )
   }, [])
+  const focusHandlers = useKeyboardFocusWithin(focusWithin, update)
 
   usePageScroll((next) => {
     scroll.current = next
@@ -100,17 +102,7 @@ export function FloatingDock({
       data-hidden={visible ? undefined : ''}
       data-open={open ? '' : undefined}
       inert={!visible}
-      onFocus={(event) => {
-        // Keyboard focus only: a tap or click also focuses the button in most browsers, and the
-        // dock would then stay on screen after the choice closes on a scroll.
-        focusWithin.current = event.target.matches(':focus-visible')
-        update()
-      }}
-      onBlur={(event) => {
-        if (event.currentTarget.contains(event.relatedTarget as Node | null)) return
-        focusWithin.current = false
-        update()
-      }}
+      {...focusHandlers}
       onKeyDown={onKeyDown}
       className="group/chooser dock z-dock flex items-center rounded-dock glass-dock p-1 shadow-dock chooser"
     >

@@ -16,7 +16,8 @@ export type HeaderInput = {
   top: number
   height: number
   dir: ScrollDirection
-  /** Focus is inside the header: Tab to a hidden header shows it. */
+  /** Keyboard focus (:focus-visible) is inside the header: Tab to a hidden header shows it. A
+   *  click or tap focuses a button too, but does not hold the header. */
   focusWithin: boolean
   /** The menu is open or animating: the page is frozen, the header keeps its state. */
   menuOpen: boolean
