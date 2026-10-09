@@ -255,9 +255,9 @@ test.describe('about', () => {
       expect(requests).toEqual([])
     })
 
-    // The hero and two news cards have a video: on opening only the hero one is mounted, the news
-    // one once the news section comes near the viewport.
-    test('on opening only the hero video; a news cover video near the news section', async ({
+    // The hero and two news cards have a video: on opening only the hero one is mounted and
+    // requested, the news one once half of the card is in view.
+    test('on opening only the hero video; a news cover video once the card is in view', async ({
       page,
     }) => {
       const errors = watchConsole(page)

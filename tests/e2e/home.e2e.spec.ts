@@ -408,8 +408,8 @@ test.describe('home', () => {
     })
 
     // README §3: only the current card downloads and plays its cover video. In the fixture the
-    // first and the last card have one (the minimal mp4). At 390 the first card is within the
-    // mount margin of the viewport already on opening.
+    // first and the last card have one (the minimal mp4). Nothing is requested before half of the
+    // card is in view: at 390 the news slider is below the fold on opening.
     test('a cover video only on the current card; the card left stays paused', async ({ page }) => {
       const covers = news((key) => (/^H\d/.test(key) ? 1 : 0))
         .slice(0, E2E_NEWS_COUNT)
@@ -421,14 +421,24 @@ test.describe('home', () => {
       const errors = watchConsole(page)
       await page.emulateMedia({ reducedMotion: 'no-preference' })
       await stubPlayback(page)
+      const videos: string[] = []
+      page.on('request', (r) => {
+        if (/\.(mp4|webm)(\?|$)/.test(r.url())) videos.push(r.url())
+      })
       await page.goto(`${BASE}/`)
       await hydrated(page)
       const region = page.getByRole('region', { name: NEWS_TITLE })
       const slides = region.getByRole('group')
+      // Time for the observers to report; the home hero of the fixture has no video
+      await page.waitForTimeout(500)
+      expect(videos).toEqual([])
+      await expect(region.locator('video')).toHaveCount(0)
+
       await region.scrollIntoViewIfNeeded()
       const first = slides.nth(0).locator('video')
       await expect(first).toHaveAttribute(PLAYBACK_ATTR, 'playing')
       await expect(first.locator('source')).toHaveAttribute('src', /\.mp4$/)
+      expect(videos).toHaveLength(1)
       await expect(slides.nth(2).locator('video')).toHaveCount(0)
 
       await page.getByRole('button', { name: 'Следующая новость' }).focus()

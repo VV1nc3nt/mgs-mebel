@@ -3,7 +3,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { BgVideo, type BgVideoProps } from '@/components/ui/BgVideo'
 import { BgVideoActiveProvider } from '@/components/ui/BgVideoActive'
-import { isLiteNetwork, VIDEO_START_TIMEOUT_MS, videoAllowed } from '@/lib/bgVideo'
+import {
+  isLiteNetwork,
+  isVisibleEnough,
+  VIDEO_START_TIMEOUT_MS,
+  VIDEO_VISIBLE_RATIO,
+  videoAllowed,
+  visibleThreshold,
+} from '@/lib/bgVideo'
 import { env, intersect } from './setup'
 import { photo, video } from './fixtures'
 
@@ -28,6 +35,28 @@ describe('videoAllowed / isLiteNetwork', () => {
     }
     expect(isLiteNetwork({ saveData: false, effectiveType: '4g' })).toBe(false)
     expect(isLiteNetwork({})).toBe(false)
+  })
+})
+
+describe('visibleThreshold / isVisibleEnough', () => {
+  it('is half of a block up to the viewport high, then the share that fills half the viewport', () => {
+    expect(VIDEO_VISIBLE_RATIO).toBe(0.5)
+    expect(visibleThreshold(440, 844)).toBe(0.5)
+    expect(visibleThreshold(844, 844)).toBe(0.5)
+    expect(visibleThreshold(844 * 2, 844)).toBe(0.25)
+    expect(visibleThreshold(844 * 3, 844)).toBeCloseTo(1 / 6)
+    // Not measured yet (no layout): the plain ratio
+    expect(visibleThreshold(0, 844)).toBe(0.5)
+  })
+
+  it('needs an intersection at the threshold at least', () => {
+    expect(isVisibleEnough({ isIntersecting: true, intersectionRatio: 0.5 }, 0.5)).toBe(true)
+    // The observer's own rounding at the crossing
+    expect(isVisibleEnough({ isIntersecting: true, intersectionRatio: 0.4999 }, 0.5)).toBe(true)
+    expect(isVisibleEnough({ isIntersecting: true, intersectionRatio: 0.3 }, 0.5)).toBe(false)
+    expect(isVisibleEnough({ isIntersecting: false, intersectionRatio: 0 }, 0)).toBe(false)
+    // The hero (threshold 0): any part in view
+    expect(isVisibleEnough({ isIntersecting: true, intersectionRatio: 0.01 }, 0)).toBe(true)
   })
 })
 
@@ -93,13 +122,65 @@ describe('BgVideo', () => {
     expect(videoOf(renderVideo().container)).not.toBeNull()
   })
 
-  it('mounts below-the-fold video near the viewport and pauses it outside', () => {
+  it('without priority: mounts and plays from half of the block in view, pauses below', () => {
     const { container } = renderVideo({ priority: false })
+    expect(env.observers[0]!.thresholds).toEqual([0, VIDEO_VISIBLE_RATIO])
+    // In view, but not enough: nothing is downloaded
+    act(() => intersect(true, 0.3))
     expect(videoOf(container)).toBeNull()
-    act(() => intersect(true))
-    expect(videoOf(container)!.getAttribute('preload')).toBe('metadata')
-    act(() => intersect(false))
-    expect(HTMLMediaElement.prototype.pause).toHaveBeenCalled()
+    act(() => intersect(true, 0.6))
+    // The new observer of the mounted video reports at once
+    act(() => intersect(true, 0.6))
+    const el = videoOf(container)!
+    expect(el.getAttribute('preload')).toBe('metadata')
+    const play = vi.mocked(HTMLMediaElement.prototype.play)
+    expect(play).toHaveBeenCalled()
+    const pause = vi.mocked(HTMLMediaElement.prototype.pause)
+    pause.mockClear()
+    // Below the threshold again: paused, kept mounted (resumes where it was)
+    act(() => intersect(true, 0.3))
+    expect(pause).toHaveBeenCalled()
+    expect(videoOf(container)).toBe(el)
+    play.mockClear()
+    act(() => intersect(true, 0.6))
+    expect(play).toHaveBeenCalledTimes(1)
+  })
+
+  it('with priority: mounted at once, plays while any part is in view', () => {
+    const { container } = renderVideo()
+    expect(videoOf(container)).not.toBeNull()
+    expect(env.observers[0]!.thresholds).toEqual([0, 0])
+    act(() => intersect(true, 0.05))
+    expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1)
+  })
+
+  it('a block three viewports high plays once it fills half the viewport; recounted on resize', () => {
+    const height = window.innerHeight * 3
+    const rect = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockReturnValue({ height } as DOMRect)
+    try {
+      const { container } = renderVideo({ priority: false })
+      const threshold = env.observers[0]!.thresholds[1]!
+      expect(threshold).toBeCloseTo(1 / 6)
+      // Never half of the block, but half of the viewport
+      act(() => intersect(true, 0.2))
+      act(() => intersect(true, 0.2))
+      expect(videoOf(container)).not.toBeNull()
+      expect(HTMLMediaElement.prototype.play).toHaveBeenCalled()
+
+      // A taller window: a new observer with a new threshold
+      const innerHeight = window.innerHeight
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: innerHeight * 2 })
+      act(() => {
+        window.dispatchEvent(new Event('resize'))
+      })
+      expect(env.observers).toHaveLength(1)
+      expect(env.observers[0]!.thresholds[1]).toBeCloseTo(1 / 3)
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: innerHeight })
+    } finally {
+      rect.mockRestore()
+    }
   })
 
   it('falls back to the poster when play() is refused', async () => {
