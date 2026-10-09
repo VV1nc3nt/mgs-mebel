@@ -169,7 +169,11 @@ describe('NewsSection', () => {
         for (const observer of env.observers) {
           if (observer.elements.some((el) => slides.includes(el as HTMLElement))) continue
           observer.callback(
-            observer.elements.map((target) => ({ target, isIntersecting: true })) as never,
+            observer.elements.map((target) => ({
+              target,
+              isIntersecting: true,
+              intersectionRatio: 1,
+            })) as never,
             {} as IntersectionObserver,
           )
         }

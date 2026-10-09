@@ -69,6 +69,3 @@ export const videoSource = (value: MediaValue): VideoSource | null => {
   if (!media || !isVideo(media) || !media.url || !media.mimeType) return null
   return { src: media.url, type: media.mimeType }
 }
-
-/** Background videos below the fold mount this far before they scroll into view. */
-export const VIDEO_MOUNT_MARGIN = '200px 0px'

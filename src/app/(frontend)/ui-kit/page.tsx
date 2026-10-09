@@ -430,7 +430,7 @@ export default async function UiKitPage() {
             </div>
           </div>
         </Row>
-        <Row note="В карточке (MediaCard video): монтируется у вьюпорта, вне вьюпорта — пауза">
+        <Row note="В карточке (MediaCard video): монтируется и играет, когда видна половина блока; меньше — пауза">
           <MediaCard
             media={mission?.poster}
             video={mission?.video}

@@ -20,3 +20,29 @@ export const videoAllowed = ({
   reducedMotion: boolean
   liteNetwork: boolean
 }): boolean => !reducedMotion && !liteNetwork
+
+/**
+ * Share of a background video block that must be in view before it loads and plays (README §3.1
+ * of the salons page; the same for every video without `priority`). No margin around the viewport.
+ */
+export const VIDEO_VISIBLE_RATIO = 0.5
+
+/**
+ * IntersectionObserver threshold of a block: `ratio` of it, or — for a block taller than the
+ * viewport — the share that fills `ratio` of the viewport (half of a block three viewports high
+ * is never in view at once).
+ */
+export const visibleThreshold = (
+  elementHeight: number,
+  rootHeight: number,
+  ratio: number = VIDEO_VISIBLE_RATIO,
+): number => (elementHeight > 0 ? Math.min(ratio, (ratio * rootHeight) / elementHeight) : ratio)
+
+/** Rounding of the observer's own ratio at the crossing. */
+const RATIO_EPSILON = 0.001
+
+/** Whether an observed block is in view enough for its video at this threshold. */
+export const isVisibleEnough = (
+  { isIntersecting, intersectionRatio }: Pick<IntersectionObserverEntry, 'isIntersecting' | 'intersectionRatio'>,
+  threshold: number,
+): boolean => isIntersecting && intersectionRatio >= threshold - RATIO_EPSILON

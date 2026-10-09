@@ -6,14 +6,23 @@ export const env = {
   reducedMotion: false,
   saveData: false,
   effectiveType: '4g',
-  observers: [] as { callback: IntersectionObserverCallback; elements: Element[] }[],
+  observers: [] as {
+    callback: IntersectionObserverCallback
+    elements: Element[]
+    thresholds: readonly number[]
+  }[],
 }
 
-/** Fires IntersectionObserver callbacks for all observed elements. */
-export const intersect = (isIntersecting: boolean) => {
+/**
+ * Fires IntersectionObserver callbacks for all observed elements: fully in view or out of it, or
+ * with the given visible share.
+ */
+export const intersect = (isIntersecting: boolean, intersectionRatio = isIntersecting ? 1 : 0) => {
   for (const observer of env.observers) {
     observer.callback(
-      observer.elements.map((target) => ({ target, isIntersecting }) as IntersectionObserverEntry),
+      observer.elements.map(
+        (target) => ({ target, isIntersecting, intersectionRatio }) as IntersectionObserverEntry,
+      ),
       {} as IntersectionObserver,
     )
   }
@@ -47,8 +56,13 @@ beforeEach(() => {
 
   window.IntersectionObserver = class {
     private entry: (typeof env.observers)[number]
-    constructor(callback: IntersectionObserverCallback) {
-      this.entry = { callback, elements: [] }
+    constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+      const { threshold = 0 } = options ?? {}
+      this.entry = {
+        callback,
+        elements: [],
+        thresholds: Array.isArray(threshold) ? threshold : [threshold],
+      }
       env.observers.push(this.entry)
     }
     observe(element: Element) {

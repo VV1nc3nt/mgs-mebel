@@ -4,14 +4,22 @@ import { useEffect, useRef, useState } from 'react'
 
 import { useLiteNetwork } from '@/hooks/useLiteNetwork'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
-import { VIDEO_START_TIMEOUT_MS, videoAllowed } from '@/lib/bgVideo'
+import {
+  isVisibleEnough,
+  VIDEO_START_TIMEOUT_MS,
+  videoAllowed,
+  visibleThreshold,
+} from '@/lib/bgVideo'
 import { cn } from '@/lib/cn'
-import { VIDEO_MOUNT_MARGIN, type VideoSource } from '@/lib/media'
+import type { VideoSource } from '@/lib/media'
 import { isOverlayOpen, subscribeOverlay } from '@/lib/overlay'
 import { useBgVideoActive } from './BgVideoActive'
 
 type Props = VideoSource & {
-  /** Hero (LCP): mounts at once with preload="auto". Others mount near the viewport. */
+  /**
+   * Hero (LCP): mounts at once with preload="auto" and plays while any part is in view. Others
+   * mount and play only while at least half of the block is in view (`VIDEO_VISIBLE_RATIO`).
+   */
   priority?: boolean
   /**
    * Plays only while active (and while its slide is, see `BgVideoActiveProvider`); inactive —
@@ -29,8 +37,9 @@ type Props = VideoSource & {
  * with reduced motion, Data Saver or a slow connection, before hydration, or once playback fails:
  * the poster stays. Started by `play()` (no autoplay attribute); falls back to the poster when
  * `play()` is refused, on `error`, on `stalled` before the first `playing`, or without `playing`
- * 4 s after an attempt. Plays only when active, in the viewport, in a visible tab and not under
- * an overlay (menu); fades in on `playing`.
+ * 4 s after an attempt. Plays only when active, in view (see `priority`), in a visible tab and not
+ * under an overlay (menu); fades in on `playing`. Below the threshold it pauses and resumes where
+ * it was.
  */
 export function BgVideoPlayer({
   src,
@@ -43,7 +52,7 @@ export function BgVideoPlayer({
   const active = useBgVideoActive() && activeProp
   const reducedMotion = useReducedMotion()
   const liteNetwork = useLiteNetwork()
-  const [near, setNear] = useState(priority)
+  const [seen, setSeen] = useState(priority)
   const [activated, setActivated] = useState(active)
   const [playing, setPlaying] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -56,7 +65,7 @@ export function BgVideoPlayer({
   if (active && !activated) setActivated(true)
 
   const allowed = videoAllowed({ reducedMotion, liteNetwork }) && !failed
-  const mounted = allowed && near && (!lazySrc || activated)
+  const mounted = allowed && seen && (!lazySrc || activated)
 
   const clearStartTimeout = () => {
     window.clearTimeout(timeoutRef.current)
@@ -90,24 +99,42 @@ export function BgVideoPlayer({
         video.pause()
       }
     }
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        inView = entry.isIntersecting
-        if (inView) setNear(true)
-        update()
-      },
-      { rootMargin: VIDEO_MOUNT_MARGIN },
-    )
-    observer.observe(box)
+    // The hero plays while any part of it shows; others from the visible share of the block.
+    const thresholdOf = () =>
+      priority ? 0 : visibleThreshold(box.getBoundingClientRect().height, window.innerHeight)
+    let threshold = thresholdOf()
+    let observer: IntersectionObserver | undefined
+    const observe = () => {
+      observer?.disconnect()
+      observer = new IntersectionObserver(
+        ([entry]) => {
+          inView = isVisibleEnough(entry, threshold)
+          if (inView) setSeen(true)
+          update()
+        },
+        { threshold: [0, threshold] },
+      )
+      observer.observe(box)
+    }
+    observe()
+    // A block taller than the viewport has a threshold of its own: recount it on a resize.
+    const onResize = () => {
+      const next = thresholdOf()
+      if (next === threshold) return
+      threshold = next
+      observe()
+    }
+    if (!priority) window.addEventListener('resize', onResize, { passive: true })
     const unsubscribe = subscribeOverlay(update)
     document.addEventListener('visibilitychange', update)
     return () => {
-      observer.disconnect()
+      observer?.disconnect()
+      window.removeEventListener('resize', onResize)
       unsubscribe()
       document.removeEventListener('visibilitychange', update)
       clearStartTimeout()
     }
-  }, [allowed, mounted, active])
+  }, [allowed, mounted, active, priority])
 
   const setVideo = (video: HTMLVideoElement | null) => {
     videoRef.current = video
