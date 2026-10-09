@@ -161,14 +161,34 @@ describe('HeaderShell', () => {
     expect(header().dataset.state).toBe('top')
   })
 
-  it('shows when focus comes in while hidden', async () => {
+  it('shows when keyboard focus comes in while hidden', async () => {
     renderHeader()
     setScroll(2000)
     await frame()
     await frame()
     expect(header().dataset.state).toBe('away')
     act(() => burger().focus())
+    expect(burger().matches(':focus-visible')).toBe(true)
     expect(header().dataset.state).toBe('pinned')
+  })
+
+  it('a click focuses a button but does not hold the header', async () => {
+    renderHeader()
+    setScroll(2000)
+    await frame()
+    setScroll(1900)
+    await frame()
+    await frame()
+    expect(header().dataset.state).toBe('pinned')
+    // A pointer press, then the focus it brings: not :focus-visible
+    fireEvent.mouseDown(burger())
+    act(() => burger().focus())
+    expect(document.activeElement).toBe(burger())
+    expect(burger().matches(':focus-visible')).toBe(false)
+    setScroll(2100)
+    await frame()
+    await frame()
+    expect(header().dataset.state).toBe('hidden')
   })
 
   it('keeps its state while the menu is open', async () => {
