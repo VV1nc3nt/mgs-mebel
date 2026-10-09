@@ -4,7 +4,7 @@ import { catalogs } from './data/catalogs'
 import { globals } from './data/globals'
 import { news } from './data/news'
 import { projects } from './data/projects'
-import { salons } from './data/salons'
+import { RETIRED_FILES, RETIRED_SALONS, salons } from './data/salons'
 import type { MediaId } from './data/types'
 import { seedFiles } from './files'
 import { upsertMedia } from './media'
@@ -66,8 +66,42 @@ export const seed = async (
   for (const [slug, data] of Object.entries(globals(id))) {
     await upsertGlobal(payload, stats, slug as GlobalSlug, data as Record<string, unknown>)
   }
+  // Last: the new data no longer references retired files.
+  await removeRetired(payload, log)
 
   log(stats.table())
+}
+
+/**
+ * Deletes what earlier seeds created and the current one no longer has: salons by name, stock
+ * files by file name. A file still in use (e.g. picked by an editor) is kept and logged.
+ */
+const removeRetired = async (payload: Payload, log: (line: string) => void) => {
+  const { docs } = await payload.delete({
+    collection: 'salons',
+    where: { name: { in: RETIRED_SALONS } },
+    ...seedOptions,
+  })
+  for (const doc of docs) log(`Удалён салон прошлых seed: ${doc.name}`)
+
+  for (const filename of RETIRED_FILES) {
+    const { docs: files } = await payload.find({
+      collection: 'media',
+      where: { filename: { equals: filename } },
+      limit: 1,
+      depth: 0,
+      pagination: false,
+      ...seedOptions,
+    })
+    if (!files[0]) continue
+    try {
+      await payload.delete({ collection: 'media', id: files[0].id, ...seedOptions })
+      log(`Удалён файл прошлых seed: ${filename}`)
+    } catch (error) {
+      if (!(error instanceof ValidationError)) throw error
+      log(`Оставлен файл ${filename}: ${error.data.errors.map((e) => e.message).join('; ')}`)
+    }
+  }
 }
 
 /**

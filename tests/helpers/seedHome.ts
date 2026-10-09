@@ -218,14 +218,11 @@ try {
       payload.create({ collection: 'projects', data: { ...project, slides }, depth: 0 }),
     )
   }
-  // Salons without the review media; the order and the missing phone come from E2E_SALONS.
+  // Salons: the order, the missing phone and the videos come from E2E_SALONS; card photos are
+  // the generated 3:4 photos.
   const seedSalons = salons(media)
   for (const [i, name] of E2E_SALONS.entries()) {
-    const {
-      reviewVideo: _video,
-      poster: _poster,
-      ...salon
-    } = seedSalons.find((item) => item.name === name)!
+    const salon = seedSalons.find((item) => item.name === name)!
     const { totalDocs } = await payload.count({
       collection: 'salons',
       where: { name: { equals: name } },
@@ -233,7 +230,12 @@ try {
     if (totalDocs) continue
     await payload.create({
       collection: 'salons',
-      data: { ...salon, order: i + 1, phone: i === E2E_SALONS.length - 1 ? null : salon.phone },
+      data: {
+        ...salon,
+        order: i + 1,
+        phone: i === E2E_SALONS.length - 1 ? null : salon.phone,
+        reviewVideo: i === 0 || i === 2 ? videoId : null,
+      },
       depth: 0,
     })
   }

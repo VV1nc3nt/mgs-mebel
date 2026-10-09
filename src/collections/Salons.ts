@@ -39,7 +39,14 @@ export const Salons: CollectionConfig = {
       fields: [
         { name: 'phone', type: 'text', label: 'Телефон' },
         { name: 'metro', type: 'text', label: 'Метро' },
-        { name: 'hours', type: 'text', label: 'Часы работы' },
+        {
+          name: 'hours',
+          type: 'text',
+          label: 'Часы работы',
+          admin: {
+            description: 'Для поисковиков (на странице не выводится), формат: Mo-Su 10:00-21:00',
+          },
+        },
       ],
     },
     {
@@ -74,17 +81,22 @@ export const Salons: CollectionConfig = {
         },
       ],
     },
-    videoField('reviewVideo', {
-      label: 'Видеообзор',
-      admin: { description: 'Фоновое видео карточки «Обзор салонов». Необязательно.' },
-    }),
+    // README «Салоны» §3.2: the photo is always shown first and stays when the video fails.
     imageField('poster', {
-      label: 'Постер обзора',
-      admin: { description: 'Карточка в «Обзоре салонов» выводится, если задан постер.' },
-      extraValidate: (value, { siblingData }) =>
-        (siblingData as { reviewVideo?: unknown })?.reviewVideo && !value
-          ? 'Постер обязателен, если есть видеообзор'
-          : true,
+      label: 'Фото карточки',
+      // Required through validate, not `required`: no NOT NULL on a column with existing rows.
+      admin: {
+        description: 'Обязательно. Вертикальное 3:4, WebP/AVIF, 900 px, до 200 КБ.',
+        components: { Label: '/components/admin/RequiredLabel#RequiredLabel' },
+      },
+      extraValidate: (value) => (value ? true : 'Добавьте фото карточки'),
+    }),
+    videoField('reviewVideo', {
+      label: 'Видео карточки',
+      admin: {
+        description:
+          'MP4 (H.264) без звука, вертикальное 3:4 или 9:16, 6–12 с, до 2 МБ. Необязательно.',
+      },
     }),
     {
       name: 'order',

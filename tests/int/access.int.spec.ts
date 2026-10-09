@@ -57,10 +57,15 @@ afterAll(async () => {
 })
 
 describe('salons', () => {
+  let poster: Awaited<ReturnType<typeof createImage>>
+  beforeAll(async () => {
+    poster = await createImage(payload)
+  })
+
   it('content reads but cannot change salons', async () => {
     const salon = await payload.create({
       collection: 'salons',
-      data: { name: `${PREFIX} салон`, address: 'Москва' },
+      data: { name: `${PREFIX} салон`, address: 'Москва', poster: poster.id },
     })
     await expect(
       payload.findByID({ collection: 'salons', id: salon.id, ...as(users.content) }),
@@ -81,6 +86,56 @@ describe('salons', () => {
         ...as(users.manager),
       }),
     ).resolves.toMatchObject({ phone: '2' })
+  })
+
+  it('requires the card photo through the Local API', async () => {
+    // ValidationError: the message lists the fields, the field's own text is in `data.errors`.
+    const noPhoto = {
+      data: {
+        errors: [expect.objectContaining({ path: 'poster', message: 'Добавьте фото карточки' })],
+      },
+    }
+    const data = { name: `${PREFIX} салон без фото`, address: 'Москва' }
+    await expect(payload.create({ collection: 'salons', data })).rejects.toMatchObject(noPhoto)
+    const salon = await payload.create({
+      collection: 'salons',
+      data: { ...data, poster: poster.id },
+    })
+    await expect(
+      payload.update({ collection: 'salons', id: salon.id, data: { poster: null } }),
+    ).rejects.toMatchObject(noPhoto)
+    // A partial update keeps the stored photo.
+    await expect(
+      payload.update({ collection: 'salons', id: salon.id, data: { phone: '3' } }),
+    ).resolves.toMatchObject({ phone: '3' })
+  })
+
+  it('requires the card photo through the REST API (admin session)', async () => {
+    const { token } = await payload.login({
+      collection: 'users',
+      data: { email: users.admin.email, password: 'test-password' },
+    })
+    const send = (method: 'POST' | 'PATCH', path: string, body: object) =>
+      handleEndpoints({
+        config,
+        request: new Request(`http://localhost/api/salons${path}`, {
+          method,
+          headers: { Authorization: `JWT ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        }),
+      })
+    const data = { name: `${PREFIX} салон REST`, address: 'Москва' }
+
+    const missing = await send('POST', '', data)
+    expect(missing.status).toBe(400)
+    expect(JSON.stringify(await missing.json())).toContain('Добавьте фото карточки')
+
+    const created = await send('POST', '', { ...data, poster: poster.id })
+    expect(created.status).toBe(201)
+    const { doc } = (await created.json()) as { doc: { id: number } }
+
+    const cleared = await send('PATCH', `/${doc.id}`, { poster: null })
+    expect(cleared.status).toBe(400)
   })
 })
 

@@ -20,12 +20,13 @@ export const SalonsPage = pageGlobal('salonsPage', 'Фирменные сало�
         label: 'Кнопка карточки салона',
         admin: { description: 'Используется и на Главной.' },
       },
+      {
+        name: 'emptyText',
+        type: 'text',
+        label: 'Если салонов нет',
+        defaultValue: 'Скоро откроемся',
+        admin: { description: 'Вместо карточек и карты; ниже — телефон горячей линии.' },
+      },
     ],
-  },
-  {
-    name: 'reviews',
-    label: 'Обзор салонов',
-    description: 'Карточки — салоны с постером обзора.',
-    fields: [labelField(), titleField()],
   },
 ])

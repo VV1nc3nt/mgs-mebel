@@ -1,3 +1,4 @@
+import { sql } from '@payloadcms/db-postgres'
 import type { Payload } from 'payload'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
@@ -139,7 +140,7 @@ describe('salon coordinates', () => {
   const createSalon = (location: { lat?: number; lng?: number }) =>
     payload.create({
       collection: 'salons',
-      data: { name: `${PREFIX} салон`, address: 'Москва', location },
+      data: { name: `${PREFIX} салон`, address: 'Москва', poster: image.id, location },
     })
 
   it('requires both coordinates or none', async () => {
@@ -151,5 +152,24 @@ describe('salon coordinates', () => {
 
   it('rejects out-of-range values', async () => {
     await expect(createSalon({ lat: 91, lng: 37.6 })).rejects.toThrow()
+  })
+})
+
+describe('salonsPage.map.emptyText', () => {
+  it('defaults to «Скоро откроемся» in the admin and in the column', async () => {
+    const tab = payload.config.globals
+      .find((global) => global.slug === 'salonsPage')
+      ?.fields.flatMap((field) => ('tabs' in field ? field.tabs : []))
+      .find((t) => 'name' in t && t.name === 'map')
+    const field = tab?.fields.find((f) => 'name' in f && f.name === 'emptyText')
+    expect(field && 'defaultValue' in field ? field.defaultValue : undefined).toBe('Скоро откроемся')
+
+    // The column default fills the existing rows when the migration adds it.
+    const { rows } = await payload.db.drizzle.execute(sql`
+      select table_name, column_default from information_schema.columns
+      where column_name in ('map_empty_text', 'version_map_empty_text')
+        and table_name in ('salons_page', '_salons_page_v')`)
+    expect(rows).toHaveLength(2)
+    for (const row of rows) expect(String(row.column_default)).toContain('Скоро откроемся')
   })
 })

@@ -11,7 +11,7 @@ import { catalogs } from '@/seed/data/catalogs'
 import { globals } from '@/seed/data/globals'
 import { news } from '@/seed/data/news'
 import { projects } from '@/seed/data/projects'
-import { salons } from '@/seed/data/salons'
+import { RETIRED_FILES, RETIRED_SALONS, salons } from '@/seed/data/salons'
 import type { MediaId } from '@/seed/data/types'
 import { isSame } from '@/seed/compare'
 import { isLocalDatabaseUrl, isSeedAllowed } from '@/seed/guard'
@@ -107,6 +107,13 @@ describe('seed manifest and data', () => {
 
   it('references only media from the manifest', () => {
     expect(() => [salons(id), projects(id), news(id), catalogs(id), globals(id)]).not.toThrow()
+  })
+
+  it('keeps retired salons and files out of the current data', () => {
+    const names = salons(id).map((doc) => doc.name)
+    for (const name of RETIRED_SALONS) expect(names).not.toContain(name)
+    const files = seedFiles.map((file) => file.filename)
+    for (const name of RETIRED_FILES) expect(files).not.toContain(name)
   })
 
   it('has unique document keys', () => {
