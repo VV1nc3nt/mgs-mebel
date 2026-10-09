@@ -12,6 +12,7 @@ export const NEWS_DRAFT_SLUG = 'e2e-draft'
 
 /**
  * Seed salons in the fixture, in this order: the one with the longest address comes first, so
- * the home card is checked at its tallest; the last one has no phone.
+ * the home card is checked at its tallest; the last one has no phone. The 1st and the 3rd have a
+ * card video (the minimal mp4).
  */
-export const E2E_SALONS = ['Пражская', 'ЖК Варшавская LIFE', 'Химки'] as const
+export const E2E_SALONS = ['Румянцево', 'Пражская', 'Авиамоторная', 'Химки'] as const

@@ -407,6 +407,9 @@ export interface Salon {
   address: string;
   phone?: string | null;
   metro?: string | null;
+  /**
+   * Для поисковиков (на странице не выводится), формат: Mo-Su 10:00-21:00
+   */
   hours?: string | null;
   /**
    * Без координат салон не показывается на карте. Заполните оба поля или ни одного.
@@ -416,13 +419,13 @@ export interface Salon {
     lng?: number | null;
   };
   /**
-   * Фоновое видео карточки «Обзор салонов». Необязательно.
-   */
-  reviewVideo?: (number | null) | Media;
-  /**
-   * Карточка в «Обзоре салонов» выводится, если задан постер.
+   * Обязательно. Вертикальное 3:4, WebP/AVIF, 900 px, до 200 КБ.
    */
   poster?: (number | null) | Media;
+  /**
+   * MP4 (H.264) без звука, вертикальное 3:4 или 9:16, 6–12 с, до 2 МБ. Необязательно.
+   */
+  reviewVideo?: (number | null) | Media;
   /**
    * Меньше — выше.
    */
@@ -722,8 +725,8 @@ export interface SalonsSelect<T extends boolean = true> {
         lat?: T;
         lng?: T;
       };
-  reviewVideo?: T;
   poster?: T;
+  reviewVideo?: T;
   order?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -1133,13 +1136,10 @@ export interface SalonsPage {
      * Используется и на Главной.
      */
     cardCtaLabel?: string | null;
-  };
-  reviews?: {
     /**
-     * Без «#» — он добавляется автоматически.
+     * Вместо карточек и карты; ниже — телефон горячей линии.
      */
-    label?: string | null;
-    title?: string | null;
+    emptyText?: string | null;
   };
   meta?: {
     title?: string | null;
@@ -1649,12 +1649,7 @@ export interface SalonsPageSelect<T extends boolean = true> {
     | {
         listCaption?: T;
         cardCtaLabel?: T;
-      };
-  reviews?:
-    | T
-    | {
-        label?: T;
-        title?: T;
+        emptyText?: T;
       };
   meta?:
     | T

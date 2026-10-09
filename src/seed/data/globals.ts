@@ -190,13 +190,16 @@ export const globals = (id: MediaId): SeedGlobals => ({
       title: 'Приходите в гости',
       lead: 'Образцы фасадов, декоров и готовые экспозиции — в каждом салоне.',
     },
-    map: { listCaption: 'в Москве и области', cardCtaLabel: 'Заказать персональный дизайн' },
-    reviews: { label: 'обзор салонов', title: 'Загляните внутрь' },
-    // No hero media: the first section with media is the salon review (Пражская).
+    map: {
+      listCaption: 'в Москве и области',
+      cardCtaLabel: 'Заказать персональный дизайн',
+      emptyText: 'Скоро откроемся',
+    },
+    // No hero media: the image is the photo of the first salon card (Пражская).
     meta: seoMeta({
       title: 'Приходите в гости',
       description: 'Образцы фасадов, декоров и готовые экспозиции — в каждом салоне.',
-      image: id('U5'),
+      image: id('P3'),
     }),
   },
   worksPage: {

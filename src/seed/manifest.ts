@@ -64,7 +64,10 @@ const pexels = (
   background,
 })
 
-/** Poster frame of a Pexels video (the image Pexels shows for it), 1920 wide. */
+/**
+ * Poster frame of a Pexels video (the image Pexels shows for it): 1920 wide, or a 900×1200 crop
+ * for the vertical salon cards. `file` — when Pexels names the frame other than `pexels-photo-<id>`.
+ */
 const pexelsPhoto = (
   key: string,
   name: string,
@@ -72,11 +75,12 @@ const pexelsPhoto = (
   author: string,
   alt: string,
   usedIn: string,
+  { file = `pexels-photo-${videoId}.jpeg`, card = false }: { file?: string; card?: boolean } = {},
 ): SeedFile => ({
   key,
   filename: `mgs-seed-${key.toLowerCase()}-${name}.jpg`,
   kind: 'image',
-  url: `https://images.pexels.com/videos/${videoId}/pexels-photo-${videoId}.jpeg?auto=compress&cs=tinysrgb&w=1920`,
+  url: `https://images.pexels.com/videos/${videoId}/${file}?auto=compress&cs=tinysrgb&${card ? 'fit=crop&w=900&h=1200' : 'w=1920'}`,
   sourcePage: `https://www.pexels.com/video/${videoId}/`,
   author,
   license: 'Pexels License',
@@ -134,7 +138,7 @@ export const photos: SeedFile[] = [
     'white-and-brown-living-room-set-ztWpwTEx728',
     'Zac Gudakov',
     'Светлая гостиная с белым диваном и деревянной мебелью',
-    'постеры about.mission и обзора салона «Пражская», фото в новостях',
+    'постер about.mission, фото в новостях',
   ),
   unsplash(
     'U6',
@@ -184,7 +188,7 @@ export const photos: SeedFile[] = [
     'white-and-brown-living-room-set-9M66C_w_ToM',
     'Spacejoy',
     'Гостиная в бело-коричневых тонах',
-    'постер обзора салона «Румянцево», возможности №1, обложка «Открытие нового салона», каталог «Шкафы-купе»',
+    'возможности №1, обложка «Открытие нового салона», каталог «Шкафы-купе»',
   ),
   unsplash(
     'U11',
@@ -395,6 +399,43 @@ export const photos: SeedFile[] = [
     'Мастер обрабатывает деревянную рейку ручным стругом',
     'постер home.hero, сегмент 02 (кадр видео H10)',
   ),
+  // Salon cards (3:4): frames of their videos; Rumyantsevo has a photo only (no video demo).
+  pexelsPhoto(
+    'P3',
+    'salon-sofa',
+    7749205,
+    'не подтверждён (страница за Cloudflare)',
+    'Светлый угловой диван, торшер и круглый столик у стены с деревянными рейками',
+    'фото карточки салона «Пражская» (кадр видео H11), meta salonsPage',
+    { card: true },
+  ),
+  pexelsPhoto(
+    'P4',
+    'salon-kitchen',
+    8581176,
+    'не подтверждён (страница за Cloudflare)',
+    'Кухня с тёмными фасадами, варочной панелью и белым кафелем-сотами',
+    'фото карточки салона «Авиамоторная» (кадр видео H12)',
+    { file: 'apartment-cabinet-contemporary-cooking-8581176.jpeg', card: true },
+  ),
+  pexelsPhoto(
+    'P5',
+    'salon-wardrobe',
+    7749197,
+    'не подтверждён (страница за Cloudflare)',
+    'Светлый шкаф со штангой и футболкой на вешалке',
+    'фото карточки салона «Химки» (кадр видео H13)',
+    { card: true },
+  ),
+  pexelsPhoto(
+    'P6',
+    'salon-living-room',
+    6263194,
+    'не подтверждён (страница за Cloudflare)',
+    'Тёмная гостиная: синий диван с узорными подушками и настольные лампы',
+    'фото карточки салона «Румянцево»',
+    { card: true },
+  ),
 ]
 
 export const videos: SeedFile[] = [
@@ -440,16 +481,7 @@ export const videos: SeedFile[] = [
     15887127,
     'hd_1920_1080_30fps',
     'не подтверждён (страница за Cloudflare)',
-    'обзор салона «Пражская», выставка «ARTDOM 2025»',
-    true,
-  ),
-  pexels(
-    'H7',
-    'bathroom',
-    15887134,
-    'hd_1280_720_30fps',
-    'Curtis Adams',
-    'обзор салона «Румянцево»',
+    'выставка «ARTDOM 2025»',
     true,
   ),
   pexels(
@@ -490,6 +522,34 @@ export const videos: SeedFile[] = [
     'hd_720_1280_24fps',
     'Charlotte May',
     'новость «Гардеробные системы 2026»: вертикальное видео',
+  ),
+  // Salon cards: vertical 540×960, no audio track.
+  pexels(
+    'H11',
+    'salon-sofa',
+    7749205,
+    'sd_540_960_30fps',
+    'не подтверждён (страница за Cloudflare)',
+    'видео карточки салона «Пражская»',
+    true,
+  ),
+  pexels(
+    'H12',
+    'salon-kitchen',
+    8581176,
+    'sd_540_960_30fps',
+    'не подтверждён (страница за Cloudflare)',
+    'видео карточки салона «Авиамоторная» (длительность > 12 с, демо)',
+    true,
+  ),
+  pexels(
+    'H13',
+    'salon-wardrobe',
+    7749197,
+    'sd_540_960_30fps',
+    'не подтверждён (страница за Cloudflare)',
+    'видео карточки салона «Химки»',
+    true,
   ),
 ]
 

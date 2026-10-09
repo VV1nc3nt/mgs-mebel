@@ -7,44 +7,60 @@ type Salon = RequiredDataFromCollectionSlug<'salons'>
 const PHONE = '8-495-777-35-75'
 
 /**
- * Salons page prototype. Coordinates were geocoded once from the addresses
- * (Nominatim / OpenStreetMap, 26.09.2026); Rumyantsevo and Khimki are approximate.
+ * Salons page v2 (§6): four salons in their order. No coordinates and opening hours in the design
+ * yet. Every optional field is set explicitly (null when empty): an update merges data, so a
+ * missing key would keep the value of the previous seed (old coordinates, a removed video).
  */
 export const salons = (id: MediaId): Salon[] => [
   {
-    name: 'ЖК Варшавская LIFE',
-    address: 'Москва, Котляковский пер., 2А к.3',
+    name: 'Пражская',
+    address: 'Кировоградская, 15, ТЦ «Гранд Юг», 2 этаж',
     phone: PHONE,
-    location: { lat: 55.650212, lng: 37.631115 },
+    metro: 'Пражская',
+    hours: null,
+    location: { lat: null, lng: null },
+    poster: id('P3'),
+    reviewVideo: id('H11'),
     order: 1,
   },
   {
-    name: 'Пражская',
-    address: 'ул. Кировоградская, 15, ТЦ «Гранд Юг», 2 этаж',
+    name: 'Авиамоторная',
+    address: 'Шоссе Энтузиастов, 12 к2, ТЦ «Город», 4 этаж',
     phone: PHONE,
-    metro: 'Пражская',
-    location: { lat: 55.609624, lng: 37.60525 },
-    reviewVideo: id('H6'),
-    poster: id('U5'),
+    metro: null,
+    hours: null,
+    location: { lat: null, lng: null },
+    poster: id('P4'),
+    reviewVideo: id('H12'),
     order: 2,
   },
   {
-    name: 'Румянцево',
-    address: 'Киевское ш., 22-й км, 4с1, ТЦ «Румянцево»',
+    name: 'Химки',
+    address: 'ул. Бутаково, 4, ТЦ «Гранд Химки», 2 этаж',
     phone: PHONE,
-    metro: 'Румянцево',
-    // Business park «Rumyantsevo»: the mall itself is not in OpenStreetMap.
-    location: { lat: 55.636026, lng: 37.436536 },
-    reviewVideo: id('H7'),
-    poster: id('U10'),
+    metro: null,
+    hours: null,
+    location: { lat: null, lng: null },
+    poster: id('P5'),
+    reviewVideo: id('H13'),
     order: 3,
   },
   {
-    name: 'Химки',
-    address: 'Химки, шоу-рум MGS MEBEL',
+    name: 'Румянцево',
+    address: 'Киевское шоссе, 22 км, блок В, вход 5, 3 этаж',
     phone: PHONE,
-    // City centre: the prototype has no street address.
-    location: { lat: 55.891729, lng: 37.439699 },
+    metro: 'Румянцево',
+    hours: null,
+    location: { lat: null, lng: null },
+    // No video: the card shows the photo only.
+    poster: id('P6'),
+    reviewVideo: null,
     order: 4,
   },
 ]
+
+/** Salons of earlier seeds that are no longer in the demo: the seed deletes them. */
+export const RETIRED_SALONS = ['ЖК Варшавская LIFE']
+
+/** Stock files of earlier seeds that are no longer in the manifest: deleted when nothing uses them. */
+export const RETIRED_FILES = ['mgs-seed-h7-bathroom.mp4']
