@@ -6,6 +6,7 @@ import { news } from '../../src/seed/data/news'
 import { salons } from '../../src/seed/data/salons'
 import { cls } from '../helpers/scroll'
 import { E2E_NEWS_COUNT, E2E_SALONS, NEWS_DRAFT_TITLE } from '../helpers/e2eHome'
+import { PLAYBACK_ATTR, stubPlayback } from '../helpers/video'
 
 // «О нас» is the former home page (hero, statistics, history, news, salons, works): the same
 // content checks as the home page had, plus the breadcrumbs.
@@ -252,6 +253,30 @@ test.describe('about', () => {
       await expect(heroOf(page).locator('img').first()).toBeVisible()
       await expect(heroOf(page).locator('video')).toHaveCount(0)
       expect(requests).toEqual([])
+    })
+
+    // The hero and two news cards have a video: on opening only the hero one is mounted, the news
+    // one once the news section comes near the viewport.
+    test('on opening only the hero video; a news cover video near the news section', async ({
+      page,
+    }) => {
+      const errors = watchConsole(page)
+      await page.emulateMedia({ reducedMotion: 'no-preference' })
+      await stubPlayback(page)
+      await page.goto(URL)
+      await hydrated(page)
+      const news = page.getByRole('region', { name: NEWS_TITLE })
+      await expect(heroOf(page).locator('video')).toHaveAttribute(PLAYBACK_ATTR, 'playing')
+      await expect(page.locator('video')).toHaveCount(1)
+
+      await news.scrollIntoViewIfNeeded()
+      const card = news.getByRole('group').first().locator('video')
+      await expect(card).toHaveAttribute(PLAYBACK_ATTR, 'playing')
+      await expect(news.locator('video')).toHaveCount(1)
+      // The hero, out of view now, is paused
+      await expect(heroOf(page).locator('video')).toHaveAttribute(PLAYBACK_ATTR, 'paused')
+      expect(errors).toEqual([])
+      await page.unrouteAll({ behavior: 'ignoreErrors' })
     })
 
     test('a failed request: back to the poster on error', async ({ page }) => {

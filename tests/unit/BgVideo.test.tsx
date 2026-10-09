@@ -2,6 +2,7 @@ import { act, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { BgVideo, type BgVideoProps } from '@/components/ui/BgVideo'
+import { BgVideoActiveProvider } from '@/components/ui/BgVideoActive'
 import { isLiteNetwork, VIDEO_START_TIMEOUT_MS, videoAllowed } from '@/lib/bgVideo'
 import { env, intersect } from './setup'
 import { photo, video } from './fixtures'
@@ -225,6 +226,30 @@ describe('BgVideo', () => {
     // Stays loaded (paused) when it becomes inactive again
     rerender(<BgVideo poster={photo} video={video} sizes={sizes} {...props} active={false} />)
     expect(container.querySelector('source')).not.toBeNull()
+  })
+
+  it('an inactive slide (BgVideoActiveProvider) pauses its video; with lazySrc — no source', () => {
+    const inSlide = (active: boolean, props: Partial<BgVideoProps> = {}) => (
+      <BgVideoActiveProvider value={active}>
+        <BgVideo poster={photo} video={video} sizes={sizes} {...props} />
+      </BgVideoActiveProvider>
+    )
+    const lazy = render(inSlide(false, { lazySrc: true }))
+    act(() => intersect(true))
+    expect(lazy.container.querySelector('source')).toBeNull()
+    lazy.rerender(inSlide(true, { lazySrc: true }))
+    act(() => intersect(true))
+    expect(lazy.container.querySelector('source')).not.toBeNull()
+    lazy.unmount()
+
+    const play = vi.mocked(HTMLMediaElement.prototype.play)
+    const pause = vi.mocked(HTMLMediaElement.prototype.pause)
+    play.mockClear()
+    const { container } = render(inSlide(false, { priority: true }))
+    act(() => intersect(true))
+    expect(videoOf(container)).not.toBeNull()
+    expect(play).not.toHaveBeenCalled()
+    expect(pause.mock.contexts).toContain(videoOf(container))
   })
 
   it('restartKey: a new value rewinds the video', () => {

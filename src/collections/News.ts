@@ -2,7 +2,7 @@ import { slugField, type CollectionConfig } from 'payload'
 
 import { contentEditors, publishedOrLoggedIn } from '@/access'
 import { newsBlocks } from '@/blocks/news'
-import { imageField } from '@/fields/media'
+import { imageField, videoField } from '@/fields/media'
 import { readingTime } from '@/lib/readingTime'
 import { slugify } from '@/lib/slugify'
 
@@ -57,6 +57,10 @@ export const News: CollectionConfig = {
     },
     { name: 'lead', type: 'textarea', label: 'Лид' },
     imageField('cover', { label: 'Обложка', required: true }),
+    videoField('coverVideo', {
+      label: 'Видео обложки',
+      admin: { description: 'MP4/WebM, 8–15 с, до 5 МБ, без звука. Необязательно; поверх обложки' },
+    }),
     {
       name: 'readingTime',
       type: 'number',

@@ -17,7 +17,8 @@ type Props = {
 /**
  * «#Новости» (README §6.1 п.4): a slider of the latest news, one card per view
  * (440 / 560 / 640). The whole card links to the article; the title names the link.
- * No news — no section; one news — no arrows and segments.
+ * No news — no section; one news — no arrows and segments. A cover video plays over the cover
+ * only on the card in view (README §3).
  */
 export function NewsSection({ section, news, idPrefix = 'home' }: Props) {
   if (!news.length) return null
@@ -31,6 +32,8 @@ export function NewsSection({ section, news, idPrefix = 'home' }: Props) {
       <MediaCard
         key={item.id}
         media={item.cover}
+        video={item.coverVideo}
+        videoLazy
         imageSize="hero"
         sizes={{ base: '100vw' }}
         radius="media"

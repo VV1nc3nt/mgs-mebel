@@ -7,6 +7,7 @@ import { salons } from '../../src/seed/data/salons'
 import { cls, layoutShifts } from '../helpers/scroll'
 import { E2E_NEWS_COUNT, E2E_SALONS, HOME_DRAFT_TITLE, NEWS_DRAFT_TITLE } from '../helpers/e2eHome'
 import { e2eEditor } from '../helpers/e2eEditor'
+import { PLAYBACK_ATTR, stubPlayback } from '../helpers/video'
 
 const BASE = 'http://localhost:3000'
 const EMPTY_DB = !!process.env.E2E_EMPTY_DB
@@ -250,7 +251,8 @@ test.describe('home', () => {
         window.scrollTo({ top: 0, behavior: 'instant' })
       })
       await page.screenshot({ path: `test-results/home/home-${width}.png`, fullPage: true })
-      expect(await cls(page)).toBe(0)
+      // CLS 0, with the sources in the message if not (a one-off 0.058 at 390 in CI, #37)
+      expect(await layoutShifts(page), 'layout shifts: value, start, what moved').toEqual([])
       expect(await axe(page)).toEqual([])
       expect(errors).toEqual([])
     })
@@ -403,6 +405,62 @@ test.describe('home', () => {
         'aria-current',
         'true',
       )
+    })
+
+    // README §3: only the current card downloads and plays its cover video. In the fixture the
+    // first and the last card have one (the minimal mp4). At 390 the first card is within the
+    // mount margin of the viewport already on opening.
+    test('a cover video only on the current card; the card left stays paused', async ({ page }) => {
+      const covers = news((key) => (/^H\d/.test(key) ? 1 : 0))
+        .slice(0, E2E_NEWS_COUNT)
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .slice(0, 3)
+        .map((item) => Boolean(item.coverVideo))
+      expect(covers).toEqual([true, false, true])
+
+      const errors = watchConsole(page)
+      await page.emulateMedia({ reducedMotion: 'no-preference' })
+      await stubPlayback(page)
+      await page.goto(`${BASE}/`)
+      await hydrated(page)
+      const region = page.getByRole('region', { name: NEWS_TITLE })
+      const slides = region.getByRole('group')
+      await region.scrollIntoViewIfNeeded()
+      const first = slides.nth(0).locator('video')
+      await expect(first).toHaveAttribute(PLAYBACK_ATTR, 'playing')
+      await expect(first.locator('source')).toHaveAttribute('src', /\.mp4$/)
+      await expect(slides.nth(2).locator('video')).toHaveCount(0)
+
+      await page.getByRole('button', { name: 'Следующая новость' }).focus()
+      await page.keyboard.press('Enter')
+      await expect.poll(() => current(page)).toBe(1)
+      await expect(first).toHaveAttribute(PLAYBACK_ATTR, 'paused')
+      await expect(slides.nth(1).locator('video')).toHaveCount(0)
+      await expect(slides.nth(2).locator('video')).toHaveCount(0)
+
+      await page.keyboard.press('Enter')
+      await expect.poll(() => current(page)).toBe(2)
+      await expect(slides.nth(2).locator('video')).toHaveAttribute(PLAYBACK_ATTR, 'playing')
+      // Kept, paused where it was
+      await expect(first).toHaveAttribute(PLAYBACK_ATTR, 'paused')
+      expect(errors).toEqual([])
+      await page.unrouteAll({ behavior: 'ignoreErrors' })
+    })
+
+    test('reduced motion: the cover posters only, no video requested', async ({ page }) => {
+      const requests: string[] = []
+      page.on('request', (r) => {
+        if (/\.(mp4|webm)(\?|$)/.test(r.url())) requests.push(r.url())
+      })
+      await page.emulateMedia({ reducedMotion: 'reduce' })
+      await page.goto(`${BASE}/`)
+      await hydrated(page)
+      const region = page.getByRole('region', { name: NEWS_TITLE })
+      await region.scrollIntoViewIfNeeded()
+      await page.waitForLoadState('networkidle')
+      await expect(region.getByRole('group').first().locator('img')).toBeVisible()
+      await expect(region.locator('video')).toHaveCount(0)
+      expect(requests).toEqual([])
     })
 
     test('a swipe moves the segments', async ({ page }) => {

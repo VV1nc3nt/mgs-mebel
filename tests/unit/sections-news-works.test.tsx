@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { NewsSection } from '@/components/sections/NewsSection'
 import { WorksSection } from '@/components/sections/WorksSection'
@@ -158,6 +158,42 @@ describe('NewsSection', () => {
     expect(
       screen.getByRole('button', { name: 'Показать новость 3 из 3' }).getAttribute('aria-current'),
     ).toBe('true')
+  })
+  it('a cover video downloads and plays only on the current card', () => {
+    const withVideo = (id: number) => ({ ...news(id), coverVideo: video })
+    render(<NewsSection section={newsSection} news={[withVideo(1), news(2), withVideo(3)]} />)
+    const slides = screen.getAllByRole('group')
+    // Only the video observers (the slider's own one watches the slides)
+    const videosInView = () =>
+      act(() => {
+        for (const observer of env.observers) {
+          if (observer.elements.some((el) => slides.includes(el as HTMLElement))) continue
+          observer.callback(
+            observer.elements.map((target) => ({ target, isIntersecting: true })) as never,
+            {} as IntersectionObserver,
+          )
+        }
+      })
+    const videoIn = (i: number) => slides[i]!.querySelector('video')
+    videosInView()
+    expect(videoIn(0)!.querySelector('source')!.getAttribute('src')).toBe(video.url)
+    expect(slides[1]!.querySelector('[data-bg-video]')).toBeNull()
+    expect(slides[2]!.querySelector('[data-bg-video]')).not.toBeNull()
+    expect(videoIn(2)).toBeNull()
+
+    const first = videoIn(0)!
+    const pause = vi.mocked(HTMLMediaElement.prototype.pause)
+    const play = vi.mocked(HTMLMediaElement.prototype.play)
+    pause.mockClear()
+    play.mockClear()
+    fireEvent.click(screen.getByRole('button', { name: 'Показать новость 3 из 3' }))
+    videosInView()
+    expect(videoIn(2)).not.toBeNull()
+    expect(play.mock.contexts).toContain(videoIn(2))
+    expect(play.mock.contexts).not.toContain(first)
+    // The card left keeps its video, paused where it was
+    expect(videoIn(0)).toBe(first)
+    expect(pause.mock.contexts).toContain(first)
   })
 })
 
