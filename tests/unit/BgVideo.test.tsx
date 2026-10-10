@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { BgVideo, type BgVideoProps } from '@/components/ui/BgVideo'
 import { BgVideoActiveProvider } from '@/components/ui/BgVideoActive'
+import { BgVideoPlayer } from '@/components/ui/BgVideoPlayer'
 import {
   isLiteNetwork,
   isVisibleEnough,
@@ -352,5 +353,58 @@ describe('BgVideo', () => {
       el.dispatchEvent(new Event('playing'))
     })
     expect(el.className).toContain('opacity-100')
+  })
+
+  it('hideOnPause: fades back to the poster on pause; without it the last frame stays', () => {
+    const { container, rerender } = render(
+      <BgVideoPlayer src="/a.mp4" type="video/mp4" priority hideOnPause />,
+    )
+    const el = videoOf(container)!
+    act(() => {
+      el.dispatchEvent(new Event('playing'))
+    })
+    expect(el.className).toContain('opacity-100')
+    act(() => {
+      el.dispatchEvent(new Event('pause'))
+    })
+    expect(el.className).toContain('opacity-0')
+
+    rerender(<BgVideoPlayer src="/a.mp4" type="video/mp4" priority />)
+    act(() => {
+      el.dispatchEvent(new Event('playing'))
+      el.dispatchEvent(new Event('pause'))
+    })
+    expect(el.className).toContain('opacity-100')
+  })
+
+  it('onPlayingChange reports when the video shows and when it falls back', () => {
+    const onPlayingChange = vi.fn()
+    const { container } = render(
+      <BgVideoPlayer
+        src="/a.mp4"
+        type="video/mp4"
+        priority
+        hideOnPause
+        onPlayingChange={onPlayingChange}
+      />,
+    )
+    const el = videoOf(container)!
+    expect(onPlayingChange).toHaveBeenLastCalledWith(false)
+    act(() => {
+      el.dispatchEvent(new Event('playing'))
+    })
+    expect(onPlayingChange).toHaveBeenLastCalledWith(true)
+    act(() => {
+      el.dispatchEvent(new Event('pause'))
+    })
+    expect(onPlayingChange).toHaveBeenLastCalledWith(false)
+    act(() => {
+      el.dispatchEvent(new Event('playing'))
+    })
+    act(() => {
+      el.dispatchEvent(new Event('error'))
+    })
+    expect(videoOf(container)).toBeNull()
+    expect(onPlayingChange).toHaveBeenLastCalledWith(false)
   })
 })

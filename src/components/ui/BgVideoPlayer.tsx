@@ -30,6 +30,10 @@ type Props = VideoSource & {
   lazySrc?: boolean
   /** A new value rewinds the video to the start. */
   restartKey?: string | number
+  /** Fades out to the poster on pause (salon cards); otherwise the last frame stays. */
+  hideOnPause?: boolean
+  /** Whether the video is shown (playing), e.g. for a play badge over the poster. */
+  onPlayingChange?: (playing: boolean) => void
 }
 
 /**
@@ -48,6 +52,8 @@ export function BgVideoPlayer({
   active: activeProp = true,
   lazySrc = false,
   restartKey,
+  hideOnPause = false,
+  onPlayingChange,
 }: Props) {
   const active = useBgVideoActive() && activeProp
   const reducedMotion = useReducedMotion()
@@ -61,6 +67,7 @@ export function BgVideoPlayer({
   const playingRef = useRef(false)
   const timeoutRef = useRef<number | undefined>(undefined)
   const restartRef = useRef(restartKey)
+  const onPlayingChangeRef = useRef(onPlayingChange)
 
   if (active && !activated) setActivated(true)
 
@@ -71,6 +78,15 @@ export function BgVideoPlayer({
     window.clearTimeout(timeoutRef.current)
     timeoutRef.current = undefined
   }
+
+  useEffect(() => {
+    onPlayingChangeRef.current = onPlayingChange
+  })
+
+  const shown = mounted && playing
+  useEffect(() => {
+    onPlayingChangeRef.current?.(shown)
+  }, [shown])
 
   // Before the playback effect: a slide that becomes active starts from the beginning.
   useEffect(() => {
@@ -165,13 +181,14 @@ export function BgVideoPlayer({
           aria-hidden="true"
           tabIndex={-1}
           onPlaying={onPlaying}
+          onPause={hideOnPause ? () => setPlaying(false) : undefined}
           onError={fail}
           onStalled={() => {
             if (!playingRef.current) fail()
           }}
           className={cn(
             'pointer-events-none absolute inset-0 size-full object-cover bg-video-fade',
-            playing ? 'opacity-100' : 'opacity-0',
+            shown ? 'opacity-100' : 'opacity-0',
           )}
         >
           <source src={src} type={type} onError={fail} />
