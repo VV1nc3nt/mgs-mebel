@@ -15,9 +15,13 @@
   --color-surface: #1d1d1c;
   --color-surface-2: #1a1a19;
   --color-surface-3: #262624;
+  /* Selected row of the salon list (design: salons v2) */
+  --color-surface-selected: #232322;
   --color-border: #262624;
   --color-border-strong: #33332f;
   --color-divider: #2a2a28;
+  /* Border of a salon list row on hover (design: salons v2) */
+  --color-border-hover: #4a4a46;
   --color-text: #f4f4f1;
   --color-text-2: #cfcfca;
   --color-text-3: #9c9c97;
@@ -208,6 +212,9 @@
   --spacing-tall-xl: 640px;
   /* Home salon map, mobile; tablet and desktop use the tall heights (design: home) */
   --spacing-map: 500px;
+  /* Salon card in the slider: 82% mobile, 44% tablet of the track (design: salons v2 §3) */
+  --spacing-salon-slide: 82%;
+  --spacing-salon-slide-md: 44%;
 
   /* Containers */
   --container-page: 1600px;
@@ -403,6 +410,16 @@
     rgb(20 20 19 / 0.25) 0%,
     rgb(20 20 19 / 0.5) 30%,
     rgb(20 20 19 / 0.97) 100%
+  );
+}
+
+/* Salon card in the «Салоны» slider (design: salons v2 §3) */
+@utility bg-overlay-salon {
+  background-image: linear-gradient(
+    180deg,
+    rgb(20 20 19 / 0.15) 0%,
+    rgb(20 20 19 / 0.1) 45%,
+    rgb(20 20 19 / 0.92) 100%
   );
 }
 

@@ -1,13 +1,73 @@
 import type { Metadata } from 'next'
 
-export const metadata: Metadata = {
-  title: 'Фирменные салоны',
+import { PreviewRefresh } from '@/components/app/PreviewRefresh'
+import { SalonsEmpty } from '@/components/salons/SalonsEmpty'
+import { SalonsExplorer } from '@/components/salons/SalonsExplorer'
+import { JsonLd } from '@/components/seo/JsonLd'
+import { SectionLabel } from '@/components/ui/SectionLabel'
+import { toChrome } from '@/lib/chrome'
+import { breadcrumbJsonLd, salonJsonLd } from '@/lib/jsonld'
+import { getLayout, getPageGlobal, getSalonCards, getSettings } from '@/lib/queries'
+import { toSalonView } from '@/lib/salons'
+import { buildMetadata } from '@/lib/seo'
+
+const PATH = '/salons'
+
+export async function generateMetadata(): Promise<Metadata> {
+  const [{ hero, meta }, salons] = await Promise.all([getPageGlobal('salonsPage'), getSalonCards()])
+  return buildMetadata({
+    meta,
+    fallback: { title: hero?.title, description: hero?.lead, image: salons[0]?.poster },
+    path: PATH,
+  })
 }
 
-export default function Page() {
+/**
+ * «Фирменные салоны» (design: salons v2): heading, salon cards with videos, the map with the list
+ * and the salon card. No salons — the «coming soon» text and the hotline instead of both.
+ */
+export default async function SalonsPage() {
+  const [page, salons, layout, settings] = await Promise.all([
+    getPageGlobal('salonsPage'),
+    getSalonCards(),
+    getLayout(),
+    getSettings(),
+  ])
+  const { messengers, nav, phone } = toChrome(layout, settings)
+  const navLabel = nav.find((item) => item.href === PATH)?.label
+  const title = page.hero?.title?.trim() || navLabel
+  const pageName = navLabel ?? title
+  const lead = page.hero?.lead?.trim()
+
   return (
-    <section className="page-container py-section xl:py-section-xl">
-      <h1 className="text-h1 md:text-h1-md xl:text-h1-xl">Фирменные салоны</h1>
-    </section>
+    <>
+      {pageName && (
+        <JsonLd
+          data={breadcrumbJsonLd([
+            { name: 'Главная', path: '/' },
+            { name: pageName, path: PATH },
+          ])}
+        />
+      )}
+      {salons.map((salon) => (
+        <JsonLd key={salon.id} data={salonJsonLd(salon)} />
+      ))}
+      <div className="page-container flex flex-col gap-2.5 pt-7 xl:pt-18">
+        {page.hero?.label && <SectionLabel>{page.hero.label}</SectionLabel>}
+        {title && <h1 className="text-h1 md:text-h1-md xl:text-h1-xl">{title}</h1>}
+        {lead && <p className="text-body text-text-3">{lead}</p>}
+      </div>
+      {salons.length ? (
+        <SalonsExplorer
+          salons={salons.map(toSalonView)}
+          ctaLabel={page.map?.cardCtaLabel}
+          messengers={messengers}
+          listCaption={page.map?.listCaption}
+        />
+      ) : (
+        <SalonsEmpty text={page.map?.emptyText} phone={phone} />
+      )}
+      <PreviewRefresh />
+    </>
   )
 }

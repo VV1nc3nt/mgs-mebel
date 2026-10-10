@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import type { SalonPin } from '@/lib/queries'
 
 type Props = {
-  salons: SalonPin[]
+  salons: Pick<SalonPin, 'id' | 'name' | 'location'>[]
   /** Salon of the open card: its pin is the active one. */
   activeId: SalonPin['id'] | undefined
   /** Layer over the map: view switch, salon card. */

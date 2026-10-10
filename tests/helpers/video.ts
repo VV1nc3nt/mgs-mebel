@@ -1,6 +1,7 @@
 /*
- * Playback stub for the news cover video tests only (home «a cover video only on the current
- * card…», about «on opening only the hero video…»): which video is mounted, playing or paused.
+ * Playback stub for the card video tests only (home «a cover video only on the current card…»,
+ * about «on opening only the hero video…», salons «card videos…»): which video is mounted,
+ * playing or paused.
  *
  * Why a stub: the fixture mp4 (seedHome) is an `ftyp` box without tracks, so no browser plays it —
  * answered, it fails with `error`; unanswered, Chrome fires `stalled` after ~3 s; either way the
@@ -19,7 +20,8 @@ export const PLAYBACK_ATTR = 'data-e2e-playback'
 /**
  * Background videos that neither fail nor depend on the browser's codecs: mp4 requests are never
  * answered and `play()` reports `playing` at once, so a mounted video stays mounted (no `stalled`
- * or start-timeout fallback). `play()` / `pause()` mark the element `playing` / `paused`.
+ * or start-timeout fallback). `play()` / `pause()` mark the element `playing` / `paused` and fire
+ * the `playing` / `pause` events.
  */
 export async function stubPlayback(page: Page) {
   await page.route('**/*.mp4', () => {})
@@ -33,6 +35,7 @@ export async function stubPlayback(page: Page) {
       }
       HTMLMediaElement.prototype.pause = function () {
         this.setAttribute('${PLAYBACK_ATTR}', 'paused')
+        this.dispatchEvent(new Event('pause'))
       }
     `,
   })

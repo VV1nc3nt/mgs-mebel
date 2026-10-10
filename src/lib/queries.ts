@@ -239,3 +239,58 @@ export async function getSalons(): Promise<SalonPin[]> {
   await connection()
   return salonsCached()
 }
+
+export type SalonCardData = Pick<
+  Salon,
+  'id' | 'name' | 'address' | 'phone' | 'hours' | 'location' | 'poster' | 'reviewVideo' | 'order'
+>
+
+// Media fields the cards, JSON-LD and Open Graph read: poster sizes, focal point, video file.
+// `url` is computed from `filename` (and `prefix` with S3), so those are selected too.
+const SALON_MEDIA_SIZE = { url: true, filename: true, width: true, height: true } as const
+
+const salonCardsCached = unstable_cache(
+  async (): Promise<SalonCardData[]> => {
+    const payload = await getPayloadClient()
+    const { docs } = await payload.find({
+      collection: 'salons',
+      sort: 'order',
+      pagination: false,
+      depth: 1,
+      overrideAccess: false,
+      select: {
+        name: true,
+        address: true,
+        phone: true,
+        hours: true,
+        location: true,
+        poster: true,
+        reviewVideo: true,
+        order: true,
+      },
+      populate: {
+        media: {
+          alt: true,
+          url: true,
+          filename: true,
+          prefix: true,
+          mimeType: true,
+          width: true,
+          height: true,
+          focalX: true,
+          focalY: true,
+          sizes: { card: SALON_MEDIA_SIZE, hero: SALON_MEDIA_SIZE, og: SALON_MEDIA_SIZE },
+        },
+      },
+    })
+    return docs
+  },
+  ['collection:salons:cards'],
+  { tags: ['collection:salons'], revalidate: REVALIDATE_SECONDS },
+)
+
+/** Salons of the «Салоны» page with the card photo and video, in the editor's order. */
+export async function getSalonCards(): Promise<SalonCardData[]> {
+  await connection()
+  return salonCardsCached()
+}

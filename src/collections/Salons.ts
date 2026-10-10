@@ -1,12 +1,24 @@
-import type { CollectionConfig, NumberFieldSingleValidation } from 'payload'
-import { number as validateNumber } from 'payload/shared'
+import type {
+  CollectionConfig,
+  NumberFieldSingleValidation,
+  TextFieldSingleValidation,
+} from 'payload'
+import { number as validateNumber, text as validateText } from 'payload/shared'
 
 import { publicRead, salonEditors } from '@/access'
 import { imageField, videoField } from '@/fields/media'
+import { openingHoursSchema } from '@/lib/jsonld'
 
 type Location = { lat?: number | null; lng?: number | null }
 
 const isSet = (value: unknown) => typeof value === 'number' && !Number.isNaN(value)
+
+/** Hours as people write them: the page turns them into schema.org `openingHours`. */
+const hoursFormat: TextFieldSingleValidation = (value, args) => {
+  const base = validateText(value, args)
+  if (base !== true) return base
+  return openingHoursSchema(value) ? true : 'Формат: Пн–Вс 10:00–21:00'
+}
 
 /** Latitude and longitude are filled together or not at all. */
 const bothOrNone: NumberFieldSingleValidation = (value, args) => {
@@ -43,8 +55,10 @@ export const Salons: CollectionConfig = {
           name: 'hours',
           type: 'text',
           label: 'Часы работы',
+          validate: hoursFormat,
           admin: {
-            description: 'Для поисковиков (на странице не выводится), формат: Mo-Su 10:00-21:00',
+            description:
+              'Для поисковиков, на странице не выводится. Например: Пн–Вс 10:00–21:00 или Пн–Пт 10:00–21:00; Сб–Вс 11:00–20:00',
           },
         },
       ],

@@ -137,6 +137,30 @@ describe('salons', () => {
     const cleared = await send('PATCH', `/${doc.id}`, { poster: null })
     expect(cleared.status).toBe(400)
   })
+
+  it('accepts opening hours as people write them, rejects anything else', async () => {
+    const badHours = {
+      data: {
+        errors: [expect.objectContaining({ path: 'hours', message: 'Формат: Пн–Вс 10:00–21:00' })],
+      },
+    }
+    const data = { name: `${PREFIX} салон часы`, address: 'Москва', poster: poster.id }
+    await expect(
+      payload.create({ collection: 'salons', data: { ...data, hours: 'Mo-Su 10:00-21:00' } }),
+    ).rejects.toMatchObject(badHours)
+    const salon = await payload.create({
+      collection: 'salons',
+      data: { ...data, hours: 'Пн–Пт 10:00–21:00; Сб–Вс 11:00–20:00' },
+    })
+    expect(salon.hours).toBe('Пн–Пт 10:00–21:00; Сб–Вс 11:00–20:00')
+    await expect(
+      payload.update({ collection: 'salons', id: salon.id, data: { hours: 'ежедневно' } }),
+    ).rejects.toMatchObject(badHours)
+    // Empty is fine: no openingHours in JSON-LD then
+    await expect(
+      payload.update({ collection: 'salons', id: salon.id, data: { hours: '' } }),
+    ).resolves.toBeTruthy()
+  })
 })
 
 describe('settings.technical', () => {

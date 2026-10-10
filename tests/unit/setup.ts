@@ -4,6 +4,8 @@ import { afterEach, beforeEach, vi } from 'vitest'
 /** jsdom has no matchMedia, IntersectionObserver or media playback: minimal controllable stubs. */
 export const env = {
   reducedMotion: false,
+  /** A mouse or a trackpad: `(hover: hover) and (pointer: fine)`. */
+  hover: false,
   saveData: false,
   effectiveType: '4g',
   observers: [] as {
@@ -30,12 +32,15 @@ export const intersect = (isIntersecting: boolean, intersectionRatio = isInterse
 
 beforeEach(() => {
   env.reducedMotion = false
+  env.hover = false
   env.saveData = false
   env.effectiveType = '4g'
   env.observers = []
 
   window.matchMedia = vi.fn((query: string) => ({
-    matches: query.includes('prefers-reduced-motion') && env.reducedMotion,
+    matches:
+      (query.includes('prefers-reduced-motion') && env.reducedMotion) ||
+      (query.includes('hover: hover') && env.hover),
     media: query,
     onchange: null,
     addEventListener: vi.fn(),

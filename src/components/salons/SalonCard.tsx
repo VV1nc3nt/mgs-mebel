@@ -17,6 +17,8 @@ type Props = {
   /** Shows the × button. */
   onClose?: () => void
   closeRef?: Ref<HTMLButtonElement>
+  /** Makes the name focusable from code (tabindex −1), e.g. after a pick in the salon list. */
+  titleRef?: Ref<HTMLHeadingElement>
   className?: string
 }
 
@@ -24,7 +26,15 @@ type Props = {
  * Salon card over the map (README §6.1 п.5, §6.3): name, address, phone, messenger CTA.
  * Shared by the home page and the «Салоны» page.
  */
-export function SalonCard({ salon, ctaLabel, messengers, onClose, closeRef, className }: Props) {
+export function SalonCard({
+  salon,
+  ctaLabel,
+  messengers,
+  onClose,
+  closeRef,
+  titleRef,
+  className,
+}: Props) {
   const phone = salon.phone?.trim()
   const phoneHref = phone ? telHref(phone) : undefined
 
@@ -38,7 +48,9 @@ export function SalonCard({ salon, ctaLabel, messengers, onClose, closeRef, clas
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-col gap-1.5">
           <p className="text-eyebrow text-accent uppercase">Фирменный салон</p>
-          <h3 className="text-title-s">{salon.name}</h3>
+          <h3 ref={titleRef} tabIndex={titleRef ? -1 : undefined} className="text-title-s">
+            {salon.name}
+          </h3>
         </div>
         {onClose && (
           <IconButton
