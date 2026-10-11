@@ -14,6 +14,8 @@ const draft = vi.hoisted(() => ({ enabled: false, headers: new Headers() }))
 vi.mock('next/server', () => ({ connection: async () => {} }))
 vi.mock('next/cache', () => ({
   unstable_cache: <T extends (...args: never[]) => unknown>(fn: T) => fn,
+  // Writes in these tests go through the cache hooks (lib/revalidate.ts)
+  revalidateTag: () => {},
 }))
 vi.mock('next/headers', () => ({
   draftMode: async () => ({ isEnabled: draft.enabled }),

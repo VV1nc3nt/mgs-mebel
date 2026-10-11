@@ -1,6 +1,7 @@
 import type { Field, GlobalConfig } from 'payload'
 
 import { contentEditors, publicRead } from '@/access'
+import { revalidateGlobal } from '@/lib/revalidate'
 
 const navItem = (name: string, label: string): Field => ({
   name,
@@ -27,6 +28,7 @@ export const Layout: GlobalConfig = {
   label: 'Шапка, меню, подвал',
   admin: { group: 'Настройки' },
   access: { read: publicRead, update: contentEditors },
+  hooks: revalidateGlobal('layout'),
   fields: [
     {
       type: 'tabs',

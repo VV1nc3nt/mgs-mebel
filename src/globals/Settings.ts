@@ -8,6 +8,7 @@ import {
   technicalFieldUpdate,
 } from '@/access'
 import { imageField } from '@/fields/media'
+import { revalidateGlobal } from '@/lib/revalidate'
 
 const httpsUrl = (value: string | null | undefined, host?: string): string | true => {
   if (!value) return true
@@ -53,6 +54,7 @@ export const Settings: GlobalConfig = {
   label: 'Контакты и настройки',
   admin: { group: 'Настройки' },
   access: { read: publicRead, update: salonEditors },
+  hooks: revalidateGlobal('settings'),
   fields: [
     {
       type: 'tabs',

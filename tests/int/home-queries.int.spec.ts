@@ -7,6 +7,8 @@ import { cleanup, createImage, createVideo, getTestPayload, PREFIX } from './hel
 vi.mock('next/server', () => ({ connection: async () => {} }))
 vi.mock('next/cache', () => ({
   unstable_cache: <T extends (...args: never[]) => unknown>(fn: T) => fn,
+  // Writes in these tests go through the cache hooks (lib/revalidate.ts)
+  revalidateTag: () => {},
 }))
 
 const { getHomeWorks, getLatestNews, getNewsBySlug, getSalons } = await import('@/lib/queries')

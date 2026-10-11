@@ -8,6 +8,7 @@ import type { News, Salon } from '@/payload-types'
 import type { LayoutInput, SettingsInput } from './chrome'
 import { getPayloadClient } from './payload'
 import { getPreviewUser } from './preview'
+import { collectionTag, globalTag, newsTag, type PAGE_GLOBALS } from './revalidate'
 import {
   HOME_WORKS_LIMIT,
   REELS,
@@ -17,16 +18,13 @@ import {
   type WorkPanel,
 } from './works'
 
-// Until step 9: replace the time-based revalidate with revalidateTag from the globals' hooks.
-const REVALIDATE_SECONDS = 60
-
 const layoutCached = unstable_cache(
   async (): Promise<LayoutInput> => {
     const payload = await getPayloadClient()
     return payload.findGlobal({ slug: 'layout', depth: 0 })
   },
   ['global:layout'],
-  { tags: ['global:layout'], revalidate: REVALIDATE_SECONDS },
+  { tags: [globalTag('layout')] },
 )
 
 // Local API skips field access, so the technical tab (consultant widget code) and the designer
@@ -42,7 +40,7 @@ const settingsCached = unstable_cache(
     return { contacts, messengers }
   },
   ['global:settings:public'],
-  { tags: ['global:settings'], revalidate: REVALIDATE_SECONDS },
+  { tags: [globalTag('settings')] },
 )
 
 /**
@@ -61,8 +59,7 @@ export async function getSettings(): Promise<SettingsInput> {
 }
 
 /** Globals of site pages (README §6): drafts with autosave, read through getPageGlobal. */
-export type PageSlug =
-  'home' | 'about' | 'salonsPage' | 'worksPage' | 'catalogsPage' | 'designers' | 'newsPage'
+export type PageSlug = (typeof PAGE_GLOBALS)[number]
 
 export type PageData<S extends PageSlug> = DataFromGlobalSlug<S>
 
@@ -73,15 +70,14 @@ const readPublished = async <S extends PageSlug>(slug: S): Promise<PageData<S>> 
   return payload.findGlobal({ slug, depth: 1, overrideAccess: false })
 }
 
-// One cache entry and one tag per page: step 9 revalidates a page by `global:<slug>`.
+// One cache entry and one tag per page: the global's hooks expire `global:<slug>` on publishing.
 const pageCache = new Map<PageSlug, () => Promise<unknown>>()
 
 const pageCached = <S extends PageSlug>(slug: S): Promise<PageData<S>> => {
   let cached = pageCache.get(slug)
   if (!cached) {
     cached = unstable_cache(() => readPublished(slug), ['global:page', slug], {
-      tags: [`global:${slug}`],
-      revalidate: REVALIDATE_SECONDS,
+      tags: [globalTag(slug)],
     })
     pageCache.set(slug, cached)
   }
@@ -108,7 +104,7 @@ const statsCached = unstable_cache(
     return payload.findGlobal({ slug: 'stats', depth: 0 })
   },
   ['global:stats'],
-  { tags: ['global:stats'], revalidate: REVALIDATE_SECONDS },
+  { tags: [globalTag('stats')] },
 )
 
 /** Statistics shared by the home and «О нас» pages. */
@@ -139,7 +135,7 @@ const latestNewsCached = unstable_cache(
     return docs
   },
   ['collection:news:latest'],
-  { tags: ['collection:news'], revalidate: REVALIDATE_SECONDS },
+  { tags: [collectionTag('news')] },
 )
 
 /** The latest published news, newest first (home slider). */
@@ -172,7 +168,7 @@ export async function getNewsBySlug(slug: string): Promise<NewsArticle | null> {
       return docs[0] ?? null
     },
     ['collection:news:slug', slug],
-    { tags: ['collection:news', `news:${slug}`], revalidate: REVALIDATE_SECONDS },
+    { tags: [collectionTag('news'), newsTag(slug)] },
   )()
 }
 
@@ -203,7 +199,7 @@ const homeWorksCached = unstable_cache(
     return workPanels(Object.fromEntries(lists))
   },
   ['collection:projects:home'],
-  { tags: ['collection:projects'], revalidate: REVALIDATE_SECONDS },
+  { tags: [collectionTag('projects')] },
 )
 
 /** Home «Наши работы»: up to 4 previews per chip, chips without works left out. */
@@ -231,7 +227,7 @@ const salonsCached = unstable_cache(
     return docs
   },
   ['collection:salons:pins'],
-  { tags: ['collection:salons'], revalidate: REVALIDATE_SECONDS },
+  { tags: [collectionTag('salons')] },
 )
 
 /** Salons for the map and the salon card, in the editor's order. */
@@ -286,7 +282,7 @@ const salonCardsCached = unstable_cache(
     return docs
   },
   ['collection:salons:cards'],
-  { tags: ['collection:salons'], revalidate: REVALIDATE_SECONDS },
+  { tags: [collectionTag('salons')] },
 )
 
 /** Salons of the «Салоны» page with the card photo and video, in the editor's order. */

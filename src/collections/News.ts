@@ -4,6 +4,7 @@ import { contentEditors, publishedOrLoggedIn } from '@/access'
 import { newsBlocks } from '@/blocks/news'
 import { imageField, videoField } from '@/fields/media'
 import { readingTime } from '@/lib/readingTime'
+import { newsTags, revalidateCollection } from '@/lib/revalidate'
 import { slugify } from '@/lib/slugify'
 
 export const News: CollectionConfig = {
@@ -24,6 +25,9 @@ export const News: CollectionConfig = {
     delete: contentEditors,
   },
   hooks: {
+    // Publishing, unpublishing and deleting expire the list and the news page (old slug too);
+    // saving a draft does not.
+    ...revalidateCollection('news', newsTags),
     beforeChange: [({ data }) => ({ ...data, readingTime: readingTime(data.body) })],
   },
   fields: [

@@ -1,6 +1,7 @@
 import type { GlobalConfig, Tab } from 'payload'
 
 import { contentEditors, publishedOrLoggedIn } from '@/access'
+import { revalidateGlobal } from '@/lib/revalidate'
 import { siteUrl } from '@/lib/site'
 
 // Live Preview iframe sizes: the three reference widths of the design (README §4).
@@ -42,5 +43,7 @@ export const pageGlobal = (
   // Autosave keeps rewriting one version, so 50 covers many publications.
   versions: { drafts: { autosave: { interval: 2000 } }, max: 50 },
   access: { read: publishedOrLoggedIn, readVersions: contentEditors, update: contentEditors },
+  // Publishing, unpublishing and restoring expire `global:<slug>`; autosaving a draft does not.
+  hooks: revalidateGlobal(slug),
   fields: [{ type: 'tabs', tabs }],
 })
