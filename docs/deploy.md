@@ -30,7 +30,7 @@ PR → CI (GitHub Actions) → merge в `main` → сборка Docker-обра�
   3. проверить `/healthz` изнутри контейнера (`docker compose exec -T app wget …`) и что `https://<SITE_DOMAIN>/` отвечает 401 (Basic Auth) — до 60 с; при провале — вернуть предыдущий тег и уронить job. Если предыдущего тега нет (первый деплой или `staging`), откатываться некуда — job падает, новая версия остаётся.
 - `seed-staging.yml` — «Seed staging», только ручной запуск (`workflow_dispatch`), та же `concurrency: staging` — не пересекается с деплоем. Демо-данные, см. «Демо-данные на staging».
 - Секреты Environment `staging`: `SSH_HOST`, `SSH_USER`, `SSH_KEY`, `SSH_KNOWN_HOSTS`. Переменные: `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_YMAPS_KEY`.
-- Runtime-секреты (`DATABASE_URL`, `PAYLOAD_SECRET`, `SITE_DOMAIN`, `S3_*` (опционально), логин/хэш Basic Auth) живут только в `/opt/mgs/.env`.
+- Runtime-секреты (`DATABASE_URL`, `PAYLOAD_SECRET`, `REVALIDATE_SECRET`, `SITE_DOMAIN`, `S3_*` (опционально), логин/хэш Basic Auth) живут только в `/opt/mgs/.env`.
 
 ## Первичная настройка сервера
 
@@ -57,6 +57,7 @@ PR → CI (GitHub Actions) → merge в `main` → сборка Docker-обра�
    ```
    - `POSTGRES_PASSWORD`: `openssl rand -hex 24`; тот же пароль — в `DATABASE_URL` (`postgres://mgs:<пароль>@postgres:5432/mgs`).
    - `PAYLOAD_SECRET`: `openssl rand -hex 32`.
+   - `REVALIDATE_SECRET`: `openssl rand -hex 32` — сброс кэша данных сайта после seed (см. «Кэш данных сайта»); без него `seed.sh` завершается ошибкой.
    - `SITE_URL`: адрес сайта, например `https://staging.tmprl.ru`.
    - Basic Auth: `BASIC_AUTH_USER` — логин; хэш пароля:
      ```bash
@@ -86,6 +87,16 @@ PR → CI (GitHub Actions) → merge в `main` → сборка Docker-обра�
 - Ручной откат: поставить в `/opt/mgs/.env` нужный `APP_TAG=<sha>` и выполнить `docker compose up -d app`.
 - Восстановление БД: `docker compose exec -T postgres sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists' < backups/db-<дата>.dump`.
 - Восстановление media: `docker compose run --rm --no-deps -T --entrypoint tar app -xzf - -C /app/media < backups/media-<дата>.tar.gz`.
+- После восстановления БД — `docker compose restart app` (или сброс без простоя, см. ниже): `pg_restore` пишет мимо хуков Payload, и кэш данных сайта иначе показывал бы прежнее.
+
+### Кэш данных сайта
+- Опубликованные данные (глобалы, новости, работы, салоны) кэшируются без срока; сохранение и публикация в админке сбрасывают кэш хуками Payload — первый же запрос посетителя видит новое. Сохранение черновика (autosave) кэш не трогает.
+- Кэш живёт только в пределах процесса `app`: при старте каталог `/app/.next/cache/fetch-cache` очищается (`src/instrumentation.ts`), поэтому `restart`, пересоздание и автоперезапуск контейнера всегда начинают с данных из БД. Кэш оптимизированных изображений (`/app/.next/cache/images`) не очищается.
+- Запись в БД мимо приложения (seed отдельным образом, `pg_restore`) — сброс без перезапуска: `POST /revalidate` с заголовком `Authorization: Bearer <REVALIDATE_SECRET>`. Изнутри контейнера, чтобы секрет не попал в командную строку:
+  ```bash
+  docker compose exec -T app node -e 'fetch("http://127.0.0.1:3000/revalidate",{method:"POST",headers:{authorization:"Bearer "+process.env.REVALIDATE_SECRET}}).then(r=>console.log(r.status))'
+  ```
+  Ответ 200 — сброшено; 401 — переменная не задана в `/opt/mgs/.env` или контейнер `app` не пересоздан после её добавления (`docker compose up -d app`). `seed.sh` делает это сам.
 
 ## Демо-данные на staging
 
@@ -94,7 +105,7 @@ PR → CI (GitHub Actions) → merge в `main` → сборка Docker-обра�
 Как устроено:
 - Seed запускается отдельным образом `ghcr.io/vv1nc3nt/mgs-mebel:seed-<APP_TAG>` (стадия `seed` в `Dockerfile`), собранным из **того же коммита**, что работающий `app`. Прод-образ (`runner`) от этого не меняется.
 - С сервера стоки недоступны (Unsplash — таймаут, Pexels — 403), поэтому seed на сервере работает **только из кэша** `/opt/mgs/seed-cache` (`SEED_OFFLINE=true`, каталог смонтирован в контейнер только на чтение). Кэш заполняет раннер GitHub (`pnpm seed:fetch`) или, запасной путь, Mac владельца (`deploy/seed-upload.sh`).
-- `seed.sh`: проверяет флаг и `APP_TAG` → `pull` seed-образа → проверка полноты кэша (`pnpm seed:check`, список файлов — из манифеста в образе) — **до бэкапа** → `./backup.sh` → `docker compose --profile seed run --rm seed` → сводка счётчиков. Полный лог — `/opt/mgs/logs/seed-<дата>.log`.
+- `seed.sh`: проверяет флаг и `APP_TAG` → `pull` seed-образа → проверка полноты кэша (`pnpm seed:check`, список файлов — из манифеста в образе) — **до бэкапа** → `./backup.sh` → `docker compose --profile seed run --rm seed` → сводка счётчиков → сброс кэша данных `app` (`POST /revalidate`, в том числе после упавшего seed; не сброшен — `seed.sh` завершается ошибкой «кэш сайта не сброшен»). Полный лог — `/opt/mgs/logs/seed-<дата>.log`.
 - Без `--profile seed` сервис `seed` не запускается (`docker compose up` его не трогает).
 - Каждый запуск делает бэкап; `backup.sh` хранит 7 последних дампов и 7 архивов media, общих с ежедневным cron (с демо-медиа архив ≈ 60 МБ).
 
@@ -127,6 +138,7 @@ deploy/seed-upload.sh      # проверить кэш и rsync в deploy@5.180.
 - `APP_TAG='staging' … is not a commit sha` — приложение ещё не деплоилось workflow; дождаться «Deploy staging».
 - `В кэше /seed-cache не хватает N файлов: …` — кэш неполный; бэкап и БД не тронуты. Перезапустить workflow без `skip_fetch` или загрузить кэш через `seed-upload.sh`.
 - `rsync: command not found` — поставить rsync на сервере.
+- `кэш сайта не сброшен` — seed выполнен, но `app` не принял `POST /revalidate`: нет `REVALIDATE_SECRET` в `/opt/mgs/.env` или `app` не пересоздан после его добавления (`docker compose up -d app`), либо `app` не запущен. Исправить и сбросить кэш командой из «Кэш данных сайта» (или `docker compose restart app`).
 - Seed упал посередине — повторный запуск безопасен (идемпотентен). Если данные испорчены — откат из бэкапа, сделанного перед этим запуском.
 
 ### Откат из бэкапа

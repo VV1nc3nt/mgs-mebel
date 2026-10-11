@@ -2,6 +2,7 @@ import type { CollectionConfig } from 'payload'
 
 import { anyRole, publicRead } from '@/access'
 import { imageField, pdfField } from '@/fields/media'
+import { revalidateCollection } from '@/lib/revalidate'
 
 export const catalogCategoryOptions = [
   { label: 'Кухни', value: 'kitchens' },
@@ -26,6 +27,7 @@ export const Catalogs: CollectionConfig = {
     update: anyRole,
     delete: anyRole,
   },
+  hooks: revalidateCollection('catalogs'),
   fields: [
     { name: 'title', type: 'text', label: 'Название', required: true },
     {

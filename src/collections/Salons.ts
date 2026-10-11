@@ -8,6 +8,7 @@ import { number as validateNumber, text as validateText } from 'payload/shared'
 import { publicRead, salonEditors } from '@/access'
 import { imageField, videoField } from '@/fields/media'
 import { openingHoursSchema } from '@/lib/jsonld'
+import { revalidateCollection } from '@/lib/revalidate'
 
 type Location = { lat?: number | null; lng?: number | null }
 
@@ -43,6 +44,7 @@ export const Salons: CollectionConfig = {
     update: salonEditors,
     delete: salonEditors,
   },
+  hooks: revalidateCollection('salons'),
   fields: [
     { name: 'name', type: 'text', label: 'Название', required: true },
     { name: 'address', type: 'text', label: 'Адрес', required: true },

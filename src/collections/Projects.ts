@@ -4,6 +4,7 @@ import { array as validateArray } from 'payload/shared'
 import { contentEditors, publicRead } from '@/access'
 import { checkMediaKind, imageField, mediaField, mimeFilter } from '@/fields/media'
 import { projectCategoryOptions } from '@/lib/projectCategories'
+import { revalidateCollection } from '@/lib/revalidate'
 import { slugify } from '@/lib/slugify'
 
 type SlideRow = { type?: 'video' | 'photo' | null }
@@ -23,6 +24,7 @@ export const Projects: CollectionConfig = {
     update: contentEditors,
     delete: contentEditors,
   },
+  hooks: revalidateCollection('projects'),
   fields: [
     { name: 'title', type: 'text', label: 'Название', required: true },
     slugField({

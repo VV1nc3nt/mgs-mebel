@@ -3,8 +3,16 @@ import { APIError, type CollectionConfig } from 'payload'
 
 import { preventDeletingUsedMedia } from './mediaUsage'
 import { mediaDeleters, mediaUpdaters, anyRole, publicRead } from '@/access'
+import { ALL_TAGS, revalidateCollection } from '@/lib/revalidate'
 
 const MB = 1024 * 1024
+
+// A changed file, alt or focal point shows on every page that uses it: rare enough to expire all
+// site data instead of tracing the usages. A new file is used nowhere yet; a used one cannot be
+// deleted (preventDeletingUsedMedia).
+const { afterChange, afterDelete } = revalidateCollection('media', () => ALL_TAGS, {
+  onCreate: false,
+})
 
 /** Per-type size limits. The global request limit is set in payload.config.ts (`upload.limits`). */
 const MAX_SIZE: { prefix: string; bytes: number; label: string }[] = [
@@ -27,6 +35,8 @@ export const Media: CollectionConfig = {
     delete: mediaDeleters,
   },
   hooks: {
+    afterChange,
+    afterDelete,
     beforeDelete: [preventDeletingUsedMedia],
     beforeOperation: [
       ({ args, operation, req }) => {

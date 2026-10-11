@@ -9,6 +9,8 @@ import { getTestPayload } from './helpers'
 vi.mock('next/server', () => ({ connection: async () => {} }))
 vi.mock('next/cache', () => ({
   unstable_cache: <T extends (...args: never[]) => unknown>(fn: T) => fn,
+  // Writes in these tests go through the cache hooks (lib/revalidate.ts)
+  revalidateTag: () => {},
 }))
 
 const { getLayout, getSettings } = await import('@/lib/queries')

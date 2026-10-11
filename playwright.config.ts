@@ -6,6 +6,8 @@ import { defineConfig, devices } from '@playwright/test'
  */
 import 'dotenv/config'
 
+import { E2E_REVALIDATE_SECRET } from './tests/helpers/revalidate'
+
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
@@ -39,6 +41,6 @@ export default defineConfig({
     command: process.env.CI ? 'node .next/standalone/server.js' : 'pnpm dev',
     reuseExistingServer: !process.env.CI,
     url: 'http://localhost:3000',
-    env: { ENABLE_UI_KIT: 'true', PORT: '3000' },
+    env: { ENABLE_UI_KIT: 'true', PORT: '3000', REVALIDATE_SECRET: E2E_REVALIDATE_SECRET },
   },
 })
