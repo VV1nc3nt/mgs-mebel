@@ -162,7 +162,8 @@ test.describe('home', () => {
         await expect(tabs).toHaveCount(0)
         await expect(next).toHaveCount(1)
         const arrow = (await next.boundingBox())!
-        expect([arrow.width, arrow.height]).toEqual([52, 52])
+        expect(arrow.width).toBeCloseTo(52, 1)
+        expect(arrow.height).toBeCloseTo(52, 1)
         expect(Math.round(arrow.y)).toBe(Math.round((await cta.boundingBox())!.y))
       } else {
         await expect(tabs).toHaveCount(2)
@@ -174,7 +175,8 @@ test.describe('home', () => {
         await expect(tabs.first()).toHaveAccessibleName(`01 ${SEGMENTS[0]!.label!}`)
         await expect(tabs.nth(1)).toHaveAccessibleName(`02 ${SEGMENTS[1]!.label!}`)
         const arrow = (await next.boundingBox())!
-        expect([arrow.width, arrow.height]).toEqual([44, 44])
+        expect(arrow.width).toBeCloseTo(44, 1)
+        expect(arrow.height).toBeCloseTo(44, 1)
       }
 
       // News: one card per view of README §6.1 heights, the latest published only
@@ -269,27 +271,34 @@ test.describe('home', () => {
       const viewport = await page.evaluate(() => document.body.clientWidth)
       const left = (viewport - 1600) / 2 + 64
       const box = async (locator: ReturnType<Page['locator']>) => (await locator.boundingBox())!
+      // Layout units are 1/64 px: compare positions within 0.05 px, not exactly
 
       const hero = await box(heroSection(page))
-      expect([hero.x, hero.width]).toEqual([0, viewport])
+      expect(hero.x).toBeCloseTo(0, 1)
+      expect(hero.width).toBeCloseTo(viewport, 1)
       const footer = await box(page.locator('footer'))
-      expect([footer.x, footer.width]).toEqual([0, viewport])
+      expect(footer.x).toBeCloseTo(0, 1)
+      expect(footer.width).toBeCloseTo(viewport, 1)
 
       const header = page.locator('header')
-      expect((await box(header.getByRole('link', { name: 'MGS MEBEL — на главную' }))).x).toBe(left)
+      expect((await box(header.getByRole('link', { name: 'MGS MEBEL — на главную' }))).x).toBeCloseTo(
+        left,
+        1,
+      )
       const cta = await box(
         header.getByRole('button', { name: `${CTA_LABEL} — выбрать мессенджер` }),
       )
-      expect(cta.x + cta.width).toBe(viewport - left)
-      expect((await box(page.locator('h1'))).x).toBe(left)
+      expect(cta.x + cta.width).toBeCloseTo(viewport - left, 1)
+      expect((await box(page.locator('h1'))).x).toBeCloseTo(left, 1)
       // The tab rail keeps to the right edge of the container
       const rail = await box(heroSection(page).getByRole('tab').first())
       // Half pixels with an odd containing block (the Linux scrollbar gutter): within 1px
       expect(Math.abs(rail.x + rail.width - (viewport - left))).toBeLessThanOrEqual(1)
-      expect((await box(page.locator('footer p').first())).x).toBe(left)
+      expect((await box(page.locator('footer p').first())).x).toBeCloseTo(left, 1)
       // The salon map is not a background: it keeps to the container
       const map = await box(page.getByRole('region', { name: SALONS_TITLE }).locator('.bg-map-bg'))
-      expect([map.x, map.width]).toEqual([left, 1600 - 128])
+      expect(map.x).toBeCloseTo(left, 1)
+      expect(map.width).toBeCloseTo(1600 - 128, 1)
 
       const backgrounds = await page.evaluate(() =>
         [document.documentElement, document.body].map((el) => getComputedStyle(el).backgroundColor),
@@ -356,7 +365,7 @@ test.describe('home', () => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto(`${BASE}/`)
     const track = page.getByRole('region', { name: NEWS_TITLE }).locator('.snap-x')
-    expect((await track.getByRole('group').first().boundingBox())!.x).toBe(20)
+    expect((await track.getByRole('group').first().boundingBox())!.x).toBeCloseTo(20, 1)
   })
 
   test.describe('news slider', () => {
@@ -754,7 +763,8 @@ test.describe('home', () => {
         await expect.poll(() => segment(page)).toBe(1)
         const second = await row()
         expect(first.gap).toBeGreaterThan(0)
-        expect(second.gap).toBe(first.gap)
+        // Layout units are 1/64 px: 12 can read as 11.99997 or 12.00003
+        expect(second.gap).toBeCloseTo(first.gap, 1)
         // «01 … 02»: the active number in accent, the other one dimmed
         expect(first.numbers.map(([text]) => text)).toEqual(['01', '02'])
         expect(second.numbers.map(([text]) => text)).toEqual(['01', '02'])
