@@ -346,12 +346,16 @@ test.describe('home', () => {
     for (const width of [390, 834, 1440] as const) {
       test(`${width}: a late font falls back to Arial without a layout shift`, async ({ page }) => {
         await page.setViewportSize({ width, height: 900 })
+        // Far past the ~100ms window of `optional` (300 ms once made it in time on a fast runner)
         await page.route('**/*.woff2', async (route) => {
-          await new Promise((resolve) => setTimeout(resolve, 300))
+          await new Promise((resolve) => setTimeout(resolve, 2000))
           await route.continue()
         })
+        const fontLoaded = page.waitForResponse('**/*.woff2')
         await page.goto(`${BASE}/`)
         await expect(page.locator('h1')).toBeVisible()
+        // Checked once the font has arrived: it is not swapped in and moves nothing
+        await fontLoaded
         await page.waitForTimeout(500)
         expect(await layoutShifts(page), 'layout shifts: value, start, what moved').toEqual([])
         // `optional`: a font that misses its ~100ms window is not swapped in later
