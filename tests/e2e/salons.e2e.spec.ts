@@ -4,7 +4,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test'
 import { globals } from '../../src/seed/data/globals'
 import { salons } from '../../src/seed/data/salons'
 import { E2E_SALONS } from '../helpers/e2eHome'
-import { layoutShifts } from '../helpers/scroll'
+import { layoutShifts, settle } from '../helpers/scroll'
 import { PLAYBACK_ATTR, stubPlayback } from '../helpers/video'
 
 // «Фирменные салоны» (design: salons v2): heading, salon cards, the map with the list and the card.
@@ -71,6 +71,82 @@ const expectSelected = async (page: Page, index: number, segments = true) => {
 }
 
 const playback = (video: Locator) => video.getAttribute(PLAYBACK_ATTR)
+
+const trackOf = (page: Page) => cardsOf(page).locator('.snap-x')
+
+/**
+ * Listens for the end of the track's scroll before the scroll starts; the returned wait resolves
+ * on `scrollend` (or after 1.5 s if the track never scrolls).
+ */
+const armScrollEnd = async (track: Locator) => {
+  await track.evaluate((el) => {
+    const t = el as HTMLElement & { ended?: Promise<void> }
+    t.ended = new Promise((resolve) => {
+      el.addEventListener('scrollend', () => resolve(), { once: true })
+      setTimeout(resolve, 1500)
+    })
+  })
+  return () => track.evaluate((el) => (el as HTMLElement & { ended?: Promise<void> }).ended)
+}
+
+/**
+ * Swipes the salon cards with a finger (touch events, as in the home hero test): a drag of 0.6 card
+ * across the middle of the track at a finger's pace, then the finger rests before it lifts — no
+ * fling, so the track snaps to the next card, not past it. Resolves on scrollend. Needs `hasTouch`.
+ */
+const swiper = async (page: Page) => {
+  const cdp = await page.context().newCDPSession(page)
+  const touch = (type: 'touchStart' | 'touchMove', x: number, y: number) =>
+    cdp.send('Input.dispatchTouchEvent', { type, touchPoints: [{ x: Math.round(x), y }] })
+  return async (direction: 1 | -1) => {
+    const box = (await slide(page, 0).boundingBox())!
+    const y = Math.round(box.y + box.height / 2)
+    const from = page.viewportSize()!.width / 2 + direction * box.width * 0.3
+    const distance = -direction * box.width * 0.6
+    const ended = await armScrollEnd(trackOf(page))
+    await touch('touchStart', from, y)
+    for (let i = 1; i <= 8; i++) {
+      await touch('touchMove', from + (distance * i) / 8, y)
+      await page.waitForTimeout(16)
+    }
+    await page.waitForTimeout(200)
+    await touch('touchMove', from + distance, y)
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+    await ended()
+  }
+}
+
+/**
+ * The track's distance from the snap target of a card: its start against the snapport start
+ * (mobile) or its center against the snapport center (tablet), clamped to the scroll range.
+ */
+const offsetFromTarget = (track: Locator, index: number) =>
+  track.evaluate((el, i) => {
+    const style = getComputedStyle(el)
+    const card = el.children[i] as HTMLElement
+    const max = el.scrollWidth - el.clientWidth
+    const padStart = parseFloat(style.scrollPaddingLeft)
+    const padEnd = parseFloat(style.scrollPaddingRight)
+    const target = getComputedStyle(card).scrollSnapAlign.includes('center')
+      ? card.offsetLeft +
+        card.offsetWidth / 2 -
+        (padStart + (el.clientWidth - padStart - padEnd) / 2)
+      : card.offsetLeft - padStart
+    return Math.min(Math.max(target, 0), max) - el.scrollLeft
+  }, index)
+
+/** Room for the focus outline (2 + offset 2) between a card and the track's edges. */
+const ringRoom = (button: Locator) =>
+  button.evaluate((el) => {
+    const track = el.closest('.snap-x')!.getBoundingClientRect()
+    const card = el.getBoundingClientRect()
+    return Math.min(
+      card.top - track.top,
+      track.bottom - card.bottom,
+      card.left - track.left,
+      track.right - card.right,
+    )
+  })
 
 test.describe('salons', () => {
   test.skip(EMPTY_DB, 'needs tests/helpers/seedChrome.ts + seedHome.ts data')
@@ -274,6 +350,186 @@ test.describe('salons', () => {
     await expectSelected(page, E2E_SALONS.length - 1)
     await expectMapCard(page, E2E_SALONS[E2E_SALONS.length - 1])
   })
+
+  // Programmatic scrolls: a segment pick lands on the card's snap target
+  for (const width of [390, 834] as const) {
+    test(`${width}: a segment pick scrolls to its card, which stays selected`, async ({ page }) => {
+      await page.setViewportSize({ width, height: HEIGHTS[width] })
+      await page.goto(URL)
+      await hydrated(page)
+      await settle(page)
+      const track = trackOf(page)
+      for (const index of [1, 2, 3, 0, 2]) {
+        const ended = await armScrollEnd(track)
+        await segment(page, E2E_SALONS[index]).click()
+        await ended()
+        await expectSelected(page, index)
+        const left = await track.evaluate((el) => el.scrollLeft)
+        // Mobile: the card at the start of the snapport; tablet: in its center — or at an end
+        expect(
+          Math.abs(await offsetFromTarget(track, index)),
+          `card ${index} rests at its snap target`,
+        ).toBeLessThan(1)
+        // Nothing moves after the scroll has ended
+        await page.waitForTimeout(300)
+        expect(await track.evaluate((el) => el.scrollLeft)).toBe(left)
+        await expectSelected(page, index)
+        await expectMapCard(page, E2E_SALONS[index])
+      }
+    })
+  }
+
+  // Finger gestures. Linux Chromium (CI) scrolls the track by a synthetic touch only in a context
+  // with touch emulation; Chrome on a Mac scrolls without it
+  test.describe('touch', () => {
+    test.use({ hasTouch: true })
+
+    // #42: on tablet 44 % cards snapped by the start gave four cards three resting places — the
+    // third salon could not be reached by a swipe
+    for (const width of [390, 834] as const) {
+      test(`${width}: swipes select every salon in turn, both ways`, async ({ page }) => {
+        await page.setViewportSize({ width, height: HEIGHTS[width] })
+        await page.goto(URL)
+        await hydrated(page)
+        await settle(page)
+        const swipe = await swiper(page)
+        await expectSelected(page, 0)
+        for (const index of [1, 2, 3]) {
+          await swipe(1)
+          await expectSelected(page, index)
+          await expectMapCard(page, E2E_SALONS[index])
+          if (width === 834) {
+            // The selected card's focus ring fits in the track in every position
+            await page.keyboard.press('Shift')
+            const button = cardButton(page, E2E_SALONS[index])
+            await button.focus()
+            expect(await button.evaluate((el) => el.matches(':focus-visible'))).toBe(true)
+            expect(await ringRoom(button)).toBeGreaterThanOrEqual(4)
+            await cardsOf(page).screenshot({
+              path: `test-results/salons/salons-834-${index + 1}.png`,
+            })
+            await button.blur()
+          }
+        }
+        for (const index of [2, 1, 0]) {
+          await swipe(-1)
+          await expectSelected(page, index)
+          await expectMapCard(page, E2E_SALONS[index])
+        }
+        if (width === 834) {
+          await page.keyboard.press('Shift')
+          const button = cardButton(page, E2E_SALONS[0])
+          await button.focus()
+          expect(await ringRoom(button)).toBeGreaterThanOrEqual(4)
+          await cardsOf(page).screenshot({ path: 'test-results/salons/salons-834-1.png' })
+        }
+      })
+    }
+
+    // A turn of the device changes the snap targets (start ↔ center): the selection stays, the closed
+    // salon card over the map stays closed, the track moves to the selected card's new target.
+    // Chrome re-snaps the track to the same card itself; «without re-snap» stands for a browser that
+    // leaves the scroll position as it was (snapping is off during the resize)
+    for (const [from, to, resnap] of [
+      [390, 834, true],
+      [834, 390, true],
+      [390, 834, false],
+      [834, 390, false],
+    ] as const) {
+      const how = resnap ? '' : ', without re-snap'
+      test(`${from} → ${to}${how}: a resize keeps the selected salon and the closed card`, async ({
+        page,
+      }) => {
+        // The third salon of the fixture
+        const index = 2
+        expect(E2E_SALONS[index]).toBe('Авиамоторная')
+        await page.setViewportSize({ width: from, height: HEIGHTS[from] })
+        await page.goto(URL)
+        await hydrated(page)
+        await settle(page)
+        const swipe = await swiper(page)
+        await swipe(1)
+        await swipe(1)
+        await expectSelected(page, index)
+        await mapOf(page).getByRole('button', { name: 'Скрыть карточку салона' }).click()
+        await expect(mapOf(page).getByRole('heading', { level: 3 })).toHaveCount(0)
+
+        // Any other card pressed during the resize, even for a frame, is a flicker
+        const track = trackOf(page)
+        await track.evaluate((el) => {
+          const w = window as Window & { pressed?: string[] }
+          w.pressed = []
+          new MutationObserver((records) => {
+            for (const r of records) {
+              const button = r.target as HTMLElement
+              if (button.getAttribute('aria-pressed') === 'true') {
+                w.pressed!.push(button.getAttribute('aria-labelledby') ?? '')
+              }
+            }
+          }).observe(el, { attributes: true, attributeFilter: ['aria-pressed'], subtree: true })
+        })
+        if (!resnap) await track.evaluate((el) => el.style.setProperty('scroll-snap-type', 'none'))
+        await page.setViewportSize({ width: to, height: HEIGHTS[to] })
+        await expect
+          .poll(async () => Math.abs(await offsetFromTarget(track, index)))
+          .toBeLessThan(1)
+        // Settled: nothing moves afterwards
+        const left = await track.evaluate((el) => el.scrollLeft)
+        await page.waitForTimeout(300)
+        expect(await track.evaluate((el) => el.scrollLeft)).toBe(left)
+        expect(
+          await page.evaluate(() => (window as Window & { pressed?: string[] }).pressed),
+          'no other salon selected on the way',
+        ).toEqual([])
+        await expectSelected(page, index)
+        await expect(mapOf(page).getByRole('heading', { level: 3 })).toHaveCount(0)
+        if (!resnap) {
+          await track.evaluate((el) => el.style.removeProperty('scroll-snap-type'))
+          await page.waitForTimeout(300)
+          expect(Math.abs(await offsetFromTarget(track, index))).toBeLessThan(1)
+          await expectSelected(page, index)
+        }
+        await expect(
+          mapOf(page).getByRole('button', { name: 'Показать салон', exact: true }),
+        ).toBeVisible()
+      })
+    }
+  })
+
+  // iOS Safari resizes the window on a vertical scroll too (its toolbars fold): only the height
+  // changes, and the track must stay where the finger left it
+  for (const width of [390, 834] as const) {
+    test(`${width}: a resize of the height only leaves the track and the selection`, async ({
+      page,
+    }) => {
+      const index = 2
+      await page.setViewportSize({ width, height: HEIGHTS[width] })
+      await page.goto(URL)
+      await hydrated(page)
+      await settle(page)
+      const ended = await armScrollEnd(trackOf(page))
+      await segment(page, E2E_SALONS[index]).click()
+      await ended()
+      await expectSelected(page, index)
+
+      // Mid-swipe: the track off its target (snapping off, so that it stays there)
+      const track = trackOf(page)
+      await track.evaluate((el) => {
+        el.style.setProperty('scroll-snap-type', 'none')
+        el.scrollBy({ left: 40, behavior: 'instant' })
+      })
+      await page.waitForTimeout(300)
+      await expectSelected(page, index)
+      const left = await track.evaluate((el) => el.scrollLeft)
+      expect(Math.abs(await offsetFromTarget(track, index))).toBeGreaterThan(30)
+
+      await page.setViewportSize({ width, height: HEIGHTS[width] - 120 })
+      await page.waitForTimeout(300)
+      expect(await track.evaluate((el) => el.scrollLeft)).toBe(left)
+      await expectSelected(page, index)
+      await track.evaluate((el) => el.style.removeProperty('scroll-snap-type'))
+    })
+  }
 
   test('390: the focus ring of a selected card is not clipped (screenshot)', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })

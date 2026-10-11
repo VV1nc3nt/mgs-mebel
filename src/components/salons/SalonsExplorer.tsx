@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
 
 import { HIT_AREA_Y } from '@/components/ui/hitArea'
 import { SegmentFilter } from '@/components/ui/SegmentFilter'
@@ -9,7 +9,7 @@ import { useReducedMotion } from '@/hooks/useReducedMotion'
 import type { Messenger } from '@/lib/chrome'
 import { cn } from '@/lib/cn'
 import type { SalonView } from '@/lib/salons'
-import { nearestSlide } from '@/lib/slider'
+import { nearestSlide, snapTargets } from '@/lib/slider'
 import { SalonList } from './SalonList'
 import { SalonMapSlot } from './SalonMapSlot'
 import { SalonPanel } from './SalonPanel'
@@ -36,6 +36,29 @@ const VIEWS = [
 const SCROLL_SETTLE_MS = 150
 
 /**
+ * Where the track rests for each card, read anew every time: the card width and snap-align change
+ * at 768 and 1280 (mobile — start, tablet — center, desktop — a grid without scrolling).
+ */
+const measure = (root: HTMLElement) => {
+  const style = getComputedStyle(root)
+  const slides = Array.from(root.children as HTMLCollectionOf<HTMLElement>)
+  // `scroll-snap-align` is «block inline» or one value for both: the last word is the inline axis
+  const align = slides[0] && getComputedStyle(slides[0]).scrollSnapAlign.split(' ').pop()
+  const max = root.scrollWidth - root.clientWidth
+  const targets = snapTargets(
+    slides.map((slide) => ({ left: slide.offsetLeft, width: slide.offsetWidth })),
+    {
+      width: root.clientWidth,
+      paddingStart: parseFloat(style.scrollPaddingLeft) || 0,
+      paddingEnd: parseFloat(style.scrollPaddingRight) || 0,
+      maxScroll: max,
+    },
+    align === 'center' ? 'center' : 'start',
+  )
+  return { targets, max }
+}
+
+/**
  * Salon cards and the map of the «Салоны» page (design: salons v2 §3–4): one selected salon for
  * the slider, its segments, the list and the card over the map; a pick from any of them selects it
  * everywhere and opens the card again. A card video plays on hover / keyboard focus with a mouse,
@@ -55,6 +78,7 @@ export function SalonsExplorer({ salons, ctaLabel, messengers, listCaption }: Pr
   const pending = useRef(false)
   const settle = useRef<number | undefined>(undefined)
   const frame = useRef<number | undefined>(undefined)
+  const lastWidth = useRef(0)
   const count = salons.length
   const current = salons[active] ?? salons[0]
 
@@ -82,19 +106,27 @@ export function SalonsExplorer({ salons, ctaLabel, messengers, listCaption }: Pr
     }, SCROLL_SETTLE_MS)
   }
 
-  /** Scrolls the track to a slide, horizontally only: the page does not move. */
-  const scrollToSlide = (index: number) => {
+  /**
+   * Scrolls the track to a card's snap target, horizontally only: the page does not move, and the
+   * cards it passes do not become active. False when there is nothing to scroll.
+   */
+  const scrollToTarget = (index: number, behavior: ScrollBehavior) => {
     const root = track.current
-    const slide = root?.children[index] as HTMLElement | undefined
-    if (!root || !slide) return
-    const max = root.scrollWidth - root.clientWidth
-    if (max <= 0) return
-    const padding = parseFloat(getComputedStyle(root).paddingLeft) || 0
-    const left = Math.min(Math.max(slide.offsetLeft - padding, 0), max)
-    if (Math.abs(left - root.scrollLeft) < 1) return
+    if (!root?.children[index]) return false
+    const { targets, max } = measure(root)
+    if (max <= 0) return false
+    // The card's own snap target: the scroll ends where the snap keeps it
+    const left = targets[index]
+    if (Math.abs(left - root.scrollLeft) < 1) return false
     pending.current = true
-    if (!('onscrollend' in window)) settleLater()
-    root.scrollTo({ left, behavior: reducedMotion ? 'auto' : 'smooth' })
+    // An instant scroll may end without `scrollend` (Safari): the timer releases the picks anyway
+    if (behavior === 'auto' || !('onscrollend' in window)) settleLater()
+    root.scrollTo({ left, behavior })
+    return true
+  }
+
+  const scrollToSlide = (index: number) => {
+    scrollToTarget(index, reducedMotion ? 'auto' : 'smooth')
   }
 
   const select = (index: number) => {
@@ -103,29 +135,61 @@ export function SalonsExplorer({ salons, ctaLabel, messengers, listCaption }: Pr
     scrollToSlide(index)
   }
 
-  const onTrackScroll = () => {
-    if (pending.current) {
-      if (!('onscrollend' in window)) settleLater()
-      return
-    }
+  /** Next frame: the card whose snap target is nearest to the scroll position becomes active. */
+  const syncActive = () => {
     if (frame.current !== undefined) cancelAnimationFrame(frame.current)
     frame.current = requestAnimationFrame(() => {
       frame.current = undefined
       const root = track.current
-      if (!root) return
-      const max = root.scrollWidth - root.clientWidth
+      if (!root || pending.current) return
+      const { targets, max } = measure(root)
       if (max <= 0) return
-      const padding = parseFloat(getComputedStyle(root).paddingLeft) || 0
-      const offsets = Array.from(
-        root.children,
-        (child) => (child as HTMLElement).offsetLeft - padding,
-      )
-      const next = nearestSlide(offsets, root.scrollLeft, max)
+      const next = nearestSlide(targets, root.scrollLeft)
       if (next === active) return
       setActive(next)
       setCardOpen(true)
     })
   }
+
+  const onTrackScroll = () => {
+    if (pending.current) {
+      if (!('onscrollend' in window)) settleLater()
+      return
+    }
+    syncActive()
+  }
+
+  // The selected card's new target, read in the frame after the resize
+  const realign = useEffectEvent(() => {
+    if (!scrollToTarget(active, 'auto')) pending.current = false
+  })
+
+  // A turn of the device changes the targets (start ↔ center): until the track rests on the new
+  // one, its scroll position belongs to no card. A resize keeps the selection and the card over the
+  // map as they are: picks are held at once (the browser's own re-snap scrolls before the next
+  // frame), and the track moves to the selected card's target instantly.
+  const onResize = useEffectEvent(() => {
+    pending.current = true
+    window.clearTimeout(settle.current)
+    if (frame.current !== undefined) cancelAnimationFrame(frame.current)
+    frame.current = requestAnimationFrame(() => {
+      frame.current = undefined
+      realign()
+    })
+  })
+
+  useEffect(() => {
+    lastWidth.current = window.innerWidth
+    // Only a new width (a turn, a breakpoint): iOS Safari also resizes the window when its toolbars
+    // fold on a vertical scroll, and a swipe at that moment must not jump back (as in lib/chooser.ts)
+    const listener = () => {
+      if (window.innerWidth === lastWidth.current) return
+      lastWidth.current = window.innerWidth
+      onResize()
+    }
+    window.addEventListener('resize', listener, { passive: true })
+    return () => window.removeEventListener('resize', listener)
+  }, [])
 
   const pickFromList = (index: number) => {
     focusTitle.current = true
@@ -146,14 +210,16 @@ export function SalonsExplorer({ salons, ctaLabel, messengers, listCaption }: Pr
         <h2 id="salons-cards-title" className="sr-only">
           Салоны
         </h2>
-        {/* py-1 −my-1: room for the outside focus ring, which the scrolling track would clip */}
+        {/* py-1 −my-1: room for the outside focus ring, which the scrolling track would clip.
+            Cards snap by the start on mobile, by the center on tablet: with 44 % cards the last two
+            would both snap to the end of the track, and the third could not be reached. */}
         <div
           ref={track}
           onScroll={onTrackScroll}
           onScrollEnd={() => {
             pending.current = false
           }}
-          className="page-container -my-1 no-scrollbar flex snap-x snap-mandatory scroll-pl-gutter gap-3 overflow-x-auto py-1 md:scroll-pl-gutter-md xl:grid xl:grid-cols-4 xl:overflow-visible"
+          className="page-container -my-1 no-scrollbar flex snap-x snap-mandatory scroll-pl-gutter gap-3 overflow-x-auto py-1 md:scroll-px-gutter-md xl:grid xl:grid-cols-4 xl:overflow-visible"
         >
           {salons.map((salon, i) => (
             <SalonSlide

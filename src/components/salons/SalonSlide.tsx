@@ -53,7 +53,7 @@ export function SalonSlide({
       role="group"
       aria-roledescription="слайд"
       aria-label={`${position} из ${count}`}
-      className="w-salon-slide shrink-0 snap-start md:w-salon-slide-md xl:w-auto"
+      className="w-salon-slide shrink-0 snap-start md:w-salon-slide-md md:snap-center xl:w-auto"
     >
       <article
         onPointerEnter={() => onHotChange(true)}
