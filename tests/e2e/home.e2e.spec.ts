@@ -642,6 +642,40 @@ test.describe('home', () => {
       expect(await scrollY(page)).toBe(0)
     })
 
+    // The rail's height is reserved in CSS (hero-tab-rail): a page painted before the rail is
+    // parsed (streamed HTML) already centres it at its final height. If the sizes of the buttons,
+    // tabs or gaps part ways with the reserve, this fails instead of the look.
+    for (const [width, height] of [
+      [768, 1024],
+      [1280, 800],
+      [1440, 900],
+      [2560, 1440],
+    ] as const) {
+      test(`${width}: the tab rail reserves the height of its parts, centred in the hero`, async ({
+        page,
+      }) => {
+        await page.setViewportSize({ width, height })
+        await page.goto(`${BASE}/`)
+        const rail = heroSection(page).getByRole('tablist').locator('..')
+        const { reserved, parts, center } = await rail.evaluate((el) => {
+          const box = el.getBoundingClientRect()
+          const gap = parseFloat(getComputedStyle(el).rowGap)
+          const children = [...el.children]
+          return {
+            reserved: box.height,
+            parts:
+              children.reduce((sum, child) => sum + child.getBoundingClientRect().height, 0) +
+              gap * (children.length - 1),
+            center: box.y + box.height / 2,
+          }
+        })
+        const hero = (await heroSection(page).boundingBox())!
+        expect(parts).toBeGreaterThan(0)
+        expect(reserved).toBeCloseTo(parts, 1)
+        expect(center).toBeCloseTo(hero.y + hero.height / 2, 1)
+      })
+    }
+
     test.describe('390 touch', () => {
       test.use({ viewport: { width: 390, height: 844 }, hasTouch: true })
 

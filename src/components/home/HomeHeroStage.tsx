@@ -254,7 +254,10 @@ export function HomeHeroStage({ segments, titleId, cta, link }: Props) {
 
       {multi && (
         <div className="pointer-events-none absolute inset-0 page-container hidden items-center justify-end md:flex">
-          <div className="pointer-events-auto flex flex-col items-center gap-3">
+          <div
+            style={cssVars({ '--hero-tabs': count })}
+            className="pointer-events-auto flex hero-tab-rail flex-col items-center gap-3"
+          >
             <IconButton
               variant="outline-media"
               size={44}

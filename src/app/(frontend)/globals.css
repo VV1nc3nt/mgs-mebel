@@ -334,6 +334,24 @@
   }
 }
 
+/*
+ * Desktop tab rail (↑, --hero-tabs tabs, ↓), centred in the hero: its height is reserved from
+ * the sizes of its parts, so a document painted before the rail is fully parsed (streamed HTML)
+ * already centres it at its final height and nothing moves when the rest arrives. Terms mirror
+ * the classes in HomeHeroStage: buttons size-11, gaps gap-3; a tab is py-1.5, a text-button-s
+ * number, gap-2 and the h-14 bar. e2e checks the sum against the children.
+ */
+@utility hero-tab-rail {
+  height: calc(
+    2 * --spacing(11) + 2 * --spacing(3) + (var(--hero-tabs) - 1) * --spacing(3) +
+      var(--hero-tabs) *
+      (
+        2 * --spacing(1.5) + var(--text-button-s) * var(--text-button-s--line-height) +
+          --spacing(2) + --spacing(14)
+      )
+  );
+}
+
 /* Tab bar: 56 when active, 20 otherwise — by scale from the top, never by height */
 @utility hero-tab-bar {
   transform-origin: top;
