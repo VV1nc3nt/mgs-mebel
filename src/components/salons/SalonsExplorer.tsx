@@ -78,6 +78,7 @@ export function SalonsExplorer({ salons, ctaLabel, messengers, listCaption }: Pr
   const pending = useRef(false)
   const settle = useRef<number | undefined>(undefined)
   const frame = useRef<number | undefined>(undefined)
+  const lastWidth = useRef(0)
   const count = salons.length
   const current = salons[active] ?? salons[0]
 
@@ -178,7 +179,14 @@ export function SalonsExplorer({ salons, ctaLabel, messengers, listCaption }: Pr
   })
 
   useEffect(() => {
-    const listener = () => onResize()
+    lastWidth.current = window.innerWidth
+    // Only a new width (a turn, a breakpoint): iOS Safari also resizes the window when its toolbars
+    // fold on a vertical scroll, and a swipe at that moment must not jump back (as in lib/chooser.ts)
+    const listener = () => {
+      if (window.innerWidth === lastWidth.current) return
+      lastWidth.current = window.innerWidth
+      onResize()
+    }
     window.addEventListener('resize', listener, { passive: true })
     return () => window.removeEventListener('resize', listener)
   }, [])

@@ -273,7 +273,15 @@ describe('SalonsExplorer', () => {
     const pressed = () =>
       VIEWS.map((salon) => cardButton(salon.name).getAttribute('aria-pressed') === 'true')
 
+    const resize = (width: number, height: number) => {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: width })
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: height })
+      fireEvent(window, new Event('resize'))
+    }
+
     beforeEach(() => {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 })
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: 844 })
       frames = []
       vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => frames.push(cb))
       vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((id) => {
@@ -282,7 +290,12 @@ describe('SalonsExplorer', () => {
       vi.mocked(Element.prototype.scrollTo).mockClear()
     })
 
-    afterEach(() => vi.restoreAllMocks())
+    afterEach(() => {
+      vi.restoreAllMocks()
+      // jsdom's own window size
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 })
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: 768 })
+    })
 
     it('keeps the selected salon and the closed card; the track moves to its target at once', () => {
       renderExplorer()
@@ -295,7 +308,7 @@ describe('SalonsExplorer', () => {
 
       // After the resize the track rests nearer to the next card's target
       track.scrollLeft = 800
-      fireEvent(window, new Event('resize'))
+      resize(834, 1194)
       // The browser's own re-snap before the next frame does not pick a card
       fireEvent.scroll(track)
       flushFrames()
@@ -309,14 +322,14 @@ describe('SalonsExplorer', () => {
     it('on its target or without scrolling: no scroll, and swipes pick cards again', () => {
       renderExplorer()
       const track = setUpTrack()
-      fireEvent(window, new Event('resize'))
+      resize(834, 1194)
       flushFrames()
       expect(Element.prototype.scrollTo).not.toHaveBeenCalled()
 
       // xl: a grid, nothing to scroll
       Object.defineProperty(track, 'scrollWidth', { configurable: true, value: 390 })
       track.scrollLeft = 300
-      fireEvent(window, new Event('resize'))
+      resize(1440, 900)
       flushFrames()
       expect(Element.prototype.scrollTo).not.toHaveBeenCalled()
       expect(pressed()).toEqual([true, false, false, false])
@@ -328,6 +341,23 @@ describe('SalonsExplorer', () => {
       flushFrames()
       expect(pressed()).toEqual([false, false, false, true])
       expect(mapTitle()?.textContent).toBe(VIEWS[3].name)
+    })
+
+    it('the same width (iOS toolbars fold on a vertical scroll): a swipe still picks its card', () => {
+      renderExplorer()
+      const track = setUpTrack()
+      fireEvent.click(screen.getByRole('button', { name: 'Показать салон Химки' }))
+      fireEvent(track, new Event('scrollend'))
+      vi.mocked(Element.prototype.scrollTo).mockClear()
+
+      // A swipe to the last card; the window gets taller before its frame
+      track.scrollLeft = 834
+      fireEvent.scroll(track)
+      resize(390, 760)
+      flushFrames()
+
+      expect(Element.prototype.scrollTo).not.toHaveBeenCalled()
+      expect(pressed()).toEqual([false, false, false, true])
     })
   })
 

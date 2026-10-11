@@ -479,6 +479,41 @@ test.describe('salons', () => {
     })
   }
 
+  // iOS Safari resizes the window on a vertical scroll too (its toolbars fold): only the height
+  // changes, and the track must stay where the finger left it
+  for (const width of [390, 834] as const) {
+    test(`${width}: a resize of the height only leaves the track and the selection`, async ({
+      page,
+    }) => {
+      const index = 2
+      await page.setViewportSize({ width, height: HEIGHTS[width] })
+      await page.goto(URL)
+      await hydrated(page)
+      await settle(page)
+      const ended = await armScrollEnd(trackOf(page))
+      await segment(page, E2E_SALONS[index]).click()
+      await ended()
+      await expectSelected(page, index)
+
+      // Mid-swipe: the track off its target (snapping off, so that it stays there)
+      const track = trackOf(page)
+      await track.evaluate((el) => {
+        el.style.setProperty('scroll-snap-type', 'none')
+        el.scrollBy({ left: 40, behavior: 'instant' })
+      })
+      await page.waitForTimeout(300)
+      await expectSelected(page, index)
+      const left = await track.evaluate((el) => el.scrollLeft)
+      expect(Math.abs(await offsetFromTarget(track, index))).toBeGreaterThan(30)
+
+      await page.setViewportSize({ width, height: HEIGHTS[width] - 120 })
+      await page.waitForTimeout(300)
+      expect(await track.evaluate((el) => el.scrollLeft)).toBe(left)
+      await expectSelected(page, index)
+      await track.evaluate((el) => el.style.removeProperty('scroll-snap-type'))
+    })
+  }
+
   test('390: the focus ring of a selected card is not clipped (screenshot)', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto(URL)
