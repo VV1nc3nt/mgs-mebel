@@ -89,6 +89,46 @@ const armScrollEnd = async (track: Locator) => {
   return () => track.evaluate((el) => (el as HTMLElement & { ended?: Promise<void> }).ended)
 }
 
+/** Swipes the salon cards with a finger: a drag of 0.6 card without a fling; resolves on scrollend. */
+const swiper = async (page: Page) => {
+  const cdp = await page.context().newCDPSession(page)
+  return async (direction: 1 | -1) => {
+    const box = (await slide(page, 0).boundingBox())!
+    const width = page.viewportSize()!.width
+    const ended = await armScrollEnd(trackOf(page))
+    // xDistance > 0 moves the content right
+    await cdp.send('Input.synthesizeScrollGesture', {
+      x: Math.round(width / 2),
+      y: Math.round(box.y + box.height / 2),
+      xDistance: -direction * Math.round(box.width * 0.6),
+      yDistance: 0,
+      gestureSourceType: 'touch',
+      preventFling: true,
+      speed: 600,
+    })
+    await ended()
+  }
+}
+
+/**
+ * The track's distance from the snap target of a card: its start against the snapport start
+ * (mobile) or its center against the snapport center (tablet), clamped to the scroll range.
+ */
+const offsetFromTarget = (track: Locator, index: number) =>
+  track.evaluate((el, i) => {
+    const style = getComputedStyle(el)
+    const card = el.children[i] as HTMLElement
+    const max = el.scrollWidth - el.clientWidth
+    const padStart = parseFloat(style.scrollPaddingLeft)
+    const padEnd = parseFloat(style.scrollPaddingRight)
+    const target = getComputedStyle(card).scrollSnapAlign.includes('center')
+      ? card.offsetLeft +
+        card.offsetWidth / 2 -
+        (padStart + (el.clientWidth - padStart - padEnd) / 2)
+      : card.offsetLeft - padStart
+    return Math.min(Math.max(target, 0), max) - el.scrollLeft
+  }, index)
+
 /** Room for the focus outline (2 + offset 2) between a card and the track's edges. */
 const ringRoom = (button: Locator) =>
   button.evaluate((el) => {
@@ -313,23 +353,7 @@ test.describe('salons', () => {
       await page.goto(URL)
       await hydrated(page)
       await settle(page)
-      const track = trackOf(page)
-      const cdp = await page.context().newCDPSession(page)
-      const swipe = async (direction: 1 | -1) => {
-        const box = (await slide(page, 0).boundingBox())!
-        const ended = await armScrollEnd(track)
-        // A finger drag of 0.6 card without a fling; xDistance > 0 moves the content right
-        await cdp.send('Input.synthesizeScrollGesture', {
-          x: Math.round(width / 2),
-          y: Math.round(box.y + box.height / 2),
-          xDistance: -direction * Math.round(box.width * 0.6),
-          yDistance: 0,
-          gestureSourceType: 'touch',
-          preventFling: true,
-          speed: 600,
-        })
-        await ended()
-      }
+      const swipe = await swiper(page)
       await expectSelected(page, 0)
       for (const index of [1, 2, 3]) {
         await swipe(1)
@@ -375,26 +399,83 @@ test.describe('salons', () => {
         await expectSelected(page, index)
         const left = await track.evaluate((el) => el.scrollLeft)
         // Mobile: the card at the start of the snapport; tablet: in its center — or at an end
-        const offset = await track.evaluate((el, i) => {
-          const style = getComputedStyle(el)
-          const card = el.children[i] as HTMLElement
-          const max = el.scrollWidth - el.clientWidth
-          const padStart = parseFloat(style.scrollPaddingLeft)
-          const padEnd = parseFloat(style.scrollPaddingRight)
-          const target = getComputedStyle(card).scrollSnapAlign.includes('center')
-            ? card.offsetLeft +
-              card.offsetWidth / 2 -
-              (padStart + (el.clientWidth - padStart - padEnd) / 2)
-            : card.offsetLeft - padStart
-          return Math.min(Math.max(target, 0), max) - el.scrollLeft
-        }, index)
-        expect(Math.abs(offset), `card ${index} rests at its snap target`).toBeLessThan(1)
+        expect(
+          Math.abs(await offsetFromTarget(track, index)),
+          `card ${index} rests at its snap target`,
+        ).toBeLessThan(1)
         // Nothing moves after the scroll has ended
         await page.waitForTimeout(300)
         expect(await track.evaluate((el) => el.scrollLeft)).toBe(left)
         await expectSelected(page, index)
         await expectMapCard(page, E2E_SALONS[index])
       }
+    })
+  }
+
+  // A turn of the device changes the snap targets (start ↔ center): the selection stays, the closed
+  // salon card over the map stays closed, the track moves to the selected card's new target.
+  // Chrome re-snaps the track to the same card itself; «without re-snap» stands for a browser that
+  // leaves the scroll position as it was (snapping is off during the resize)
+  for (const [from, to, resnap] of [
+    [390, 834, true],
+    [834, 390, true],
+    [390, 834, false],
+    [834, 390, false],
+  ] as const) {
+    const how = resnap ? '' : ', without re-snap'
+    test(`${from} → ${to}${how}: a resize keeps the selected salon and the closed card`, async ({
+      page,
+    }) => {
+      // The third salon of the fixture
+      const index = 2
+      expect(E2E_SALONS[index]).toBe('Авиамоторная')
+      await page.setViewportSize({ width: from, height: HEIGHTS[from] })
+      await page.goto(URL)
+      await hydrated(page)
+      await settle(page)
+      const swipe = await swiper(page)
+      await swipe(1)
+      await swipe(1)
+      await expectSelected(page, index)
+      await mapOf(page).getByRole('button', { name: 'Скрыть карточку салона' }).click()
+      await expect(mapOf(page).getByRole('heading', { level: 3 })).toHaveCount(0)
+
+      // Any other card pressed during the resize, even for a frame, is a flicker
+      const track = trackOf(page)
+      await track.evaluate((el) => {
+        const w = window as Window & { pressed?: string[] }
+        w.pressed = []
+        new MutationObserver((records) => {
+          for (const r of records) {
+            const button = r.target as HTMLElement
+            if (button.getAttribute('aria-pressed') === 'true') {
+              w.pressed!.push(button.getAttribute('aria-labelledby') ?? '')
+            }
+          }
+        }).observe(el, { attributes: true, attributeFilter: ['aria-pressed'], subtree: true })
+      })
+      if (!resnap) await track.evaluate((el) => el.style.setProperty('scroll-snap-type', 'none'))
+      await page.setViewportSize({ width: to, height: HEIGHTS[to] })
+      await expect.poll(async () => Math.abs(await offsetFromTarget(track, index))).toBeLessThan(1)
+      // Settled: nothing moves afterwards
+      const left = await track.evaluate((el) => el.scrollLeft)
+      await page.waitForTimeout(300)
+      expect(await track.evaluate((el) => el.scrollLeft)).toBe(left)
+      expect(
+        await page.evaluate(() => (window as Window & { pressed?: string[] }).pressed),
+        'no other salon selected on the way',
+      ).toEqual([])
+      await expectSelected(page, index)
+      await expect(mapOf(page).getByRole('heading', { level: 3 })).toHaveCount(0)
+      if (!resnap) {
+        await track.evaluate((el) => el.style.removeProperty('scroll-snap-type'))
+        await page.waitForTimeout(300)
+        expect(Math.abs(await offsetFromTarget(track, index))).toBeLessThan(1)
+        await expectSelected(page, index)
+      }
+      await expect(
+        mapOf(page).getByRole('button', { name: 'Показать салон', exact: true }),
+      ).toBeVisible()
     })
   }
 

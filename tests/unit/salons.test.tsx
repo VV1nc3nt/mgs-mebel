@@ -1,6 +1,6 @@
 import { act, fireEvent, render, renderHook, screen, within } from '@testing-library/react'
 import { renderToString } from 'react-dom/server'
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { SalonPanel } from '@/components/salons/SalonPanel'
 import { SalonsEmpty } from '@/components/salons/SalonsEmpty'
@@ -242,6 +242,93 @@ describe('SalonsExplorer', () => {
     expect(within(mapRegion()).queryByRole('list')).toBeNull()
     expectSelected(3)
     expect(document.activeElement).toBe(mapTitle())
+  })
+
+  describe('resize', () => {
+    // 390: cards 287 + gap 12; jsdom has no snap styles — start, no scroll-padding, so the targets
+    // are the offsets: 0 / 299 / 598 / 834 (the end of the track)
+    const LEFTS = [0, 299, 598, 897]
+    let frames: FrameRequestCallback[] = []
+
+    /** The track with the 390 geometry; `scrollLeft` is writable (jsdom keeps it at 0). */
+    const setUpTrack = () => {
+      const track = cards().querySelector<HTMLElement>('.snap-x')!
+      Object.defineProperty(track, 'clientWidth', { configurable: true, value: 390 })
+      Object.defineProperty(track, 'scrollWidth', { configurable: true, value: 1224 })
+      Object.defineProperty(track, 'scrollLeft', { configurable: true, writable: true, value: 0 })
+      Array.from(track.children).forEach((child, i) => {
+        Object.defineProperty(child, 'offsetLeft', { configurable: true, value: LEFTS[i] })
+        Object.defineProperty(child, 'offsetWidth', { configurable: true, value: 287 })
+      })
+      return track
+    }
+
+    const flushFrames = () =>
+      act(() => {
+        const run = frames
+        frames = []
+        run.forEach((cb) => cb(0))
+      })
+
+    const pressed = () =>
+      VIEWS.map((salon) => cardButton(salon.name).getAttribute('aria-pressed') === 'true')
+
+    beforeEach(() => {
+      frames = []
+      vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => frames.push(cb))
+      vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((id) => {
+        frames[id - 1] = () => {}
+      })
+      vi.mocked(Element.prototype.scrollTo).mockClear()
+    })
+
+    afterEach(() => vi.restoreAllMocks())
+
+    it('keeps the selected salon and the closed card; the track moves to its target at once', () => {
+      renderExplorer()
+      const track = setUpTrack()
+      // The third salon
+      fireEvent.click(screen.getByRole('button', { name: 'Показать салон Химки' }))
+      fireEvent(track, new Event('scrollend'))
+      fireEvent.click(within(mapRegion()).getByRole('button', { name: 'Скрыть карточку салона' }))
+      vi.mocked(Element.prototype.scrollTo).mockClear()
+
+      // After the resize the track rests nearer to the next card's target
+      track.scrollLeft = 800
+      fireEvent(window, new Event('resize'))
+      // The browser's own re-snap before the next frame does not pick a card
+      fireEvent.scroll(track)
+      flushFrames()
+
+      expect(pressed()).toEqual([false, false, true, false])
+      expect(mapTitle()).toBeNull()
+      expect(Element.prototype.scrollTo).toHaveBeenCalledTimes(1)
+      expect(Element.prototype.scrollTo).toHaveBeenCalledWith({ left: 598, behavior: 'auto' })
+    })
+
+    it('on its target or without scrolling: no scroll, and swipes pick cards again', () => {
+      renderExplorer()
+      const track = setUpTrack()
+      fireEvent(window, new Event('resize'))
+      flushFrames()
+      expect(Element.prototype.scrollTo).not.toHaveBeenCalled()
+
+      // xl: a grid, nothing to scroll
+      Object.defineProperty(track, 'scrollWidth', { configurable: true, value: 390 })
+      track.scrollLeft = 300
+      fireEvent(window, new Event('resize'))
+      flushFrames()
+      expect(Element.prototype.scrollTo).not.toHaveBeenCalled()
+      expect(pressed()).toEqual([true, false, false, false])
+
+      // The hold is released: a swipe selects the card it rests on
+      Object.defineProperty(track, 'scrollWidth', { configurable: true, value: 1224 })
+      track.scrollLeft = 834
+      fireEvent.scroll(track)
+      flushFrames()
+      expect(pressed()).toEqual([false, false, false, true])
+      expect(mapTitle()?.textContent).toBe(VIEWS[3].name)
+    })
   })
 
   it('one salon: no segments', () => {

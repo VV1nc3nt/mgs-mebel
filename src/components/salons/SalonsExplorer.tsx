@@ -105,19 +105,27 @@ export function SalonsExplorer({ salons, ctaLabel, messengers, listCaption }: Pr
     }, SCROLL_SETTLE_MS)
   }
 
-  /** Scrolls the track to a slide, horizontally only: the page does not move. */
-  const scrollToSlide = (index: number) => {
+  /**
+   * Scrolls the track to a card's snap target, horizontally only: the page does not move, and the
+   * cards it passes do not become active. False when there is nothing to scroll.
+   */
+  const scrollToTarget = (index: number, behavior: ScrollBehavior) => {
     const root = track.current
-    const slide = root?.children[index] as HTMLElement | undefined
-    if (!root || !slide) return
+    if (!root?.children[index]) return false
     const { targets, max } = measure(root)
-    if (max <= 0) return
+    if (max <= 0) return false
     // The card's own snap target: the scroll ends where the snap keeps it
     const left = targets[index]
-    if (Math.abs(left - root.scrollLeft) < 1) return
+    if (Math.abs(left - root.scrollLeft) < 1) return false
     pending.current = true
-    if (!('onscrollend' in window)) settleLater()
-    root.scrollTo({ left, behavior: reducedMotion ? 'auto' : 'smooth' })
+    // An instant scroll may end without `scrollend` (Safari): the timer releases the picks anyway
+    if (behavior === 'auto' || !('onscrollend' in window)) settleLater()
+    root.scrollTo({ left, behavior })
+    return true
+  }
+
+  const scrollToSlide = (index: number) => {
+    scrollToTarget(index, reducedMotion ? 'auto' : 'smooth')
   }
 
   const select = (index: number) => {
@@ -150,9 +158,23 @@ export function SalonsExplorer({ salons, ctaLabel, messengers, listCaption }: Pr
     syncActive()
   }
 
-  // A turn of the device or a resize changes the targets: the track may rest on another card
+  // The selected card's new target, read in the frame after the resize
+  const realign = useEffectEvent(() => {
+    if (!scrollToTarget(active, 'auto')) pending.current = false
+  })
+
+  // A turn of the device changes the targets (start ↔ center): until the track rests on the new
+  // one, its scroll position belongs to no card. A resize keeps the selection and the card over the
+  // map as they are: picks are held at once (the browser's own re-snap scrolls before the next
+  // frame), and the track moves to the selected card's target instantly.
   const onResize = useEffectEvent(() => {
-    if (!pending.current) syncActive()
+    pending.current = true
+    window.clearTimeout(settle.current)
+    if (frame.current !== undefined) cancelAnimationFrame(frame.current)
+    frame.current = requestAnimationFrame(() => {
+      frame.current = undefined
+      realign()
+    })
   })
 
   useEffect(() => {
