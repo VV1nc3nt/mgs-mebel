@@ -4,7 +4,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test'
 import { globals } from '../../src/seed/data/globals'
 import { salons } from '../../src/seed/data/salons'
 import { E2E_SALONS } from '../helpers/e2eHome'
-import { layoutShifts } from '../helpers/scroll'
+import { layoutShifts, settle } from '../helpers/scroll'
 import { PLAYBACK_ATTR, stubPlayback } from '../helpers/video'
 
 // «Фирменные салоны» (design: salons v2): heading, salon cards, the map with the list and the card.
@@ -71,6 +71,36 @@ const expectSelected = async (page: Page, index: number, segments = true) => {
 }
 
 const playback = (video: Locator) => video.getAttribute(PLAYBACK_ATTR)
+
+const trackOf = (page: Page) => cardsOf(page).locator('.snap-x')
+
+/**
+ * Listens for the end of the track's scroll before the scroll starts; the returned wait resolves
+ * on `scrollend` (or after 1.5 s if the track never scrolls).
+ */
+const armScrollEnd = async (track: Locator) => {
+  await track.evaluate((el) => {
+    const t = el as HTMLElement & { ended?: Promise<void> }
+    t.ended = new Promise((resolve) => {
+      el.addEventListener('scrollend', () => resolve(), { once: true })
+      setTimeout(resolve, 1500)
+    })
+  })
+  return () => track.evaluate((el) => (el as HTMLElement & { ended?: Promise<void> }).ended)
+}
+
+/** Room for the focus outline (2 + offset 2) between a card and the track's edges. */
+const ringRoom = (button: Locator) =>
+  button.evaluate((el) => {
+    const track = el.closest('.snap-x')!.getBoundingClientRect()
+    const card = el.getBoundingClientRect()
+    return Math.min(
+      card.top - track.top,
+      track.bottom - card.bottom,
+      card.left - track.left,
+      track.right - card.right,
+    )
+  })
 
 test.describe('salons', () => {
   test.skip(EMPTY_DB, 'needs tests/helpers/seedChrome.ts + seedHome.ts data')
@@ -274,6 +304,99 @@ test.describe('salons', () => {
     await expectSelected(page, E2E_SALONS.length - 1)
     await expectMapCard(page, E2E_SALONS[E2E_SALONS.length - 1])
   })
+
+  // #42: on tablet 44 % cards snapped by the start gave four cards three resting places — the
+  // third salon could not be reached by a swipe
+  for (const width of [390, 834] as const) {
+    test(`${width}: swipes select every salon in turn, both ways`, async ({ page }) => {
+      await page.setViewportSize({ width, height: HEIGHTS[width] })
+      await page.goto(URL)
+      await hydrated(page)
+      await settle(page)
+      const track = trackOf(page)
+      const cdp = await page.context().newCDPSession(page)
+      const swipe = async (direction: 1 | -1) => {
+        const box = (await slide(page, 0).boundingBox())!
+        const ended = await armScrollEnd(track)
+        // A finger drag of 0.6 card without a fling; xDistance > 0 moves the content right
+        await cdp.send('Input.synthesizeScrollGesture', {
+          x: Math.round(width / 2),
+          y: Math.round(box.y + box.height / 2),
+          xDistance: -direction * Math.round(box.width * 0.6),
+          yDistance: 0,
+          gestureSourceType: 'touch',
+          preventFling: true,
+          speed: 600,
+        })
+        await ended()
+      }
+      await expectSelected(page, 0)
+      for (const index of [1, 2, 3]) {
+        await swipe(1)
+        await expectSelected(page, index)
+        await expectMapCard(page, E2E_SALONS[index])
+        if (width === 834) {
+          // The selected card's focus ring fits in the track in every position
+          await page.keyboard.press('Shift')
+          const button = cardButton(page, E2E_SALONS[index])
+          await button.focus()
+          expect(await button.evaluate((el) => el.matches(':focus-visible'))).toBe(true)
+          expect(await ringRoom(button)).toBeGreaterThanOrEqual(4)
+          await cardsOf(page).screenshot({
+            path: `test-results/salons/salons-834-${index + 1}.png`,
+          })
+          await button.blur()
+        }
+      }
+      for (const index of [2, 1, 0]) {
+        await swipe(-1)
+        await expectSelected(page, index)
+        await expectMapCard(page, E2E_SALONS[index])
+      }
+      if (width === 834) {
+        await page.keyboard.press('Shift')
+        const button = cardButton(page, E2E_SALONS[0])
+        await button.focus()
+        expect(await ringRoom(button)).toBeGreaterThanOrEqual(4)
+        await cardsOf(page).screenshot({ path: 'test-results/salons/salons-834-1.png' })
+      }
+    })
+
+    test(`${width}: a segment pick scrolls to its card, which stays selected`, async ({ page }) => {
+      await page.setViewportSize({ width, height: HEIGHTS[width] })
+      await page.goto(URL)
+      await hydrated(page)
+      await settle(page)
+      const track = trackOf(page)
+      for (const index of [1, 2, 3, 0, 2]) {
+        const ended = await armScrollEnd(track)
+        await segment(page, E2E_SALONS[index]).click()
+        await ended()
+        await expectSelected(page, index)
+        const left = await track.evaluate((el) => el.scrollLeft)
+        // Mobile: the card at the start of the snapport; tablet: in its center — or at an end
+        const offset = await track.evaluate((el, i) => {
+          const style = getComputedStyle(el)
+          const card = el.children[i] as HTMLElement
+          const max = el.scrollWidth - el.clientWidth
+          const padStart = parseFloat(style.scrollPaddingLeft)
+          const padEnd = parseFloat(style.scrollPaddingRight)
+          const target = getComputedStyle(card).scrollSnapAlign.includes('center')
+            ? card.offsetLeft +
+              card.offsetWidth / 2 -
+              (padStart + (el.clientWidth - padStart - padEnd) / 2)
+            : card.offsetLeft - padStart
+          return Math.min(Math.max(target, 0), max) - el.scrollLeft
+        }, index)
+        expect(Math.abs(offset), `card ${index} rests at its snap target`).toBeLessThan(1)
+        // Nothing moves after the scroll has ended
+        await page.waitForTimeout(300)
+        expect(await track.evaluate((el) => el.scrollLeft)).toBe(left)
+        await expectSelected(page, index)
+        await expectMapCard(page, E2E_SALONS[index])
+      }
+    })
+  }
 
   test('390: the focus ring of a selected card is not clipped (screenshot)', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })

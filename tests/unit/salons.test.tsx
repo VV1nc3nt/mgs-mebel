@@ -9,7 +9,7 @@ import { useHoverCapable } from '@/hooks/useHoverCapable'
 import { openingHoursSchema, salonJsonLd } from '@/lib/jsonld'
 import { toSalonView, type SalonView } from '@/lib/salons'
 import type { SalonCardData } from '@/lib/queries'
-import { nearestSlide } from '@/lib/slider'
+import { nearestSlide, snapTargets } from '@/lib/slider'
 import { photo, video } from './fixtures'
 import { env, intersect } from './setup'
 
@@ -98,24 +98,57 @@ describe('salonJsonLd', () => {
   })
 })
 
-describe('nearestSlide', () => {
-  const offsets = [0, 300, 600, 900]
+/** A salons track: page gutter, `share` of the content width per card, gap 12. */
+const track = (viewport: number, gutter: number, share: number, count: number) => {
+  const content = viewport - 2 * gutter
+  const width = content * share
+  const slides = Array.from({ length: count }, (_, i) => ({
+    left: gutter + i * (width + 12),
+    width,
+  }))
+  const scrollWidth = 2 * gutter + count * width + (count - 1) * 12
+  return { slides, maxScroll: scrollWidth - viewport }
+}
 
-  it('is the slide nearest to the start of the track', () => {
-    expect(nearestSlide(offsets, 0, 700)).toBe(0)
-    expect(nearestSlide(offsets, 140, 700)).toBe(0)
-    expect(nearestSlide(offsets, 160, 700)).toBe(1)
-    expect(nearestSlide(offsets, 620, 700)).toBe(2)
+describe('snapTargets + nearestSlide', () => {
+  it('390: 82 % cards snap by the start — four cards, four targets, each its own card', () => {
+    const { slides, maxScroll } = track(390, 20, 0.82, 4)
+    const targets = snapTargets(
+      slides,
+      { width: 390, paddingStart: 20, paddingEnd: 0, maxScroll },
+      'start',
+    )
+    expect(targets.map((t) => Math.round(t))).toEqual([0, 299, 598, 834])
+    targets.forEach((target, i) => expect(nearestSlide(targets, target)).toBe(i))
+    expect(nearestSlide(targets, 140)).toBe(0)
+    expect(nearestSlide(targets, 160)).toBe(1)
   })
 
-  it('is the last slide at the end of the track, even if another one is nearer', () => {
-    expect(nearestSlide(offsets, 699.5, 700)).toBe(3)
-    expect(nearestSlide(offsets, 700, 700)).toBe(3)
+  it('834: 44 % cards snap by the center — four different targets, the third one reachable', () => {
+    const { slides, maxScroll } = track(834, 32, 0.44, 4)
+    const geometry = { width: 834, paddingStart: 32, paddingEnd: 32, maxScroll }
+    const targets = snapTargets(slides, geometry, 'center')
+    ;[0, 135.2, 486, 621.2].forEach((expected, i) => expect(targets[i]).toBeCloseTo(expected, 1))
+    targets.forEach((target, i) => expect(nearestSlide(targets, target)).toBe(i))
+    // By the start the last two cards would share the end of the track (#42)
+    const byStart = snapTargets(slides, geometry, 'start')
+    expect(byStart[2]).toBeCloseTo(maxScroll, 5)
+    expect(byStart[3]).toBeCloseTo(maxScroll, 5)
   })
 
-  it('handles a track without scrolling and no slides', () => {
-    expect(nearestSlide(offsets, 0, 0)).toBe(0)
-    expect(nearestSlide([], 0, 0)).toBe(0)
+  it('handles two and one card without scrolling, and no cards', () => {
+    for (const count of [2, 1]) {
+      const { slides, maxScroll } = track(834, 32, 0.44, count)
+      expect(maxScroll).toBeLessThan(0)
+      const targets = snapTargets(
+        slides,
+        { width: 834, paddingStart: 32, paddingEnd: 32, maxScroll },
+        'center',
+      )
+      expect(targets).toEqual(Array(count).fill(0))
+      expect(nearestSlide(targets, 0)).toBe(0)
+    }
+    expect(nearestSlide([], 0)).toBe(0)
   })
 })
 
