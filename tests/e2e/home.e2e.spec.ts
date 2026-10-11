@@ -4,7 +4,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test'
 import { globals } from '../../src/seed/data/globals'
 import { news } from '../../src/seed/data/news'
 import { salons } from '../../src/seed/data/salons'
-import { cls, layoutShifts } from '../helpers/scroll'
+import { layoutShifts } from '../helpers/scroll'
 import { E2E_NEWS_COUNT, E2E_SALONS, HOME_DRAFT_TITLE, NEWS_DRAFT_TITLE } from '../helpers/e2eHome'
 import { e2eEditor } from '../helpers/e2eEditor'
 import { PLAYBACK_ATTR, stubPlayback } from '../helpers/video'
@@ -313,7 +313,7 @@ test.describe('home', () => {
       })
       await page.screenshot({ path: `test-results/home/home-${width}.png` })
       await page.locator('footer').screenshot({ path: `test-results/home/footer-${width}.png` })
-      expect(await cls(page)).toBe(0)
+      expect(await layoutShifts(page), 'layout shifts: value, start, what moved').toEqual([])
       expect(await axe(page)).toEqual([])
     })
   }

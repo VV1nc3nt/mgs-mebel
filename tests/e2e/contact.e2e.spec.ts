@@ -2,7 +2,7 @@ import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
 import { globals } from '../../src/seed/data/globals'
-import { cls, settle, wheel } from '../helpers/scroll'
+import { layoutShifts, settle, wheel } from '../helpers/scroll'
 
 // Contact buttons with the choice of messengers (README of the buttons, variant «Сегменты») on
 // «О нас»: header CTA (≥1280), hero CTA, salon card CTA. The seed has all three messengers.
@@ -188,7 +188,11 @@ test.describe('contact buttons', () => {
       await expect(c.root).not.toHaveAttribute('data-open')
       await phoneSettled()
       expect(await box(phone)).toEqual(phoneBox)
-      expect(await cls(page)).toBeLessThan(0.1)
+      const shifts = await layoutShifts(page)
+      expect(
+        shifts.reduce((sum, { value }) => sum + value, 0),
+        `layout shifts: ${JSON.stringify(shifts)}`,
+      ).toBeLessThan(0.1)
       expect(errors).toEqual([])
     })
   }
