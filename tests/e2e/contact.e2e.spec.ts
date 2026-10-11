@@ -63,6 +63,20 @@ async function ready(c: ReturnType<typeof chooser>) {
   await expect(c.root.locator('[role="group"]')).toHaveCount(1)
 }
 
+/**
+ * End of the open or close animation (stagger included). A click on a cell that still moves fails
+ * Playwright's stability check, and its retries scroll the page to reveal the cell (block end,
+ * centre, start in turn) — a scroll that closes the choice, as any scroll does.
+ */
+async function settled(c: ReturnType<typeof chooser>) {
+  await c.root.evaluate((el) =>
+    // A transition replaced mid-way rejects its promise: that one is over too
+    Promise.all(
+      el.getAnimations({ subtree: true }).map((animation) => animation.finished.catch(() => null)),
+    ),
+  )
+}
+
 /** The open choice: three cells in order, every control ≥ 44, the capsule 54 high, centred. */
 async function expectOpen(c: ReturnType<typeof chooser>, closed: Box) {
   await expect(c.root).toHaveAttribute('data-open', '')
@@ -76,13 +90,7 @@ async function expectOpen(c: ReturnType<typeof chooser>, closed: Box) {
     ]),
   )
   expect(links).toEqual(NAMES.map((name, i) => [name, HREFS[i], '_blank']))
-  // End of the animation (stagger included)
-  await c.root.evaluate((el) =>
-    // A transition replaced mid-way rejects its promise: that one is over too
-    Promise.all(
-      el.getAnimations({ subtree: true }).map((animation) => animation.finished.catch(() => null)),
-    ),
-  )
+  await settled(c)
   expect((await box(c.capsule)).height).toBe(54)
   const capsule = await box(c.capsule)
   expect(capsule.width).toBe(Math.max(closed.width, 198))
@@ -251,6 +259,7 @@ test.describe('contact buttons', () => {
       await expect(c.links.first()).toBeVisible()
       // A pointer click does not move focus to the cells
       await expect(c.links.first()).not.toBeFocused()
+      await settled(c)
       const popup = page.context().waitForEvent('page')
       await c.links.nth(2).click()
       await (await popup).close()
