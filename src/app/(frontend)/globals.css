@@ -352,6 +352,27 @@
   );
 }
 
+/*
+ * Heights reserved from the type scale for blocks centred in their row: a document painted
+ * before such a block is fully parsed (streamed HTML, Safari has no first-screen marker) already
+ * lays it out at its final height. Logo: «MGS» line, gap-0.75, «MEBEL» line. Section label: one
+ * text-label line (the accent line alone is 1 px). Desktop header row: see HeaderShell `tallRow`.
+ * e2e checks the sums against the children.
+ */
+@utility min-h-logo {
+  min-height: calc(
+    var(--text-logo) * var(--text-logo--line-height) + --spacing(0.75) + var(--text-logo-sub) *
+      var(--text-logo-sub--line-height)
+  );
+}
+@utility min-h-label {
+  min-height: calc(var(--text-label) * var(--text-label--line-height));
+}
+/* Desktop header row with the CTA: py-5 around the 44 button */
+@utility min-h-header-row {
+  min-height: calc(--spacing(11) + 2 * --spacing(5));
+}
+
 /* Tab bar: 56 when active, 20 otherwise — by scale from the top, never by height */
 @utility hero-tab-bar {
   transform-origin: top;

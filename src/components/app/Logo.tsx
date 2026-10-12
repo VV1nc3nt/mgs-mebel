@@ -11,7 +11,7 @@ export function Logo({ onClick }: { onClick?: MouseEventHandler<HTMLAnchorElemen
       href="/"
       onClick={onClick}
       aria-label="MGS MEBEL — на главную"
-      className="flex flex-col items-center gap-0.75"
+      className="flex min-h-logo flex-col items-center gap-0.75"
     >
       <span aria-hidden="true" className="text-logo text-text">
         MG<span className="text-accent">S</span>
