@@ -2,6 +2,7 @@ import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
 import { globals } from '../../src/seed/data/globals'
+import { motionEnded } from '../helpers/motion'
 import { layoutShifts, settle, wheel } from '../helpers/scroll'
 
 // Contact buttons with the choice of messengers (README of the buttons, variant «Сегменты») on
@@ -63,19 +64,8 @@ async function ready(c: ReturnType<typeof chooser>) {
   await expect(c.root.locator('[role="group"]')).toHaveCount(1)
 }
 
-/**
- * End of the open or close animation (stagger included). A click on a cell that still moves fails
- * Playwright's stability check, and its retries scroll the page to reveal the cell (block end,
- * centre, start in turn) — a scroll that closes the choice, as any scroll does.
- */
-async function settled(c: ReturnType<typeof chooser>) {
-  await c.root.evaluate((el) =>
-    // A transition replaced mid-way rejects its promise: that one is over too
-    Promise.all(
-      el.getAnimations({ subtree: true }).map((animation) => animation.finished.catch(() => null)),
-    ),
-  )
-}
+/** End of the open or close animation (stagger included): see motionEnded. */
+const settled = (c: ReturnType<typeof chooser>) => motionEnded(c.root)
 
 /** The open choice: three cells in order, every control ≥ 44, the capsule 54 high, centred. */
 async function expectOpen(c: ReturnType<typeof chooser>, closed: Box) {

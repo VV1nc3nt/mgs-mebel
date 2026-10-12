@@ -4,6 +4,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test'
 import { globals } from '../../src/seed/data/globals'
 import { news } from '../../src/seed/data/news'
 import { salons } from '../../src/seed/data/salons'
+import { transitionsEnded } from '../helpers/motion'
 import { layoutShifts } from '../helpers/scroll'
 import { E2E_NEWS_COUNT, E2E_SALONS, HOME_DRAFT_TITLE, NEWS_DRAFT_TITLE } from '../helpers/e2eHome'
 import { e2eEditor } from '../helpers/e2eEditor'
@@ -765,6 +766,8 @@ test.describe('home', () => {
         const { x, y } = await center(next)
         await page.mouse.click(x, y)
         await expect.poll(() => segment(page)).toBe(1)
+        // Read at rest: after the switch transitions of the new block (not its progress fill)
+        await transitionsEnded(hero.locator('.hero-text:not([data-inactive])'))
         const second = await row()
         expect(first.gap).toBeGreaterThan(0)
         // Layout units are 1/64 px: 12 can read as 11.99997 or 12.00003
