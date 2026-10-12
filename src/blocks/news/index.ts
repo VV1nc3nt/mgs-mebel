@@ -11,10 +11,8 @@ import {
 import type { Block, FieldAffectingData, RichTextField } from 'payload'
 import { richText as validateRichText } from 'payload/shared'
 
-import { imageField, mediaField, videoField } from '@/fields/media'
-import { isAllowedEmbedUrl } from '@/lib/embed'
-
-type VideoRow = { file?: unknown; embedUrl?: string | null }
+import { mediaField } from '@/fields/media'
+import { videoPlayerFields } from '@/fields/videoPlayer'
 
 type LinkFields = { linkType?: 'custom' | 'internal' }
 
@@ -162,43 +160,14 @@ export const VideoBlock: Block = {
   slug: 'video',
   interfaceName: 'NewsVideoBlock',
   labels: { singular: 'Видео', plural: 'Видео' },
-  fields: [
-    videoField('file', {
-      label: 'Видеофайл',
-      admin: { description: 'Файл MP4/WebM или ссылка ниже — что-то одно.' },
-      extraValidate: (value, { siblingData }) => {
-        const { embedUrl } = (siblingData ?? {}) as VideoRow
-        if (!value && !embedUrl) return 'Загрузите видео или укажите ссылку'
-        if (value && embedUrl) return 'Укажите что-то одно: файл или ссылку'
-        return true
-      },
-    }),
-    {
-      name: 'embedUrl',
-      type: 'text',
-      label: 'Ссылка на видео',
-      admin: { description: 'RuTube или VK Видео.' },
-      validate: (value: string | null | undefined) =>
-        !value || isAllowedEmbedUrl(value)
-          ? true
-          : 'Поддерживаются только ссылки https на RuTube и VK Видео',
-    },
-    imageField('poster', { label: 'Постер', required: true }),
-    {
-      type: 'row',
-      fields: [
-        {
-          name: 'duration',
-          type: 'text',
-          label: 'Длительность',
-          admin: { description: 'Например, 1:24' },
-        },
-        { name: 'vertical', type: 'checkbox', label: 'Вертикальное (9:16)' },
-        { name: 'wide', type: 'checkbox', label: 'На всю ширину' },
-      ],
-    },
-    { name: 'caption', type: 'text', label: 'Подпись' },
-  ],
+  fields: videoPlayerFields({
+    fileName: 'file',
+    rule: 'exactlyOne',
+    durationRow: [
+      { name: 'vertical', type: 'checkbox', label: 'Вертикальное (9:16)' },
+      { name: 'wide', type: 'checkbox', label: 'На всю ширину' },
+    ],
+  }),
 }
 
 export const newsBlocks: Block[] = [

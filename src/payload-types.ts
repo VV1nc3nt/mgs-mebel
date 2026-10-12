@@ -378,7 +378,7 @@ export interface NewsMediaBlock {
  */
 export interface NewsVideoBlock {
   /**
-   * Файл MP4/WebM или ссылка ниже — что-то одно.
+   * MP4 или WebM, можно со звуком. Файл или ссылка ниже — что-то одно.
    */
   file?: (number | null) | Media;
   /**
@@ -969,26 +969,15 @@ export interface SectionWorks {
 export interface About {
   id: number;
   hero: SectionHeroCta;
-  history: SectionHistory;
-  news?: SectionNews;
-  salons?: SectionSalons;
-  works?: SectionWorks;
-  mission: {
+  intro?: {
+    text?: string | null;
     /**
-     * Без «#» — он добавляется автоматически.
+     * Последняя фраза, выделяется цветом.
      */
-    label?: string | null;
-    title?: string | null;
-    /**
-     * MP4 или WebM, 8–15 с, до 5 МБ, без звука. Необязательно.
-     */
-    video?: (number | null) | Media;
-    /**
-     * Показывается до загрузки видео и вместо него (экономия трафика, reduced motion).
-     */
-    poster: number | Media;
+    accent?: string | null;
   };
-  hardware?: {
+  history: SectionHistory;
+  mission: {
     /**
      * Без «#» — он добавляется автоматически.
      */
@@ -999,25 +988,39 @@ export interface About {
      */
     text?: string | null;
     /**
-     * Например, 10
+     * MP4 или WebM, можно со звуком. Файл или ссылка ниже — не оба сразу; без них — только постер.
      */
-    warrantyValue?: string | null;
+    video?: (number | null) | Media;
     /**
-     * Например, лет
+     * RuTube или VK Видео.
      */
-    warrantyUnit?: string | null;
-    warrantyText?: string | null;
-    items?:
-      | {
-          photo: number | Media;
-          title: string;
-          id?: string | null;
-        }[]
-      | null;
+    embedUrl?: string | null;
+    poster: number | Media;
     /**
-     * Например, QUALITY
+     * Например, 1:24
      */
-    qualityWord?: string | null;
+    duration?: string | null;
+    caption?: string | null;
+  };
+  hardware: {
+    /**
+     * Без «#» — он добавляется автоматически.
+     */
+    label?: string | null;
+    title?: string | null;
+    /**
+     * Абзацы разделяются пустой строкой.
+     */
+    text?: string | null;
+    /**
+     * MP4 или WebM, 8–15 с, до 5 МБ, без звука. Необязательно.
+     */
+    video?: (number | null) | Media;
+    /**
+     * Показывается до загрузки видео и вместо него (экономия трафика, reduced motion).
+     */
+    poster: number | Media;
+    caption?: string | null;
   };
   exhibitions?: {
     /**
@@ -1106,12 +1109,6 @@ export interface SectionHistory {
    * Абзацы разделяются пустой строкой.
    */
   text?: string | null;
-  values?:
-    | {
-        label: string;
-        id?: string | null;
-      }[]
-    | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1542,17 +1539,24 @@ export interface SectionWorksSelect<T extends boolean = true> {
  */
 export interface AboutSelect<T extends boolean = true> {
   hero?: T | SectionHeroCtaSelect<T>;
+  intro?:
+    | T
+    | {
+        text?: T;
+        accent?: T;
+      };
   history?: T | SectionHistorySelect<T>;
-  news?: T | SectionNewsSelect<T>;
-  salons?: T | SectionSalonsSelect<T>;
-  works?: T | SectionWorksSelect<T>;
   mission?:
     | T
     | {
         label?: T;
         title?: T;
+        text?: T;
         video?: T;
+        embedUrl?: T;
         poster?: T;
+        duration?: T;
+        caption?: T;
       };
   hardware?:
     | T
@@ -1560,17 +1564,9 @@ export interface AboutSelect<T extends boolean = true> {
         label?: T;
         title?: T;
         text?: T;
-        warrantyValue?: T;
-        warrantyUnit?: T;
-        warrantyText?: T;
-        items?:
-          | T
-          | {
-              photo?: T;
-              title?: T;
-              id?: T;
-            };
-        qualityWord?: T;
+        video?: T;
+        poster?: T;
+        caption?: T;
       };
   exhibitions?:
     | T
@@ -1625,12 +1621,6 @@ export interface SectionHistorySelect<T extends boolean = true> {
   photoSecondary?: T;
   lead?: T;
   text?: T;
-  values?:
-    | T
-    | {
-        label?: T;
-        id?: T;
-      };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
