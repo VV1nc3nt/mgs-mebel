@@ -63,12 +63,10 @@ test.describe('partial paint', () => {
       request,
     }) => {
       const html = await (await request.get(`${BASE}${path}`)).text()
-      const links = html.match(/<link rel="expect"[^>]*>/g) ?? []
-      expect(links).toEqual([
-        `<link rel="expect" href="#${FIRST_SCREEN_END_ID}" blocking="render"/>`,
-      ])
-      expect(html.indexOf(links[0])).toBeLessThan(html.indexOf('<body'))
-      expect(html.indexOf(`</head>`)).toBeGreaterThan(html.indexOf(links[0]))
+      const link = `<link rel="expect" href="#${FIRST_SCREEN_END_ID}" blocking="render"/>`
+      expect(html.match(/<link rel="expect"[^>]*>/g)).toEqual([link])
+      expect(html.indexOf(link)).toBeLessThan(html.indexOf('</head>'))
+      expect(html.indexOf('</head>')).toBeLessThan(html.indexOf('<body'))
       expect(html.match(new RegExp(`id="${FIRST_SCREEN_END_ID}"`, 'g'))).toHaveLength(1)
     })
   }
@@ -81,7 +79,10 @@ test.describe('partial paint', () => {
     const inHead = page.locator('head > link[rel="expect"]')
     await expect(links).toHaveCount(1)
 
-    await page.getByRole('navigation', { name: 'Разделы сайта' }).locator('a[href="/salons"]').click()
+    await page
+      .getByRole('navigation', { name: 'Разделы сайта' })
+      .locator('a[href="/salons"]')
+      .click()
     await page.waitForURL(`${BASE}/salons`)
     await expect(page.locator(`#${FIRST_SCREEN_END_ID}`)).toHaveCount(1)
     await expect(links).toHaveCount(1)
@@ -106,14 +107,14 @@ test.describe('partial paint', () => {
       }) => {
         await page.setViewportSize({ width, height })
         await page.goto(`${BASE}/salons`)
-        const logo = await page.getByRole('link', { name: 'MGS MEBEL — на главную' }).evaluate(
-          (el) => ({
+        const logo = await page
+          .getByRole('link', { name: 'MGS MEBEL — на главную' })
+          .evaluate((el) => ({
             reserved: parseFloat(getComputedStyle(el).minHeight),
             parts:
               [...el.children].reduce((sum, c) => sum + c.getBoundingClientRect().height, 0) +
               parseFloat(getComputedStyle(el).rowGap) * (el.children.length - 1),
-          }),
-        )
+          }))
         expect(logo.parts).toBeGreaterThan(0)
         expect(logo.reserved).toBeCloseTo(logo.parts, 1)
 
