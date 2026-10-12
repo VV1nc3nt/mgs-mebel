@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 
+import { FirstScreenEnd } from '@/components/app/FirstScreenEnd'
 import { PreviewRefresh } from '@/components/app/PreviewRefresh'
 import { SalonsEmpty } from '@/components/salons/SalonsEmpty'
 import { SalonsExplorer } from '@/components/salons/SalonsExplorer'
@@ -67,6 +68,7 @@ export default async function SalonsPage() {
       ) : (
         <SalonsEmpty text={page.map?.emptyText} phone={phone} />
       )}
+      <FirstScreenEnd />
       <PreviewRefresh />
     </>
   )
