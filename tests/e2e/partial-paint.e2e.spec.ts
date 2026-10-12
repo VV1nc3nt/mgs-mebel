@@ -1,12 +1,13 @@
 import { expect, test, type Page } from '@playwright/test'
 
-import { FIRST_SCREEN_END_ID } from '../../src/components/app/FirstScreenEnd'
+import { FIRST_SCREEN_END_ID, HEADER_END_ID } from '../../src/components/app/FirstScreenEnd'
 import { layoutShifts } from '../helpers/scroll'
 import { slowHtmlProxy } from '../helpers/slowHtml'
 
 // First screens painted from a partly received page (slow network): nothing grows or moves when
-// the rest arrives. Chromium waits for the first-screen marker (FirstScreenEnd); blocks centred
-// in their row keep heights reserved from the type scale.
+// the rest arrives. Chromium waits for the markers (FirstScreenEnd): after the header on every
+// page, after the first screen on these; blocks centred in their row keep heights reserved from
+// the type scale.
 const BASE = 'http://localhost:3000'
 const EMPTY_DB = !!process.env.E2E_EMPTY_DB
 const PAGES = ['/', '/salons', '/about'] as const
@@ -58,41 +59,52 @@ test.describe('partial paint', () => {
     }
   })
 
-  for (const path of PAGES) {
-    test(`${path}: one render-blocking link in <head> and its marker in the HTML`, async ({
+  // Every page: the header marker (AppShell); pages with a first screen to guard: their own too.
+  // /nesushchestvuet — the global 404 (its own <html>, the same AppShell).
+  for (const [path, ids] of [
+    ['/', [HEADER_END_ID, FIRST_SCREEN_END_ID]],
+    ['/salons', [HEADER_END_ID, FIRST_SCREEN_END_ID]],
+    ['/about', [HEADER_END_ID, FIRST_SCREEN_END_ID]],
+    ['/ui-kit', [HEADER_END_ID]],
+    ['/nesushchestvuet', [HEADER_END_ID]],
+  ] as const) {
+    test(`${path}: a render-blocking link in <head> per marker, each marker once`, async ({
       request,
     }) => {
       const html = await (await request.get(`${BASE}${path}`)).text()
-      const link = `<link rel="expect" href="#${FIRST_SCREEN_END_ID}" blocking="render"/>`
-      expect(html.match(/<link rel="expect"[^>]*>/g)).toEqual([link])
-      expect(html.indexOf(link)).toBeLessThan(html.indexOf('</head>'))
+      const links = ids.map((id) => `<link rel="expect" href="#${id}" blocking="render"/>`)
+      expect(html.match(/<link rel="expect"[^>]*>/g)).toEqual(links)
+      for (const link of links) expect(html.indexOf(link)).toBeLessThan(html.indexOf('</head>'))
       expect(html.indexOf('</head>')).toBeLessThan(html.indexOf('<body'))
-      expect(html.match(new RegExp(`id="${FIRST_SCREEN_END_ID}"`, 'g'))).toHaveLength(1)
+      for (const id of ids) expect(html.match(new RegExp(`id="${id}"`, 'g'))).toHaveLength(1)
     })
   }
 
-  test('client navigation keeps one link: / → /salons → /', async ({ page }) => {
+  test('client navigation keeps one link per marker: / → /salons → /', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto(`${BASE}/`)
     await hydrated(page)
-    const links = page.locator('link[rel="expect"]')
-    const inHead = page.locator('head > link[rel="expect"]')
-    await expect(links).toHaveCount(1)
+    const expectLinks = async () => {
+      await expect(page.locator('link[rel="expect"]')).toHaveCount(2)
+      for (const id of [HEADER_END_ID, FIRST_SCREEN_END_ID]) {
+        await expect(page.locator(`head > link[rel="expect"][href="#${id}"]`)).toHaveCount(1)
+        await expect(page.locator(`#${id}`)).toHaveCount(1)
+      }
+    }
+    await expectLinks()
 
     await page
       .getByRole('navigation', { name: 'Разделы сайта' })
       .locator('a[href="/salons"]')
       .click()
     await page.waitForURL(`${BASE}/salons`)
-    await expect(page.locator(`#${FIRST_SCREEN_END_ID}`)).toHaveCount(1)
-    await expect(links).toHaveCount(1)
-    await expect(inHead).toHaveCount(1)
+    await expect(page.locator('h1')).toBeVisible()
+    await expectLinks()
 
     await page.getByRole('link', { name: 'MGS MEBEL — на главную' }).click()
     await page.waitForURL(`${BASE}/`)
     await expect(page.locator('section[data-hero]')).toBeVisible()
-    await expect(links).toHaveCount(1)
-    await expect(inHead).toHaveCount(1)
+    await expectLinks()
   })
 
   // Reserved heights (globals.css: min-h-logo, min-h-label, min-h-header-row) mirror the sizes of
