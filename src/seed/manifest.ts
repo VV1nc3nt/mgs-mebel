@@ -108,7 +108,7 @@ export const photos: SeedFile[] = [
     'green-potted-plant-on-table-HmHArS-HvNw',
     'Collov Home Design',
     'Светлая гостиная с растением на журнальном столике',
-    'history.photoMain (home, about), постеры designers.project и выставки «ARTDOM 2025», обложка «Презентация в Химках»',
+    'history.photoMain (about), постеры designers.project и выставки «Выставка 2025», обложка «Презентация в Химках»',
   ),
   unsplash(
     'U3',
@@ -118,7 +118,7 @@ export const photos: SeedFile[] = [
     'gray-steel-3-door-refrigerator-near-modular-kitchen-MP0bgaS_d1c',
     'Naomi Hébert',
     'Кухня со светлыми фасадами и встроенной техникой',
-    'history.photoSecondary (home, about), фурнитура «Профили и подсветка», обложка «Столешницы из кварца», каталог «Столешницы и кварц»',
+    'history.photoSecondary (about), обложка «Столешницы из кварца», каталог «Столешницы и кварц»',
   ),
   unsplash(
     'U4',
@@ -128,7 +128,7 @@ export const photos: SeedFile[] = [
     'kitchen-with-white-cabinets-and-tiles-z3QZ6gjGRt4',
     'roam in color',
     'Светлая кухня с белыми фасадами и мраморным островом',
-    'постеры designers.hero и выставки «ARTDOM 2026», фурнитура «Системы хранения», обложка «Выставка ARTDOM 2026», постер видео H8, каталог «Кухни 2026»',
+    'постеры designers.hero и выставки «Выставка 2026», обложка «Выставка ARTDOM 2026», постер видео H8, каталог «Кухни 2026»',
   ),
   unsplash(
     'U5',
@@ -148,7 +148,7 @@ export const photos: SeedFile[] = [
     'brown-wooden-round-table-with-chairs-RqO6kwm4tZY',
     'Spacejoy',
     'Круглый деревянный стол со стульями в интерьере',
-    'фурнитура «Направляющие», возможности №3, обложка «Новые декоры ALVIC», каталог «Фрезеровки FACADE»',
+    'возможности №3, обложка «Новые декоры ALVIC», каталог «Фрезеровки FACADE»',
   ),
   unsplash(
     'U7',
@@ -158,7 +158,7 @@ export const photos: SeedFile[] = [
     'brown-wooden-shelf-with-bottles-g01h0WtY22s',
     'Sanibell BV',
     'Деревянные полки системы хранения',
-    'фурнитура «Петли с доводчиком», возможности №2, обложка «Гардеробные системы 2026», каталог «Гардеробные системы», проекты',
+    'возможности №2, обложка «Гардеробные системы 2026», каталог «Гардеробные системы», проекты',
   ),
   unsplash(
     'U8',
@@ -168,7 +168,7 @@ export const photos: SeedFile[] = [
     'brown-wooden-framed-yellow-padded-chair-_HqHX3LBN18',
     'Kam Idris',
     'Кресло с жёлтой обивкой в деревянной раме',
-    'фурнитура «Подъёмные механизмы», возможности №4, каталог «Столы и стулья»',
+    'возможности №4, каталог «Столы и стулья»',
   ),
   unsplash(
     'U9',
@@ -178,7 +178,7 @@ export const photos: SeedFile[] = [
     'two-brown-wooden-bar-stools-cc0Gg3BegjE',
     'Christian Mackie',
     'Деревянные барные стулья у кухонного острова',
-    'фурнитура «Ящики», каталог «Мебель для ванных», проекты',
+    'каталог «Мебель для ванных», проекты',
   ),
   unsplash(
     'U10',
@@ -436,6 +436,14 @@ export const photos: SeedFile[] = [
     'фото карточки салона «Румянцево»',
     { card: true },
   ),
+  pexelsPhoto(
+    'P7',
+    'drawer-runners',
+    8580895,
+    'не подтверждён (страница за Cloudflare)',
+    'Выдвинутый белый ящик стола на направляющих с органайзерами внутри',
+    'постер about.hardware (кадр видео H14)',
+  ),
 ]
 
 export const videos: SeedFile[] = [
@@ -454,7 +462,7 @@ export const videos: SeedFile[] = [
     5644364,
     'hd_1280_720_25fps',
     'Polina',
-    'about.mission, видео обложки «Конкурс проектов с Korting»',
+    'about.mission (видео-презентация), видео обложки «Конкурс проектов с Korting»',
     true,
   ),
   pexels(
@@ -472,7 +480,7 @@ export const videos: SeedFile[] = [
     15887297,
     'hd_1920_1080_30fps',
     'не подтверждён (страница за Cloudflare)',
-    'designers.project, выставка «ARTDOM 2026», видео обложки «Выставка ARTDOM 2026»',
+    'designers.project, выставка «Выставка 2026», видео обложки «Выставка ARTDOM 2026»',
     true,
   ),
   pexels(
@@ -481,7 +489,7 @@ export const videos: SeedFile[] = [
     15887127,
     'hd_1920_1080_30fps',
     'не подтверждён (страница за Cloudflare)',
-    'выставка «ARTDOM 2025»',
+    'выставка «Выставка 2025»',
     true,
   ),
   pexels(
@@ -549,6 +557,16 @@ export const videos: SeedFile[] = [
     'sd_540_960_30fps',
     'не подтверждён (страница за Cloudflare)',
     'видео карточки салона «Химки»',
+    true,
+  ),
+  // 16.9 s — a little over the 8–15 s of a background video: the closest match to «Системы выдвижения».
+  pexels(
+    'H14',
+    'drawer-runners',
+    8580895,
+    'hd_1280_720_30fps',
+    'не подтверждён (страница за Cloudflare)',
+    'about.hardware',
     true,
   ),
 ]

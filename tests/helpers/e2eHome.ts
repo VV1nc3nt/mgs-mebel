@@ -16,3 +16,9 @@ export const NEWS_DRAFT_SLUG = 'e2e-draft'
  * card video (the minimal mp4).
  */
 export const E2E_SALONS = ['Румянцево', 'Пражская', 'Авиамоторная', 'Химки'] as const
+
+/**
+ * Hero CTA of «О нас» in the fixture: the seed leaves it empty (no button), the contact button
+ * checks need one.
+ */
+export const ABOUT_CTA = 'Рассчитать проект'

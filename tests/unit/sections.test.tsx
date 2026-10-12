@@ -63,14 +63,14 @@ describe('HistorySection', () => {
     yearCaption: 'год основания фабрики',
     lead: 'Лид',
     text: 'Первый абзац.\n\nВторой абзац.',
-    values: [{ label: 'Качество' }],
   }
 
-  it('splits the text into paragraphs, without a link', () => {
+  it('splits the text into paragraphs, without a link or chips', () => {
     render(<HistorySection history={history} />)
     expect(screen.getByText('Первый абзац.')).toBeTruthy()
     expect(screen.getByText('Второй абзац.')).toBeTruthy()
     expect(screen.queryByRole('link')).toBeNull()
+    expect(screen.queryByRole('list')).toBeNull()
   })
 
   it('renders nothing when empty', () => {

@@ -16,6 +16,7 @@ import { projects } from '../../src/seed/data/projects'
 import { salons } from '../../src/seed/data/salons'
 import { isLocalDatabaseUrl } from '../../src/seed/guard'
 import {
+  ABOUT_CTA,
   E2E_NEWS_COUNT,
   E2E_SALONS,
   HOME_DRAFT_TITLE,
@@ -86,7 +87,7 @@ const MP4 = Buffer.concat([
 ])
 const VIDEO_FILE = 'e2e-reel.mp4'
 
-/** The video of the reels projects and of the «О нас» hero, or null if the upload rejects it. */
+/** The video of the reels projects, salon cards and «О нас», or null if the upload rejects it. */
 const upsertVideo = async (payload: Payload) => {
   const existing = await findMedia(payload, VIDEO_FILE)
   if (existing) return existing
@@ -129,7 +130,7 @@ try {
   }
   const videoId = await upsertVideo(payload)
   // Seed media keys: P1 / P2 — home hero posters, U1 — «О нас» hero poster, U2 / U3 — history
-  // photos. No background videos on the home page.
+  // photos; other posters of «О нас» get the light poster. No background videos on the home page.
   const byKey: Record<string, number> = {
     P1: ids.poster,
     P2: ids.poster2,
@@ -147,17 +148,22 @@ try {
     data: { ...published, _status: 'published' },
     depth: 0,
   })
-  // «О нас»: the former home page, published without a draft. Only the hero has a background
-  // video — the minimal file, for the poster fallback checks.
+  // «О нас», published without a draft. The minimal mp4 for every video the page plays: the
+  // hero, the presentation, the hardware and the 1st and 3rd exhibitions (the 2nd has a poster
+  // only). The hero CTA is set here: the seed has none.
   await payload.updateGlobal({
     slug: 'about',
     data: {
       ...about,
-      hero: { ...about.hero, video: videoId },
-      mission: { ...about.mission, video: null },
+      hero: { ...about.hero, ctaLabel: ABOUT_CTA, video: videoId },
+      mission: { ...about.mission, video: videoId },
+      hardware: { ...about.hardware, video: videoId },
       exhibitions: {
         ...about.exhibitions,
-        items: about.exhibitions?.items?.map((item) => ({ ...item, video: null })),
+        items: about.exhibitions?.items?.map((item, i) => ({
+          ...item,
+          video: i === 0 || i === 2 ? videoId : null,
+        })),
       },
       _status: 'published',
     },

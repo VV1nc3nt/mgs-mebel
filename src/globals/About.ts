@@ -1,64 +1,49 @@
-import { bgVideoFields, imageField } from '@/fields/media'
+import { bgVideoFields } from '@/fields/media'
 import { labelField, textField, titleField } from '@/fields/section'
+import { videoPlayerFields } from '@/fields/videoPlayer'
 
-import { heroTab, historyTab, newsTab, salonsTab, worksTab } from './sections'
+import { heroTab, historyTab } from './sections'
 import { pageGlobal } from './shared'
 
-// Sections in page order: the former home page (hero … works), then the «О нас» blocks that the
-// page does not render yet (mission, hardware, exhibitions).
+const captionField = { name: 'caption', type: 'text', label: 'Подпись' } as const
+
+// Sections in page order (about README §2).
 export const About = pageGlobal(
   'about',
   'О нас',
   [
     heroTab(),
-    historyTab(),
-    newsTab(),
-    salonsTab(),
-    worksTab(),
-    { name: 'mission', label: 'Миссия', fields: [labelField(), titleField(), ...bgVideoFields()] },
     {
-      name: 'hardware',
-      label: 'Фурнитура',
+      name: 'intro',
+      label: 'Вступление',
+      description: 'Абзац по центру, только на desktop. Пусто — блока нет.',
+      fields: [
+        { name: 'text', type: 'textarea', label: 'Текст' },
+        {
+          name: 'accent',
+          type: 'text',
+          label: 'Акцент',
+          admin: { description: 'Последняя фраза, выделяется цветом.' },
+        },
+      ],
+    },
+    historyTab(),
+    {
+      // The name in the database stays from the former «Миссия» tab.
+      name: 'mission',
+      label: 'Видео-презентация',
+      description: 'Видео по клику, со звуком. Без постера блока нет.',
       fields: [
         labelField(),
         titleField(),
         textField(),
-        {
-          type: 'row',
-          fields: [
-            {
-              name: 'warrantyValue',
-              type: 'text',
-              label: 'Гарантия: число',
-              admin: { description: 'Например, 10' },
-            },
-            {
-              name: 'warrantyUnit',
-              type: 'text',
-              label: 'Гарантия: единица',
-              admin: { description: 'Например, лет' },
-            },
-          ],
-        },
-        { name: 'warrantyText', type: 'text', label: 'Гарантия: подпись' },
-        {
-          name: 'items',
-          type: 'array',
-          label: 'Фото фурнитуры (сетка 3×2)',
-          labels: { singular: 'Фото', plural: 'Фото' },
-          maxRows: 6,
-          fields: [
-            imageField('photo', { label: 'Фото', required: true }),
-            { name: 'title', type: 'text', label: 'Подпись', required: true },
-          ],
-        },
-        {
-          name: 'qualityWord',
-          type: 'text',
-          label: 'Слово в карточке',
-          admin: { description: 'Например, QUALITY' },
-        },
+        ...videoPlayerFields({ fileName: 'video', rule: 'notBoth' }),
       ],
+    },
+    {
+      name: 'hardware',
+      label: 'Фурнитура',
+      fields: [labelField(), titleField(), textField(), ...bgVideoFields(), captionField],
     },
     {
       name: 'exhibitions',

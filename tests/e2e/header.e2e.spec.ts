@@ -1,11 +1,12 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
-import { layoutShifts, settle, wheel } from '../helpers/scroll'
+import { layoutShifts, settle, tallPage, wheel } from '../helpers/scroll'
 
 // The smart header (a deviation from README §5.2): in place at the top, hidden while scrolling
 // down, fixed on glass while scrolling up. /about puts it over the hero, /ui-kit in the flow and
-// has the sticky segment bar. Both are long enough with the seedHome data.
+// has the sticky segment bar. Jumps lengthen the page first (tallPage): the checks do not depend
+// on how long the page content is.
 const BASE = 'http://localhost:3000'
 const PAGES = [
   { path: '/about', variant: 'hero', position: 'absolute' },
@@ -59,6 +60,7 @@ const hydrated = (page: Page) =>
 
 /** An instant jump down to `y`: a scroll down, so the header goes away (out of view). */
 async function jumpTo(page: Page, y: number) {
+  await tallPage(page)
   await hydrated(page)
   await settle(page)
   await page.evaluate((top) => window.scrollTo({ top, behavior: 'instant' }), y)

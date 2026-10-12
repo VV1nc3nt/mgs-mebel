@@ -79,14 +79,6 @@ export const historyTab = (): Tab => ({
     imageField('photoSecondary', { label: 'Фото 1:1' }),
     { name: 'lead', type: 'textarea', label: 'Лид' },
     textField(),
-    {
-      name: 'values',
-      type: 'array',
-      label: 'Ценности (чипы)',
-      labels: { singular: 'Ценность', plural: 'Ценности' },
-      maxRows: 6,
-      fields: [{ name: 'label', type: 'text', label: 'Текст', required: true }],
-    },
   ],
 })
 

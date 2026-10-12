@@ -8,48 +8,97 @@ type Service = 'id' | 'createdAt' | 'updatedAt' | 'globalType'
 type GlobalData<S extends GlobalSlug> = Omit<DataFromGlobalSlug<S>, Service>
 export type SeedGlobals = { [S in GlobalSlug]: GlobalData<S> }
 
-/** Paragraphs of a textarea are separated by a blank line. */
-const paragraphs = (...items: string[]) => items.join('\n\n')
-
-const HERO_TEXT =
-  'Мебельная фабрика полного цикла для комплексных заказов. Дизайнерская мебель, доступная каждому.'
 const MESSENGERS_LABEL = 'Рассчитать проект в мессенджере'
 const HOTLINE_LABEL = 'Бесплатная горячая линия'
-
-const history = (id: MediaId) => ({
-  photoMain: id('U2'),
-  yearValue: '2001',
-  yearCaption: 'год основания фабрики',
-  photoSecondary: id('U3'),
-  lead: 'Путь MGS MEBEL начался в 2001 году с производства стеклянных фасадов. Идея была проста — создавать вещи, которые служат долгие годы.',
-  text: 'Шаг за шагом мы выросли в крупную мебельную компанию. Мы инвестируем в современное оборудование и технологии, поэтому наша мебель соответствует строгим европейским и российским стандартам качества.',
-  values: ['Качество', 'Инновации', 'Долговечность'].map((label) => ({ label })),
-})
 
 // Home hero, segment 01 (home README §8).
 const HOME_TITLE = 'Дизайнерская мебель, доступная каждому'
 const HOME_TEXT =
   'Мебельная фабрика, специализирующаяся на производстве комплексных заказов.'
 
-// First screen and sections of «О нас» (the former home page); news, salons and works headings
-// are the same on the home page.
-const companyHero = (id: MediaId) => ({
-  label: 'о нас',
-  title: 'Мы — MGS MEBEL',
-  text: HERO_TEXT,
-  ctaLabel: 'Рассчитать проект',
-  video: id('H1'),
-  poster: id('U1'),
-})
-
-const companySections = {
+// Section headings of the home page.
+const homeSections = {
   news: { label: 'новости', title: 'Что нового' },
   salons: { label: 'фирменные салоны', title: '50+ салонов по России' },
   works: { label: 'наши работы', title: 'Реальные проекты', buttonLabel: 'Смотреть все работы' },
 }
 
-const companyMeta = (id: MediaId) =>
-  seoMeta({ title: 'Мы — MGS MEBEL', description: HERO_TEXT, image: id('U1') })
+// «О нас» v2 (about README §4).
+const ABOUT_TITLE = 'Мы — MGS MEBEL'
+const ABOUT_TEXT =
+  'Мебельная фабрика, специализирующаяся на производстве комплексных заказов. Дизайнерская мебель, доступная каждому.'
+
+const about = (id: MediaId): SeedGlobals['about'] => ({
+  // No CTA in the hero (owner's decision); an editor can add the label back.
+  hero: {
+    label: 'о нас',
+    title: ABOUT_TITLE,
+    text: ABOUT_TEXT,
+    ctaLabel: null,
+    video: id('H1'),
+    poster: id('U1'),
+  },
+  intro: {
+    text: 'Мечтаете о доме, где каждый уголок наполнен стилем и комфортом? Мы поможем создать уютную спальню, практичную кухню, элегантную гостиную и стильную прихожую.',
+    accent: 'Доверьтесь нам — мы превратим мечты в реальность.',
+  },
+  history: {
+    label: null,
+    photoMain: id('U2'),
+    yearValue: '2001',
+    yearCaption: 'год основания фабрики',
+    photoSecondary: id('U3'),
+    lead: 'Путь MGS MEBEL начался в 2001 году с производства стеклянных фасадов. Идея была проста — создавать качественные вещи, которые служат долгие годы.',
+    text: 'Шаг за шагом мы выросли в крупную мебельную компанию. Мы инвестируем в современное оборудование и технологии, поэтому наша мебель соответствует строгим европейским и российским стандартам качества. Наши ценности — качество, инновации, долговечность. MGS MEBEL — выбор тех, кто ценит красоту, стиль и комфорт.',
+  },
+  mission: {
+    label: 'миссия',
+    title: ABOUT_TITLE,
+    text: 'Воплощаем мечты и идеи для жизни',
+    video: id('H3'),
+    embedUrl: null,
+    poster: id('U5'),
+    duration: '02:17',
+    caption: 'Презентация MGS MEBEL · Новинки 2023',
+  },
+  hardware: {
+    label: 'фурнитура',
+    title: 'Фурнитура MGS — наша гордость',
+    text: 'Широкий ассортимент качественной фурнитуры и комплектующих для мебели под собственным брендом. Более 15 000 партнёров-производителей уже доверились MGS MEBEL благодаря отлаженной системе работы и строгому контролю качества.',
+    video: id('H14'),
+    poster: id('P7'),
+    caption: 'Системы выдвижения MGS',
+  },
+  exhibitions: {
+    label: 'выставки',
+    title: 'MGS MEBEL на выставках',
+    text: 'Мы регулярно следим за новинками и трендами в мире дизайна и каждый год показываем покупателям всё новое в мебельной индустрии.',
+    items: [
+      {
+        date: '19.02.2026',
+        title: 'Выставка 2026',
+        text: 'В этом году MGS MEBEL выступила официальным партнёром ALVIC CENTER на международной дизайнерской выставке ARTDOM.',
+        video: id('H5'),
+        poster: id('U4'),
+      },
+      {
+        date: '27.11.2025',
+        title: 'Презентация 2025',
+        text: 'Представили новые коллекции кухонь и гардеробных в шоу-руме MGS MEBEL в Химках.',
+        video: id('H4'),
+        poster: id('U1'),
+      },
+      {
+        date: '2025',
+        title: 'Выставка 2025',
+        text: 'Показали новинки сезона и фирменную фурнитуру MGS на выставке ARTDOM.',
+        video: id('H6'),
+        poster: id('U2'),
+      },
+    ],
+  },
+  meta: seoMeta({ title: ABOUT_TITLE, description: ABOUT_TEXT, image: id('U1') }),
+})
 
 /** All texts come from the design prototype and README. */
 export const globals = (id: MediaId): SeedGlobals => ({
@@ -120,70 +169,10 @@ export const globals = (id: MediaId): SeedGlobals => ({
         },
       ],
     },
-    ...companySections,
+    ...homeSections,
     meta: seoMeta({ title: HOME_TITLE, description: HOME_TEXT, image: id('P1') }),
   },
-  // The former home page; mission, hardware and exhibitions are not rendered yet.
-  about: {
-    hero: companyHero(id),
-    history: history(id),
-    ...companySections,
-    mission: {
-      label: 'миссия',
-      title: 'Воплощаем мечты и идеи для жизни',
-      video: id('H3'),
-      poster: id('U5'),
-    },
-    hardware: {
-      label: 'фурнитура',
-      title: 'Фурнитура MGS — наша гордость',
-      text: paragraphs(
-        'MGS MEBEL предлагает широкий ассортимент качественной фурнитуры и комплектующих для мебели под собственным брендом.',
-        'Более 15 000 партнёров-производителей мебели уже доверились MGS MEBEL благодаря отлаженной системе работы и программе строгого контроля качества. Много лет мы отвечаем запросам современного российского рынка мебели.',
-      ),
-      warrantyValue: '10',
-      warrantyUnit: 'лет',
-      warrantyText: 'Гарантия от MGS на всю фирменную фурнитуру',
-      items: [
-        { photo: id('U7'), title: 'Петли с доводчиком' },
-        { photo: id('U6'), title: 'Направляющие' },
-        { photo: id('U9'), title: 'Ящики' },
-        { photo: id('U8'), title: 'Подъёмные механизмы' },
-        { photo: id('U4'), title: 'Системы хранения' },
-        { photo: id('U3'), title: 'Профили и подсветка' },
-      ],
-      qualityWord: 'QUALITY',
-    },
-    exhibitions: {
-      label: 'выставки',
-      title: 'MGS MEBEL на выставках',
-      text: 'Мы следим за новинками и трендами в мире дизайна и каждый год показываем покупателям всё новое в мебельной индустрии.',
-      items: [
-        {
-          date: '19.02.2026',
-          title: 'ARTDOM 2026',
-          text: 'MGS MEBEL — официальный партнёр ALVIC CENTER на международной дизайнерской выставке ARTDOM.',
-          video: id('H5'),
-          poster: id('U4'),
-        },
-        {
-          date: '27.11.2025',
-          title: 'Презентация 2025',
-          text: 'Представили новые коллекции в шоу-руме MGS MEBEL в Химках.',
-          video: id('H4'),
-          poster: id('U1'),
-        },
-        {
-          date: '2025',
-          title: 'ARTDOM 2025',
-          text: 'Показали новинки кухонь и гардеробных на выставке ARTDOM.',
-          video: id('H6'),
-          poster: id('U2'),
-        },
-      ],
-    },
-    meta: companyMeta(id),
-  },
+  about: about(id),
   salonsPage: {
     hero: {
       label: 'фирменные салоны',

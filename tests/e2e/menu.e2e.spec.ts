@@ -2,7 +2,7 @@ import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
 import { globals } from '../../src/seed/data/globals'
-import { settle, wheel } from '../helpers/scroll'
+import { settle, tallPage, wheel } from '../helpers/scroll'
 
 const BASE = 'http://localhost:3000'
 const { layout } = globals(() => 0)
@@ -306,6 +306,8 @@ test.describe('menu mid-page', () => {
   /** Down to `y` (the header goes away), then a wheel up: pinned, its slide-in finished. */
   async function pinAt(page: Page, y: number) {
     await page.goto(`${BASE}/about`)
+    // Room for the jump and the wheel under the menu, whatever the length of the page
+    await tallPage(page)
     // Hydrated first: a jump before it reads as a page opened mid-way
     await page.waitForFunction(
       () => document.documentElement.style.getPropertyValue('--header-h') !== '',

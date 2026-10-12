@@ -1,4 +1,3 @@
-import { Chip } from '@/components/ui/Chip'
 import { MediaCard } from '@/components/ui/MediaCard'
 import { SectionLabel } from '@/components/ui/SectionLabel'
 import { cn } from '@/lib/cn'
@@ -14,7 +13,7 @@ type Props = {
 
 /**
  * Company history (README §6.1 п.3, §6.2): asymmetric photo grid — 3:4 photo, the accent year
- * plate and a 1:1 photo — next to the lead, text and value chips.
+ * plate and a 1:1 photo — next to the lead and text.
  * A column on mobile/tablet, two columns from desktop.
  */
 export function HistorySection({ history, className }: Props) {
@@ -22,7 +21,6 @@ export function HistorySection({ history, className }: Props) {
   const photoSecondary = asMedia(history?.photoSecondary)
   const text = paragraphs(history?.text)
   if (!photoMain && !history?.lead && !text.length) return null
-  const values = history?.values?.filter((v) => v.label.trim()) ?? []
 
   return (
     <section
@@ -66,15 +64,6 @@ export function HistorySection({ history, className }: Props) {
             {paragraph}
           </p>
         ))}
-        {values.length > 0 && (
-          <ul className="flex flex-wrap gap-2 pt-1">
-            {values.map((value) => (
-              <li key={value.id ?? value.label}>
-                <Chip>{value.label}</Chip>
-              </li>
-            ))}
-          </ul>
-        )}
       </div>
     </section>
   )

@@ -234,10 +234,7 @@ export default async function UiKitPage() {
 
       <Section title="Chip">
         <Row note="surface — ценности">
-          {(history?.values?.length
-            ? history.values.map((v) => v.label)
-            : ['Качество', 'Инновации', 'Долговечность']
-          ).map((label) => (
+          {['Качество', 'Инновации', 'Долговечность'].map((label) => (
             <Chip key={label}>{label}</Chip>
           ))}
         </Row>
