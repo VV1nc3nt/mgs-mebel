@@ -2,16 +2,19 @@ import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
 import { globals } from '../../src/seed/data/globals'
+import { ABOUT_CTA } from '../helpers/e2eHome'
 import { motionEnded } from '../helpers/motion'
-import { layoutShifts, settle, wheel } from '../helpers/scroll'
+import { layoutShifts, settle, tallPage, wheel } from '../helpers/scroll'
 
-// Contact buttons with the choice of messengers (README of the buttons, variant «Сегменты») on
-// «О нас»: header CTA (≥1280), hero CTA, salon card CTA. The seed has all three messengers.
+// Contact buttons with the choice of messengers (README of the buttons, variant «Сегменты»):
+// header CTA (≥1280) and hero CTA on «О нас» (the fixture sets the hero CTA), the card over the
+// salon map on «Салоны». The seed has all three messengers.
 const URL = 'http://localhost:3000/about'
+const SALONS = 'http://localhost:3000/salons'
 const UI_KIT = 'http://localhost:3000/ui-kit'
 const EMPTY_DB = !!process.env.E2E_EMPTY_DB
-const { layout, about, salonsPage, settings } = globals(() => 0)
-const CTA = about.hero!.ctaLabel!
+const { layout, salonsPage, settings } = globals(() => 0)
+const CTA = ABOUT_CTA
 const SALON_CTA = salonsPage.map!.cardCtaLabel!
 const NAMES = ['MAX', 'Telegram', 'WhatsApp']
 const HREFS = (['max', 'telegram', 'whatsapp'] as const).map((kind) => settings.messengers![kind])
@@ -106,16 +109,23 @@ async function clickOpen(page: Page, c: ReturnType<typeof chooser>) {
   await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2)
 }
 
-/** The salon card's button in the middle of the viewport, the page settled. */
+/** The map of «Салоны» and the salon card over it (open on load). */
+const salonMap = (page: Page) => page.getByRole('region', { name: 'Салоны на карте' })
+const salonCard = (page: Page) => salonMap(page).locator('.max-w-salon-card')
+
+/** «Салоны» opened, the card's button in the middle of the viewport, the page settled. */
 async function toSalonCard(page: Page) {
+  await page.goto(SALONS)
+  // The footer follows the map: next to it the dock stays hidden
+  await tallPage(page)
   // Hydrated first (HeaderShell sets --header-h): a jump before it reads as a page opened
   // mid-way, and the dock would miss the scroll up that follows
   await page.waitForFunction(
     () => document.documentElement.style.getPropertyValue('--header-h') !== '',
   )
-  await page
-    .locator('.max-w-salon-card .chooser')
-    .first()
+  await expect(salonCard(page)).toBeVisible()
+  await salonCard(page)
+    .locator('.chooser')
     .evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }))
   await settle(page)
 }
@@ -221,14 +231,14 @@ test.describe('contact buttons', () => {
       page,
     }) => {
       await page.setViewportSize({ width, height: 900 })
-      await page.goto(URL)
       await toSalonCard(page)
-      const card = page.locator('.max-w-salon-card').first()
+      const card = salonCard(page)
       const c = chooser(card)
       await ready(c)
       await expectClosed(c, SALON_CTA)
       const closed = await box(c.button)
       const cardBox = await box(card)
+      const mapBox = await box(salonMap(page).locator('.bg-map-bg'))
 
       await clickOpen(page, c)
       await expectOpen(c, closed)
@@ -237,6 +247,9 @@ test.describe('contact buttons', () => {
       expect(capsule.y).toBeGreaterThanOrEqual(cardBox.y)
       expect(capsule.y + capsule.height).toBeLessThanOrEqual(cardBox.y + cardBox.height)
       expect(await box(card)).toEqual(cardBox)
+      // The card stays over the map
+      expect(cardBox.y).toBeGreaterThanOrEqual(mapBox.y)
+      expect(cardBox.y + cardBox.height).toBeLessThanOrEqual(mapBox.y + mapBox.height)
       await card.screenshot({ path: `test-results/contact/salon-${width}-open.png` })
       await expectNoAxeViolations(page)
     })
@@ -310,6 +323,9 @@ test.describe('contact buttons', () => {
       await hero.button.focus()
       await page.keyboard.press('Enter')
       await expect(hero.root).toHaveAttribute('data-open', '')
+      // Focus goes to the first link a frame later: moving it on before that, the late focus
+      // would take it back and Enter would follow the MAX link
+      await expect(hero.links.first()).toBeFocused()
       await header.button.focus()
       await page.keyboard.press('Enter')
       await expect(header.root).toHaveAttribute('data-open', '')
@@ -317,7 +333,6 @@ test.describe('contact buttons', () => {
     })
 
     test('one choice at a time: the salon card ↔ the dock', async ({ page }) => {
-      await page.goto(URL)
       await toSalonCard(page)
       // A short scroll up shows the dock; the card's button stays in view
       await wheel(page, -100)
@@ -327,16 +342,19 @@ test.describe('contact buttons', () => {
       const dock = page.locator('.dock')
       await expect(dock).not.toHaveAttribute('data-hidden')
       const ask = dock.locator('button[aria-expanded]')
-      const card = chooser(page.locator('.max-w-salon-card').first())
+      const card = chooser(salonCard(page))
       await ready(card)
 
       await card.button.focus()
       await page.keyboard.press('Enter')
       await expect(card.root).toHaveAttribute('data-open', '')
+      // Focus goes to the first link a frame later (see «header ↔ hero»)
+      await expect(card.links.first()).toBeFocused()
       await ask.focus()
       await page.keyboard.press('Enter')
       await expect(dock).toHaveAttribute('data-open', '')
       await expect(card.root).not.toHaveAttribute('data-open')
+      await expect(dock.getByRole('link').first()).toBeFocused()
 
       await card.button.focus()
       await page.keyboard.press('Enter')
@@ -371,6 +389,7 @@ test.describe('contact buttons', () => {
       const c = chooser(header)
       await ready(c)
       // Out of view, then a wheel up: pinned
+      await tallPage(page)
       await page.evaluate(() => window.scrollTo({ top: 1500, behavior: 'instant' }))
       await expect(header).toHaveAttribute('data-state', 'away')
       await wheel(page, -300)

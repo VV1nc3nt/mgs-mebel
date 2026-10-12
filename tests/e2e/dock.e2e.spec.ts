@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test'
 
 import { globals } from '../../src/seed/data/globals'
 import { motionEnded } from '../helpers/motion'
-import { settle, wheel } from '../helpers/scroll'
+import { settle, tallPage, wheel } from '../helpers/scroll'
 
 // «О нас» in its real context: hero on the first screen, long enough to scroll with the
 // seedHome data. On an empty database it is short, so the @empty check of the dock's content
@@ -41,6 +41,8 @@ async function openChoice(page: Page) {
  * a 300 wheel either way. The jump itself is a scroll down, so the dock stays hidden here.
  */
 async function scrollToMiddle(page: Page) {
+  // Room for it whatever the length of the page content
+  await tallPage(page)
   await settle(page)
   const top = await page.evaluate(() => {
     const vh = window.innerHeight

@@ -32,6 +32,16 @@ export async function settle(page: Page) {
 }
 
 /**
+ * Makes the page long enough for scroll checks, whatever its content: two screens of empty space
+ * at the end of `main`, before the footer. The header, dock and menu checks jump 1500 px down and
+ * wheel on from there; they test the chrome, not the length of a page. CSS only — React's DOM is
+ * not touched. Call it after `goto`, before the jump.
+ */
+export async function tallPage(page: Page) {
+  await page.addStyleTag({ content: 'main#content { padding-bottom: 200vh }' })
+}
+
+/**
  * Real wheel input: scroll events with a direction, as a user makes them. Returns after the
  * smooth scroll ends (`scrollend`): a wheel during a running scroll animation merges into it and
  * may move the page by only a few pixels — below the direction threshold of the header and the dock.

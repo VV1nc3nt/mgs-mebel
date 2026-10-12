@@ -2,7 +2,7 @@ import { sql } from '@payloadcms/db-postgres'
 import type { Payload } from 'payload'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import type { Media, News } from '@/payload-types'
+import type { About, Media, News } from '@/payload-types'
 
 import { cleanup, createImage, createVideo, getTestPayload, pngFile, PREFIX } from './helpers'
 
@@ -73,6 +73,72 @@ describe('news video block', () => {
 
   it('rejects an image as the video file', async () => {
     await expect(createNews(videoBlock({ file: image.id }))).rejects.toThrow()
+  })
+})
+
+describe('about.mission (presentation)', () => {
+  // Nullable: clearing a field is what an editor does in the admin
+  type Mission = { [K in keyof NonNullable<About['mission']>]?: unknown }
+  let before: Record<string, unknown> | undefined
+
+  beforeAll(async () => {
+    before = (await payload.findGlobal({ slug: 'about', depth: 0 })) as unknown as Record<
+      string,
+      unknown
+    >
+  })
+
+  // Put the stored global back; one that did not exist is removed with its versions, so the
+  // test media can be deleted.
+  afterAll(async () => {
+    if (before?.createdAt) {
+      const { id: _id, createdAt: _c, updatedAt: _u, globalType: _g, ...data } = before
+      await payload.updateGlobal({ slug: 'about', data: { ...data, _status: 'published' } as never })
+    } else {
+      await payload.db.drizzle.execute(sql`delete from "_about_v"`)
+      await payload.db.drizzle.execute(sql`delete from "about"`)
+    }
+  })
+
+  const publish = (mission: Mission) =>
+    payload.updateGlobal({
+      slug: 'about',
+      data: {
+        hero: { title: `${PREFIX} о нас`, poster: image.id },
+        history: { photoMain: image.id },
+        hardware: { poster: image.id },
+        mission: { poster: image.id, ...mission },
+        _status: 'published',
+      } as never,
+    })
+
+  it('requires the poster on publishing', async () => {
+    await expect(publish({ poster: null })).rejects.toThrow()
+  })
+
+  it('accepts a file, a link or neither (a poster without ▶)', async () => {
+    await expect(publish({})).resolves.toBeTruthy()
+    await expect(publish({ video: video.id, embedUrl: null })).resolves.toBeTruthy()
+    await expect(
+      publish({ video: null, embedUrl: 'https://rutube.ru/video/abc/' }),
+    ).resolves.toBeTruthy()
+  })
+
+  it('rejects both a file and a link', async () => {
+    await expect(
+      publish({ video: video.id, embedUrl: 'https://vkvideo.ru/video-1_2' }),
+    ).rejects.toThrow()
+  })
+
+  it('rejects links outside RuTube / VK Video', async () => {
+    await expect(
+      publish({ video: null, embedUrl: 'https://www.youtube.com/watch?v=abc' }),
+    ).rejects.toThrow()
+    await expect(publish({ video: null, embedUrl: 'http://rutube.ru/video/abc/' })).rejects.toThrow()
+  })
+
+  it('rejects an image as the video file', async () => {
+    await expect(publish({ video: image.id, embedUrl: null })).rejects.toThrow()
   })
 })
 
