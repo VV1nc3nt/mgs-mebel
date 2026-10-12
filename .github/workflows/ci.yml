@@ -31,6 +31,7 @@ env:
     tests/e2e/preview.e2e.spec.ts
     tests/e2e/news-slug.e2e.spec.ts
     tests/e2e/salons.e2e.spec.ts
+    tests/e2e/partial-paint.e2e.spec.ts
   # Scaffold specs, not run in CI.
   E2E_NOT_IN_CI: >-
     tests/e2e/admin.e2e.spec.ts
