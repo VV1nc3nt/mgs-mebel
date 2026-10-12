@@ -6,6 +6,7 @@ import { getLayout, getSettings } from '@/lib/queries'
 import { AppFooter } from './AppFooter'
 import { AppHeader } from './AppHeader'
 import { AppMenu } from './AppMenu'
+import { FirstScreenEnd, HEADER_END_ID } from './FirstScreenEnd'
 import { FloatingDock } from './FloatingDock'
 import { MenuProvider, PageRoot } from './MenuProvider'
 import { PreviewBanner } from './PreviewBanner'
@@ -34,6 +35,8 @@ export async function AppShell({
           <PreviewBanner />
           <div className="relative">
             <AppHeader chrome={chrome} />
+            {/* No first frame with a half-parsed header (nav shifted, CTA missing) on any page */}
+            <FirstScreenEnd id={HEADER_END_ID} />
             <main id="content" tabIndex={-1} className="focus-visible:outline-none">
               {children}
             </main>
