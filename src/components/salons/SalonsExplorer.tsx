@@ -279,14 +279,15 @@ export function SalonsExplorer({ salons, ctaLabel, messengers, listCaption }: Pr
               onPick={pickFromList}
             />
           )}
-          <SegmentFilter
-            variant="overlay"
-            items={VIEWS}
-            value={view}
-            onChange={setView}
-            label="Вид: карта или список"
-            className="absolute top-4 right-4"
-          />
+          <div className="absolute top-4 right-4">
+            <SegmentFilter
+              variant="overlay"
+              items={VIEWS}
+              value={view}
+              onChange={setView}
+              label="Вид: карта или список"
+            />
+          </div>
         </SalonMapSlot>
       </section>
     </>

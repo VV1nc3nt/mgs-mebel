@@ -5,6 +5,7 @@ import { globals } from '../../src/seed/data/globals'
 import { news } from '../../src/seed/data/news'
 import { salons } from '../../src/seed/data/salons'
 import { transitionsEnded } from '../helpers/motion'
+import { expectShowSalonAtCorner } from '../helpers/salonMap'
 import { layoutShifts } from '../helpers/scroll'
 import { E2E_NEWS_COUNT, E2E_SALONS, HOME_DRAFT_TITLE, NEWS_DRAFT_TITLE } from '../helpers/e2eHome'
 import { e2eEditor } from '../helpers/e2eEditor'
@@ -550,6 +551,25 @@ test.describe('home', () => {
     await expect(section.getByRole('button', { name: 'Скрыть карточку салона' })).toBeFocused()
     await expect(show).toHaveCount(0)
   })
+
+  for (const width of [390, 834, 1440] as const) {
+    test(`${width}: «Показать салон» takes the closed card's place at the map's bottom-left`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: HEIGHTS[width] })
+      await page.goto(`${BASE}/`)
+      await hydrated(page)
+      const section = page.getByRole('region', { name: SALONS_TITLE })
+      // From the keyboard: a wheel over the hero would be taken by the scene
+      await section.getByRole('button', { name: 'Скрыть карточку салона' }).focus()
+      await page.keyboard.press('Enter')
+      const show = section.getByRole('button', { name: 'Показать салон' })
+      await expect(show).toBeVisible()
+      const map = section.locator('.bg-map-bg')
+      await map.screenshot({ path: `test-results/home/show-salon-${width}.png` })
+      await expectShowSalonAtCorner(map, show)
+    })
+  }
 
   test('«Список» opens the salons page', async ({ page }) => {
     await page.goto(`${BASE}/`)

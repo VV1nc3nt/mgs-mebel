@@ -60,14 +60,11 @@ export function SalonPanel({
       className="absolute inset-x-3 bottom-3"
     />
   ) : (
-    <Button
-      ref={showRef}
-      onClick={() => toggle(true)}
-      variant="light"
-      size={44}
-      className="absolute bottom-3 left-3"
-    >
-      Показать салон
-    </Button>
+    // Positioned by a wrapper: the button's own `relative` (hit area) would win over `absolute`
+    <div className="absolute bottom-3 left-3">
+      <Button ref={showRef} onClick={() => toggle(true)} variant="light" size={44}>
+        Показать салон
+      </Button>
+    </div>
   )
 }
