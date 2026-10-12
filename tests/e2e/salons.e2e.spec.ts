@@ -4,6 +4,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test'
 import { globals } from '../../src/seed/data/globals'
 import { salons } from '../../src/seed/data/salons'
 import { E2E_SALONS } from '../helpers/e2eHome'
+import { expectShowSalonAtCorner } from '../helpers/salonMap'
 import { layoutShifts, settle } from '../helpers/scroll'
 import { PLAYBACK_ATTR, stubPlayback } from '../helpers/video'
 
@@ -339,6 +340,23 @@ test.describe('salons', () => {
     await expectSelected(page, 1, false)
     await expectMapCard(page, E2E_SALONS[1])
   })
+
+  for (const width of [390, 834, 1440] as const) {
+    test(`${width}: «Показать салон» takes the closed card's place at the map's bottom-left`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: HEIGHTS[width] })
+      await page.goto(URL)
+      await hydrated(page)
+      const map = mapOf(page)
+      await map.getByRole('button', { name: 'Скрыть карточку салона' }).focus()
+      await page.keyboard.press('Enter')
+      const show = map.getByRole('button', { name: 'Показать салон', exact: true })
+      await expect(show).toBeVisible()
+      await map.screenshot({ path: `test-results/salons/show-salon-${width}.png` })
+      await expectShowSalonAtCorner(map.locator('.bg-map-bg'), show)
+    })
+  }
 
   test('834: the end of the track selects the last salon', async ({ page }) => {
     await page.setViewportSize({ width: 834, height: 1194 })
