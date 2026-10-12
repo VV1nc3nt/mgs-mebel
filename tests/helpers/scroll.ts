@@ -50,24 +50,6 @@ export async function wheel(page: Page, dy: number) {
   await page.evaluate(() => (window as Window & { scrollEnded?: Promise<void> }).scrollEnded)
 }
 
-/** Sum of layout shifts since navigation (buffered entries included). */
-export const cls = (page: Page) =>
-  page.evaluate(
-    () =>
-      new Promise<number>((resolve) => {
-        let total = 0
-        new PerformanceObserver((list) => {
-          for (const entry of list.getEntries() as (PerformanceEntry & {
-            value: number
-            hadRecentInput: boolean
-          })[]) {
-            if (!entry.hadRecentInput) total += entry.value
-          }
-        }).observe({ type: 'layout-shift', buffered: true })
-        setTimeout(() => resolve(total), 500)
-      }),
-  )
-
 export type LayoutShift = { value: number; at: number; sources: string[] }
 
 /**

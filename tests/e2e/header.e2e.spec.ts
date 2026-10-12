@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
-import { cls, settle, wheel } from '../helpers/scroll'
+import { layoutShifts, settle, wheel } from '../helpers/scroll'
 
 // The smart header (a deviation from README §5.2): in place at the top, hidden while scrolling
 // down, fixed on glass while scrolling up. /about puts it over the hero, /ui-kit in the flow and
@@ -142,7 +142,7 @@ test.describe('smart header', () => {
           await expect
             .poll(() => bar(page).evaluate((el) => getComputedStyle(el, '::before').opacity))
             .toBe('0')
-          expect(await cls(page)).toBe(0)
+          expect(await layoutShifts(page), 'layout shifts: value, start, what moved').toEqual([])
           expect(errors).toEqual([])
         })
       }

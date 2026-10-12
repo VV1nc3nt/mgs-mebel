@@ -4,7 +4,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { globals } from '../../src/seed/data/globals'
 import { news } from '../../src/seed/data/news'
 import { salons } from '../../src/seed/data/salons'
-import { cls } from '../helpers/scroll'
+import { layoutShifts } from '../helpers/scroll'
 import { E2E_NEWS_COUNT, E2E_SALONS, NEWS_DRAFT_TITLE } from '../helpers/e2eHome'
 import { PLAYBACK_ATTR, stubPlayback } from '../helpers/video'
 
@@ -175,7 +175,7 @@ test.describe('about', () => {
         window.scrollTo({ top: 0, behavior: 'instant' })
       })
       await page.screenshot({ path: `test-results/about/about-${width}.png`, fullPage: true })
-      expect(await cls(page)).toBe(0)
+      expect(await layoutShifts(page), 'layout shifts: value, start, what moved').toEqual([])
       expect(await axe(page)).toEqual([])
       expect(errors).toEqual([])
     })
@@ -225,7 +225,7 @@ test.describe('about', () => {
       })
       await page.screenshot({ path: `test-results/about/about-${width}.png` })
       await page.locator('footer').screenshot({ path: `test-results/about/footer-${width}.png` })
-      expect(await cls(page)).toBe(0)
+      expect(await layoutShifts(page), 'layout shifts: value, start, what moved').toEqual([])
       expect(await axe(page)).toEqual([])
     })
   }

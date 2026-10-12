@@ -2,7 +2,8 @@ import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
 import { globals } from '../../src/seed/data/globals'
-import { cls, settle, wheel } from '../helpers/scroll'
+import { motionEnded } from '../helpers/motion'
+import { layoutShifts, settle, wheel } from '../helpers/scroll'
 
 // Contact buttons with the choice of messengers (README of the buttons, variant «Сегменты») on
 // «О нас»: header CTA (≥1280), hero CTA, salon card CTA. The seed has all three messengers.
@@ -63,6 +64,9 @@ async function ready(c: ReturnType<typeof chooser>) {
   await expect(c.root.locator('[role="group"]')).toHaveCount(1)
 }
 
+/** End of the open or close animation (stagger included): see motionEnded. */
+const settled = (c: ReturnType<typeof chooser>) => motionEnded(c.root)
+
 /** The open choice: three cells in order, every control ≥ 44, the capsule 54 high, centred. */
 async function expectOpen(c: ReturnType<typeof chooser>, closed: Box) {
   await expect(c.root).toHaveAttribute('data-open', '')
@@ -76,13 +80,7 @@ async function expectOpen(c: ReturnType<typeof chooser>, closed: Box) {
     ]),
   )
   expect(links).toEqual(NAMES.map((name, i) => [name, HREFS[i], '_blank']))
-  // End of the animation (stagger included)
-  await c.root.evaluate((el) =>
-    // A transition replaced mid-way rejects its promise: that one is over too
-    Promise.all(
-      el.getAnimations({ subtree: true }).map((animation) => animation.finished.catch(() => null)),
-    ),
-  )
+  await settled(c)
   expect((await box(c.capsule)).height).toBe(54)
   const capsule = await box(c.capsule)
   expect(capsule.width).toBe(Math.max(closed.width, 198))
@@ -180,7 +178,11 @@ test.describe('contact buttons', () => {
       await expect(c.root).not.toHaveAttribute('data-open')
       await phoneSettled()
       expect(await box(phone)).toEqual(phoneBox)
-      expect(await cls(page)).toBeLessThan(0.1)
+      const shifts = await layoutShifts(page)
+      expect(
+        shifts.reduce((sum, { value }) => sum + value, 0),
+        `layout shifts: ${JSON.stringify(shifts)}`,
+      ).toBeLessThan(0.1)
       expect(errors).toEqual([])
     })
   }
@@ -251,6 +253,7 @@ test.describe('contact buttons', () => {
       await expect(c.links.first()).toBeVisible()
       // A pointer click does not move focus to the cells
       await expect(c.links.first()).not.toBeFocused()
+      await settled(c)
       const popup = page.context().waitForEvent('page')
       await c.links.nth(2).click()
       await (await popup).close()

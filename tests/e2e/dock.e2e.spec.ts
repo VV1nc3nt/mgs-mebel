@@ -2,6 +2,7 @@ import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
 import { globals } from '../../src/seed/data/globals'
+import { motionEnded } from '../helpers/motion'
 import { settle, wheel } from '../helpers/scroll'
 
 // «О нас» in its real context: hero on the first screen, long enough to scroll with the
@@ -31,6 +32,8 @@ async function openChoice(page: Page) {
   await showDock(page)
   await ask(page).click()
   await expect(dock(page)).toHaveAttribute('data-open', '')
+  // A click on a logo while it still moves would make Playwright scroll, closing the choice
+  await motionEnded(dock(page))
 }
 
 /**

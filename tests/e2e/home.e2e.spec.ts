@@ -4,7 +4,8 @@ import { expect, test, type Locator, type Page } from '@playwright/test'
 import { globals } from '../../src/seed/data/globals'
 import { news } from '../../src/seed/data/news'
 import { salons } from '../../src/seed/data/salons'
-import { cls, layoutShifts } from '../helpers/scroll'
+import { transitionsEnded } from '../helpers/motion'
+import { layoutShifts } from '../helpers/scroll'
 import { E2E_NEWS_COUNT, E2E_SALONS, HOME_DRAFT_TITLE, NEWS_DRAFT_TITLE } from '../helpers/e2eHome'
 import { e2eEditor } from '../helpers/e2eEditor'
 import { PLAYBACK_ATTR, stubPlayback } from '../helpers/video'
@@ -162,7 +163,8 @@ test.describe('home', () => {
         await expect(tabs).toHaveCount(0)
         await expect(next).toHaveCount(1)
         const arrow = (await next.boundingBox())!
-        expect([arrow.width, arrow.height]).toEqual([52, 52])
+        expect(arrow.width).toBeCloseTo(52, 1)
+        expect(arrow.height).toBeCloseTo(52, 1)
         expect(Math.round(arrow.y)).toBe(Math.round((await cta.boundingBox())!.y))
       } else {
         await expect(tabs).toHaveCount(2)
@@ -174,7 +176,8 @@ test.describe('home', () => {
         await expect(tabs.first()).toHaveAccessibleName(`01 ${SEGMENTS[0]!.label!}`)
         await expect(tabs.nth(1)).toHaveAccessibleName(`02 ${SEGMENTS[1]!.label!}`)
         const arrow = (await next.boundingBox())!
-        expect([arrow.width, arrow.height]).toEqual([44, 44])
+        expect(arrow.width).toBeCloseTo(44, 1)
+        expect(arrow.height).toBeCloseTo(44, 1)
       }
 
       // News: one card per view of README §6.1 heights, the latest published only
@@ -269,27 +272,34 @@ test.describe('home', () => {
       const viewport = await page.evaluate(() => document.body.clientWidth)
       const left = (viewport - 1600) / 2 + 64
       const box = async (locator: ReturnType<Page['locator']>) => (await locator.boundingBox())!
+      // Layout units are 1/64 px: compare positions within 0.05 px, not exactly
 
       const hero = await box(heroSection(page))
-      expect([hero.x, hero.width]).toEqual([0, viewport])
+      expect(hero.x).toBeCloseTo(0, 1)
+      expect(hero.width).toBeCloseTo(viewport, 1)
       const footer = await box(page.locator('footer'))
-      expect([footer.x, footer.width]).toEqual([0, viewport])
+      expect(footer.x).toBeCloseTo(0, 1)
+      expect(footer.width).toBeCloseTo(viewport, 1)
 
       const header = page.locator('header')
-      expect((await box(header.getByRole('link', { name: 'MGS MEBEL — на главную' }))).x).toBe(left)
+      expect((await box(header.getByRole('link', { name: 'MGS MEBEL — на главную' }))).x).toBeCloseTo(
+        left,
+        1,
+      )
       const cta = await box(
         header.getByRole('button', { name: `${CTA_LABEL} — выбрать мессенджер` }),
       )
-      expect(cta.x + cta.width).toBe(viewport - left)
-      expect((await box(page.locator('h1'))).x).toBe(left)
+      expect(cta.x + cta.width).toBeCloseTo(viewport - left, 1)
+      expect((await box(page.locator('h1'))).x).toBeCloseTo(left, 1)
       // The tab rail keeps to the right edge of the container
       const rail = await box(heroSection(page).getByRole('tab').first())
       // Half pixels with an odd containing block (the Linux scrollbar gutter): within 1px
       expect(Math.abs(rail.x + rail.width - (viewport - left))).toBeLessThanOrEqual(1)
-      expect((await box(page.locator('footer p').first())).x).toBe(left)
+      expect((await box(page.locator('footer p').first())).x).toBeCloseTo(left, 1)
       // The salon map is not a background: it keeps to the container
       const map = await box(page.getByRole('region', { name: SALONS_TITLE }).locator('.bg-map-bg'))
-      expect([map.x, map.width]).toEqual([left, 1600 - 128])
+      expect(map.x).toBeCloseTo(left, 1)
+      expect(map.width).toBeCloseTo(1600 - 128, 1)
 
       const backgrounds = await page.evaluate(() =>
         [document.documentElement, document.body].map((el) => getComputedStyle(el).backgroundColor),
@@ -304,7 +314,7 @@ test.describe('home', () => {
       })
       await page.screenshot({ path: `test-results/home/home-${width}.png` })
       await page.locator('footer').screenshot({ path: `test-results/home/footer-${width}.png` })
-      expect(await cls(page)).toBe(0)
+      expect(await layoutShifts(page), 'layout shifts: value, start, what moved').toEqual([])
       expect(await axe(page)).toEqual([])
     })
   }
@@ -337,12 +347,16 @@ test.describe('home', () => {
     for (const width of [390, 834, 1440] as const) {
       test(`${width}: a late font falls back to Arial without a layout shift`, async ({ page }) => {
         await page.setViewportSize({ width, height: 900 })
+        // Far past the ~100ms window of `optional` (300 ms once made it in time on a fast runner)
         await page.route('**/*.woff2', async (route) => {
-          await new Promise((resolve) => setTimeout(resolve, 300))
+          await new Promise((resolve) => setTimeout(resolve, 2000))
           await route.continue()
         })
+        const fontLoaded = page.waitForResponse('**/*.woff2')
         await page.goto(`${BASE}/`)
         await expect(page.locator('h1')).toBeVisible()
+        // Checked once the font has arrived: it is not swapped in and moves nothing
+        await fontLoaded
         await page.waitForTimeout(500)
         expect(await layoutShifts(page), 'layout shifts: value, start, what moved').toEqual([])
         // `optional`: a font that misses its ~100ms window is not swapped in later
@@ -356,7 +370,7 @@ test.describe('home', () => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto(`${BASE}/`)
     const track = page.getByRole('region', { name: NEWS_TITLE }).locator('.snap-x')
-    expect((await track.getByRole('group').first().boundingBox())!.x).toBe(20)
+    expect((await track.getByRole('group').first().boundingBox())!.x).toBeCloseTo(20, 1)
   })
 
   test.describe('news slider', () => {
@@ -642,6 +656,40 @@ test.describe('home', () => {
       expect(await scrollY(page)).toBe(0)
     })
 
+    // The rail's height is reserved in CSS (hero-tab-rail): a page painted before the rail is
+    // parsed (streamed HTML) already centres it at its final height. If the sizes of the buttons,
+    // tabs or gaps part ways with the reserve, this fails instead of the look.
+    for (const [width, height] of [
+      [768, 1024],
+      [1280, 800],
+      [1440, 900],
+      [2560, 1440],
+    ] as const) {
+      test(`${width}: the tab rail reserves the height of its parts, centred in the hero`, async ({
+        page,
+      }) => {
+        await page.setViewportSize({ width, height })
+        await page.goto(`${BASE}/`)
+        const rail = heroSection(page).getByRole('tablist').locator('..')
+        const { reserved, parts, center } = await rail.evaluate((el) => {
+          const box = el.getBoundingClientRect()
+          const gap = parseFloat(getComputedStyle(el).rowGap)
+          const children = [...el.children]
+          return {
+            reserved: box.height,
+            parts:
+              children.reduce((sum, child) => sum + child.getBoundingClientRect().height, 0) +
+              gap * (children.length - 1),
+            center: box.y + box.height / 2,
+          }
+        })
+        const hero = (await heroSection(page).boundingBox())!
+        expect(parts).toBeGreaterThan(0)
+        expect(reserved).toBeCloseTo(parts, 1)
+        expect(center).toBeCloseTo(hero.y + hero.height / 2, 1)
+      })
+    }
+
     test.describe('390 touch', () => {
       test.use({ viewport: { width: 390, height: 844 }, hasTouch: true })
 
@@ -718,9 +766,12 @@ test.describe('home', () => {
         const { x, y } = await center(next)
         await page.mouse.click(x, y)
         await expect.poll(() => segment(page)).toBe(1)
+        // Read at rest: after the switch transitions of the new block (not its progress fill)
+        await transitionsEnded(hero.locator('.hero-text:not([data-inactive])'))
         const second = await row()
         expect(first.gap).toBeGreaterThan(0)
-        expect(second.gap).toBe(first.gap)
+        // Layout units are 1/64 px: 12 can read as 11.99997 or 12.00003
+        expect(second.gap).toBeCloseTo(first.gap, 1)
         // «01 … 02»: the active number in accent, the other one dimmed
         expect(first.numbers.map(([text]) => text)).toEqual(['01', '02'])
         expect(second.numbers.map(([text]) => text)).toEqual(['01', '02'])

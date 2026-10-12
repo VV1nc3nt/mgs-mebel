@@ -234,7 +234,8 @@ describe('AppMenu', () => {
 
     // Closed: plays again (it is in the viewport)
     await waitFor(() => expect(screen.queryByRole('dialog', { hidden: true })).toBeNull())
-    expect(isOverlayOpen()).toBe(false)
+    // The menu leaves the DOM in the closing commit, the overlay flag clears in an effect after it
+    await waitFor(() => expect(isOverlayOpen()).toBe(false))
     expect(play).toHaveBeenCalledTimes(1)
   })
 
