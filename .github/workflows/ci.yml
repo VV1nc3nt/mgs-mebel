@@ -23,6 +23,7 @@ env:
     tests/e2e/not-found.e2e.spec.ts
     tests/e2e/header.e2e.spec.ts
     tests/e2e/revalidate.e2e.spec.ts
+    tests/e2e/partial-paint.e2e.spec.ts
   E2E_SHARD_2: >-
     tests/e2e/layout.e2e.spec.ts
     tests/e2e/dock.e2e.spec.ts

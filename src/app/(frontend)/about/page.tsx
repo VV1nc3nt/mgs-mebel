@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 
+import { FirstScreenEnd } from '@/components/app/FirstScreenEnd'
 import { PreviewRefresh } from '@/components/app/PreviewRefresh'
 import { HeroSection } from '@/components/sections/HeroSection'
 import { HistorySection } from '@/components/sections/HistorySection'
@@ -67,6 +68,7 @@ export default async function AboutPage() {
       <HeroSection hero={about.hero} messengers={messengers} idPrefix="about" />
       <StatsSection items={stats.items} className="pt-2" />
       <HistorySection history={about.history} />
+      <FirstScreenEnd />
       <NewsSection section={about.news} news={news} idPrefix="about" />
       <SalonsSection
         section={about.salons}

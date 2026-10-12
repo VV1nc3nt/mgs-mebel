@@ -1,6 +1,7 @@
 import { ContactButton } from '@/components/ui/ContactButton'
 import { HIT_AREA_Y } from '@/components/ui/hitArea'
 import type { SiteChrome } from '@/lib/chrome'
+import { cn } from '@/lib/cn'
 import { BackLink } from './BackLink'
 import { HeaderNav } from './HeaderNav'
 import { HeaderShell } from './HeaderShell'
@@ -16,12 +17,13 @@ export function AppHeader({ chrome }: { chrome: SiteChrome }) {
   const cta = Boolean(ctaLabel && messengers.length)
 
   return (
-    <HeaderShell>
+    <HeaderShell tallRow={cta}>
       <BackLink />
       <Logo />
       <HeaderNav items={chrome.nav} />
       {(phone || cta) && (
-        <div className="hidden items-center gap-4 xl:flex">
+        // With the CTA the group is as high as its 44 button even before the button is parsed
+        <div className={cn('hidden items-center gap-4 xl:flex', cta && 'min-h-11')}>
           {phone && (
             <a
               href={phone.href}

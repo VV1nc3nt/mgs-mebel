@@ -32,7 +32,17 @@ export const useHeaderOverMedia = () => use(OverMediaContext)
  * the bar inside it turns fixed, so nothing shifts. The pathname is known during SSR, so the HTML
  * already has the right variant.
  */
-export function HeaderShell({ children }: { children: ReactNode }) {
+export function HeaderShell({
+  children,
+  tallRow = false,
+}: {
+  children: ReactNode
+  /**
+   * Desktop row as high as the 44 CTA from the first paint: with a partly parsed document the
+   * row would otherwise grow when the CTA arrives and move the logo and sections.
+   */
+  tallRow?: boolean
+}) {
   const hero = isHeroRoute(useRoutePath())
   const menuOpen = useMenu().state !== 'closed'
   const [state, setState] = useState<HeaderState>('top')
@@ -109,7 +119,10 @@ export function HeaderShell({ children }: { children: ReactNode }) {
           {/* The CTA's open choice moves the phone aside (chooser-shifted) */}
           <div
             data-chooser-shift=""
-            className="page-container flex items-center justify-between gap-6 py-5"
+            className={cn(
+              'page-container flex items-center justify-between gap-6 py-5',
+              tallRow && 'xl:min-h-header-row',
+            )}
           >
             {children}
           </div>
