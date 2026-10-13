@@ -1,6 +1,6 @@
 /**
- * E2E data of the home page: the `home`, `about`, `salonsPage` and `stats` globals, news, projects and
- * salons with the seed
+ * E2E data of the pages: the `home`, `about`, `salonsPage`, `catalogsPage` and `stats` globals,
+ * news, projects, salons and catalogs with the seed
  * texts and media generated on the fly (no stock downloads, no binaries in git), then a draft
  * over the published home and a news draft for the «anonymous never sees drafts» checks.
  * Local database only.
@@ -15,6 +15,8 @@ import { news } from '../../src/seed/data/news'
 import { projects } from '../../src/seed/data/projects'
 import { salons } from '../../src/seed/data/salons'
 import { isLocalDatabaseUrl } from '../../src/seed/guard'
+import { placeholderPdf } from '../../src/seed/pdf'
+import { catalogPdfFile, E2E_CATALOGS } from './e2eCatalogs'
 import {
   ABOUT_CTA,
   E2E_NEWS_COUNT,
@@ -104,6 +106,32 @@ const upsertVideo = async (payload: Payload) => {
   }
 }
 
+const upsertFile = async (payload: Payload, name: string, mimetype: string, data: Buffer) => {
+  const existing = await findMedia(payload, name)
+  if (existing) return existing
+  const doc = await payload.create({
+    collection: 'media',
+    data: mimetype.startsWith('image/') ? { alt: 'Тестовый рендер каталога' } : {},
+    file: { data, mimetype, name, size: data.length },
+  })
+  return doc.id
+}
+
+/** A catalog render: a light «booklet» on a transparent background (PNG with alpha). */
+const renderPng = () =>
+  sharp({
+    create: { width: 800, height: 600, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+  })
+    .composite([
+      {
+        input: { create: { width: 360, height: 480, channels: 4, background: '#d8d2c6' } },
+        left: 220,
+        top: 60,
+      },
+    ])
+    .png()
+    .toBuffer()
+
 const upsertBySlug = async (
   payload: Payload,
   collection: 'news' | 'projects',
@@ -138,7 +166,9 @@ try {
     U2: ids.main,
     U3: ids.secondary,
   }
-  const { home, about, stats, salonsPage } = globals((key) => byKey[key] ?? ids.poster)
+  const { home, about, stats, salonsPage, catalogsPage } = globals(
+    (key) => byKey[key] ?? ids.poster,
+  )
   const slides = home.hero?.slides?.map((slide) => ({ ...slide, video: null })) ?? []
   const published = { ...home, hero: { ...home.hero, slides } }
 
@@ -245,8 +275,41 @@ try {
       depth: 0,
     })
   }
+  // «Каталоги»: the heading and the catalogs of E2E_CATALOGS (covers — the generated photos).
+  await payload.updateGlobal({
+    slug: 'catalogsPage',
+    data: { ...catalogsPage, _status: 'published' },
+    depth: 0,
+  })
+  const renderId = await upsertFile(payload, 'e2e-catalog-render.png', 'image/png', await renderPng())
+  for (const [i, catalog] of E2E_CATALOGS.entries()) {
+    const { totalDocs } = await payload.count({
+      collection: 'catalogs',
+      where: { title: { equals: catalog.title } },
+    })
+    if (totalDocs) continue
+    const pdf = await upsertFile(
+      payload,
+      catalogPdfFile(i),
+      'application/pdf',
+      placeholderPdf(catalog.title),
+    )
+    await payload.create({
+      collection: 'catalogs',
+      data: {
+        title: catalog.title,
+        category: catalog.category,
+        pages: catalog.pages,
+        cover: photoIds[i % photoIds.length]!,
+        render: catalog.render ? renderId : null,
+        pdf,
+        order: i + 1,
+      },
+      depth: 0,
+    })
+  }
   console.log(
-    'seedHome: stats, home (published + draft), about, salonsPage, news, projects, salons',
+    'seedHome: stats, home (published + draft), about, salonsPage, catalogsPage, news, projects, salons, catalogs',
   )
 } catch (error) {
   console.error(error)

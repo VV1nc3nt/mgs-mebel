@@ -3,7 +3,7 @@ import { draftMode } from 'next/headers'
 import { connection } from 'next/server'
 import type { DataFromGlobalSlug, Where } from 'payload'
 
-import type { News, Salon } from '@/payload-types'
+import type { Catalog, News, Salon } from '@/payload-types'
 
 import type { LayoutInput, SettingsInput } from './chrome'
 import { getPayloadClient } from './payload'
@@ -289,4 +289,64 @@ const salonCardsCached = unstable_cache(
 export async function getSalonCards(): Promise<SalonCardData[]> {
   await connection()
   return salonCardsCached()
+}
+
+export type CatalogData = Pick<
+  Catalog,
+  'id' | 'title' | 'category' | 'cover' | 'render' | 'pdf' | 'pages' | 'order'
+>
+
+// Media fields the cards and Open Graph read; `filesize` — the PDF size on the card. `url` is
+// computed from `filename` (and `prefix` with S3), so those are selected too.
+const CATALOG_MEDIA_SIZE = { url: true, filename: true, width: true, height: true } as const
+
+const catalogsCached = unstable_cache(
+  async (): Promise<CatalogData[]> => {
+    const payload = await getPayloadClient()
+    const { docs } = await payload.find({
+      collection: 'catalogs',
+      sort: 'order',
+      pagination: false,
+      depth: 1,
+      overrideAccess: false,
+      select: {
+        title: true,
+        category: true,
+        cover: true,
+        render: true,
+        pdf: true,
+        pages: true,
+        order: true,
+      },
+      populate: {
+        media: {
+          alt: true,
+          url: true,
+          filename: true,
+          prefix: true,
+          mimeType: true,
+          filesize: true,
+          width: true,
+          height: true,
+          focalX: true,
+          focalY: true,
+          sizes: {
+            thumb: CATALOG_MEDIA_SIZE,
+            card: CATALOG_MEDIA_SIZE,
+            hero: CATALOG_MEDIA_SIZE,
+            og: CATALOG_MEDIA_SIZE,
+          },
+        },
+      },
+    })
+    return docs
+  },
+  ['collection:catalogs'],
+  { tags: [collectionTag('catalogs')] },
+)
+
+/** Catalogs of the «Каталоги» page with the cover, render and PDF, in the editor's order. */
+export async function getCatalogs(): Promise<CatalogData[]> {
+  await connection()
+  return catalogsCached()
 }

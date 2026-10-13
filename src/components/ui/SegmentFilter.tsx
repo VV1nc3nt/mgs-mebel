@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode, type Ref } from 'react'
 
 import { useReducedMotion } from '@/hooks/useReducedMotion'
 import { cn } from '@/lib/cn'
@@ -28,6 +28,8 @@ export type SegmentFilterProps<T extends string> = {
   count?: string
   /** Right side of the counter row, e.g. sorting (bar only). */
   extra?: ReactNode
+  /** The outer element, e.g. to tell whether the sticky bar is stuck (useSegmentFilter). */
+  ref?: Ref<HTMLDivElement>
   className?: string
 }
 
@@ -46,6 +48,7 @@ export function SegmentFilter<T extends string>({
   sticky = false,
   count,
   extra,
+  ref,
   className,
 }: SegmentFilterProps<T>) {
   const reducedMotion = useReducedMotion()
@@ -92,7 +95,8 @@ export function SegmentFilter<T extends string>({
           variant === 'bar'
             ? cn(
                 segmentItemBase,
-                'h-9.5 gap-1.75 px-4 text-button-s',
+                // Category labels are capitalised in the CMS, lowercase on the site
+                'h-9.5 gap-1.75 px-4 text-button-s lowercase',
                 selected
                   ? 'bg-text text-bg shadow-segment'
                   : 'font-semibold text-text-3 hover:bg-surface-3 hover:text-text',
@@ -118,9 +122,10 @@ export function SegmentFilter<T extends string>({
 
   return (
     <div
+      ref={ref}
       className={cn(
         'flex flex-col gap-3',
-        sticky && 'sticky-under-header z-10 border-b border-line-sticky glass-sticky pt-4 pb-3.5',
+        sticky && 'sticky-under-header z-sticky border-b border-line-sticky glass-sticky pt-4 pb-3.5',
         className,
       )}
     >

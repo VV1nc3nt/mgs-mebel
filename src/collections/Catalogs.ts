@@ -2,15 +2,8 @@ import type { CollectionConfig } from 'payload'
 
 import { anyRole, publicRead } from '@/access'
 import { imageField, pdfField } from '@/fields/media'
+import { catalogCategoryOptions } from '@/lib/catalogCategories'
 import { revalidateCollection } from '@/lib/revalidate'
-
-export const catalogCategoryOptions = [
-  { label: 'Кухни', value: 'kitchens' },
-  { label: 'Гардеробные', value: 'wardrobes' },
-  { label: 'Фасады', value: 'facades' },
-  { label: 'Ванные', value: 'bathrooms' },
-  { label: 'Столы и стулья', value: 'tables' },
-]
 
 export const Catalogs: CollectionConfig = {
   slug: 'catalogs',
@@ -35,9 +28,15 @@ export const Catalogs: CollectionConfig = {
       type: 'select',
       label: 'Категория',
       required: true,
-      options: catalogCategoryOptions,
+      options: [...catalogCategoryOptions],
     },
     imageField('cover', { label: 'Обложка', required: true }),
+    imageField('render', {
+      label: 'Рендер обложки',
+      admin: {
+        description: 'PNG/WebP с прозрачностью; есть — показываем его, нет — мокап из обложки.',
+      },
+    }),
     pdfField('pdf', {
       label: 'PDF',
       required: true,

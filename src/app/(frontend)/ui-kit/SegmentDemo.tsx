@@ -3,9 +3,11 @@
 import { useState } from 'react'
 
 import { SegmentFilter, type SegmentItem } from '@/components/ui/SegmentFilter'
+import { catalogCategoryOptions } from '@/lib/catalogCategories'
+import { catalogCount } from '@/lib/catalogs'
 import { plural } from '@/lib/plural'
 
-// Filter labels from README §6.4 / §6.5; on the pages they come with step 6.
+// Works filter labels from README §6.4; catalog categories — the same list as the CMS.
 const WORKS = [
   { value: 'reels', label: 'reels' },
   { value: 'complex', label: 'комплекс' },
@@ -19,11 +21,7 @@ const WORKS = [
 
 const CATALOGS = [
   { value: 'all', label: 'все' },
-  { value: 'kitchens', label: 'кухни' },
-  { value: 'wardrobes', label: 'гардеробные' },
-  { value: 'facades', label: 'фасады' },
-  { value: 'bathrooms', label: 'ванные' },
-  { value: 'tables', label: 'столы и стулья' },
+  ...catalogCategoryOptions,
 ] as const satisfies readonly SegmentItem<string>[]
 
 const VIEWS = [
@@ -61,7 +59,7 @@ export function CatalogsSegmentDemo({ catalogCounts }: Pick<Props, 'catalogCount
       value={value}
       onChange={setValue}
       label="Категории каталогов"
-      count={`${n} ${plural(n, ['каталог', 'каталога', 'каталогов'])}`}
+      count={catalogCount(n)}
     />
   )
 }

@@ -1,10 +1,33 @@
 import Link from 'next/link'
 import type { MouseEventHandler } from 'react'
 
+import { cn } from '@/lib/cn'
+
+const SIZE = {
+  header: { mark: 'text-logo', sub: 'text-logo-sub' },
+  // Catalog booklet mockup (design: catalogs)
+  booklet: { mark: 'text-logo-booklet', sub: 'text-logo-booklet-sub' },
+} as const
+
 /**
- * Text logo (README §3): «MGS» with an accent «S», «MEBEL» spaced out below. The official SVG
- * replaces it here, in one place (README §10). `onClick`: the menu closes itself on it.
+ * Text logo (README §3): «MGS» with an accent «S», «MEBEL» spaced out below — two lines for a
+ * flex column of the parent. The official SVG replaces it here, in one place (README §10).
  */
+export function LogoMark({ size = 'header' }: { size?: keyof typeof SIZE }) {
+  return (
+    <>
+      <span aria-hidden="true" className={cn(SIZE[size].mark, 'text-text')}>
+        MG<span className="text-accent">S</span>
+      </span>
+      {/* The negative margin cancels the letter-spacing after the last letter, so it stays centred */}
+      <span aria-hidden="true" className={cn('-mr-[0.7em]', SIZE[size].sub, 'text-text-2')}>
+        MEBEL
+      </span>
+    </>
+  )
+}
+
+/** The logo link to the home page. `onClick`: the menu closes itself on it. */
 export function Logo({ onClick }: { onClick?: MouseEventHandler<HTMLAnchorElement> }) {
   return (
     <Link
@@ -13,13 +36,7 @@ export function Logo({ onClick }: { onClick?: MouseEventHandler<HTMLAnchorElemen
       aria-label="MGS MEBEL — на главную"
       className="flex min-h-logo flex-col items-center gap-0.75"
     >
-      <span aria-hidden="true" className="text-logo text-text">
-        MG<span className="text-accent">S</span>
-      </span>
-      {/* The negative margin cancels the letter-spacing after the last letter, so it stays centred */}
-      <span aria-hidden="true" className="-mr-[0.7em] text-logo-sub text-text-2">
-        MEBEL
-      </span>
+      <LogoMark />
     </Link>
   )
 }
