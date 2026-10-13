@@ -73,7 +73,7 @@ export function CatalogCard({ catalog }: Props) {
       <div className="flex flex-1 flex-col gap-3.5 px-5 pt-4.5 pb-5">
         <div className="flex flex-1 flex-col gap-1.5">
           <p className="text-eyebrow text-text-4 uppercase">Каталог</p>
-          <h3 className="text-card-title">{catalog.title}</h3>
+          <h2 className="text-card-title">{catalog.title}</h2>
           <p className="text-body-xs text-text-3">{catalogMeta(catalog.pages, pdf?.filesize)}</p>
         </div>
         {pdf?.url && (

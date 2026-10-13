@@ -115,6 +115,9 @@ test.describe('catalogs', () => {
       await expect(segment(page, 'все')).toHaveAttribute('aria-pressed', 'true')
       await expect(counter(page)).toHaveText('8 каталогов')
       await expect(cards(page)).toHaveCount(COUNT.all)
+      // H1 → H2 card titles, no skipped level
+      await expect(page.locator('main h2')).toHaveCount(COUNT.all)
+      await expect(page.locator('main h3')).toHaveCount(0)
       // Columns: the distinct left edges of the cards
       const lefts = await cards(page).evaluateAll((els) =>
         [...new Set(els.map((el) => Math.round(el.getBoundingClientRect().left)))].length,
@@ -200,7 +203,7 @@ test.describe('catalogs', () => {
     await page.goto(`${URL}?category=facades`)
     await expect(cards(page)).toHaveCount(COUNT.facades)
     await expect(counter(page)).toHaveText('5 каталогов')
-    await expect(page.getByRole('heading', { level: 3, name: 'Кухни 2026' })).toHaveCount(0)
+    await expect(page.getByRole('heading', { level: 2, name: 'Кухни 2026' })).toHaveCount(0)
     await page.goto(URL)
     await expect(cards(page)).toHaveCount(COUNT.all)
     await expect(counter(page)).toHaveText('8 каталогов')

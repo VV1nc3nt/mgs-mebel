@@ -117,7 +117,7 @@ const catalog = (over: Partial<CatalogData> = {}): CatalogData => ({
 describe('CatalogCard', () => {
   it('title, meta, the category badge and both links', () => {
     const { container } = render(<CatalogCard catalog={catalog()} />)
-    expect(screen.getByRole('heading', { level: 3 }).textContent).toBe('Кухни 2026')
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Кухни 2026')
     expect(screen.getByText('96 страниц · PDF, 24 МБ')).toBeTruthy()
     expect(screen.getByText('Кухни').className).toContain('lowercase')
     const view = screen.getByRole('link', { name: 'Смотреть каталог „Кухни 2026“' })
@@ -128,7 +128,7 @@ describe('CatalogCard', () => {
     expect(download.getAttribute('href')).toBe(pdf.url)
     expect(download.hasAttribute('download')).toBe(true)
     expect(download.hasAttribute('target')).toBe(false)
-    // The mockup: the booklet with the cover photo and the title (hidden: the H3 says it)
+    // The mockup: the booklet with the cover photo and the title (hidden: the H2 says it)
     expect(container.querySelector('.catalog-booklet')).toBeTruthy()
     expect(screen.getByRole('img', { name: photo.alt! })).toBeTruthy()
   })
