@@ -6,6 +6,7 @@ import { salons } from '../../src/seed/data/salons'
 import { E2E_SALONS } from '../helpers/e2eHome'
 import { expectShowSalonAtCorner } from '../helpers/salonMap'
 import { layoutShifts, settle } from '../helpers/scroll'
+import { armScrollEnd, swiper as swipeTrack } from '../helpers/swipe'
 import { PLAYBACK_ATTR, stubPlayback } from '../helpers/video'
 
 // «Фирменные салоны» (design: salons v2): heading, salon cards, the map with the list and the card.
@@ -75,47 +76,8 @@ const playback = (video: Locator) => video.getAttribute(PLAYBACK_ATTR)
 
 const trackOf = (page: Page) => cardsOf(page).locator('.snap-x')
 
-/**
- * Listens for the end of the track's scroll before the scroll starts; the returned wait resolves
- * on `scrollend` (or after 1.5 s if the track never scrolls).
- */
-const armScrollEnd = async (track: Locator) => {
-  await track.evaluate((el) => {
-    const t = el as HTMLElement & { ended?: Promise<void> }
-    t.ended = new Promise((resolve) => {
-      el.addEventListener('scrollend', () => resolve(), { once: true })
-      setTimeout(resolve, 1500)
-    })
-  })
-  return () => track.evaluate((el) => (el as HTMLElement & { ended?: Promise<void> }).ended)
-}
-
-/**
- * Swipes the salon cards with a finger (touch events, as in the home hero test): a drag of 0.6 card
- * across the middle of the track at a finger's pace, then the finger rests before it lifts — no
- * fling, so the track snaps to the next card, not past it. Resolves on scrollend. Needs `hasTouch`.
- */
-const swiper = async (page: Page) => {
-  const cdp = await page.context().newCDPSession(page)
-  const touch = (type: 'touchStart' | 'touchMove', x: number, y: number) =>
-    cdp.send('Input.dispatchTouchEvent', { type, touchPoints: [{ x: Math.round(x), y }] })
-  return async (direction: 1 | -1) => {
-    const box = (await slide(page, 0).boundingBox())!
-    const y = Math.round(box.y + box.height / 2)
-    const from = page.viewportSize()!.width / 2 + direction * box.width * 0.3
-    const distance = -direction * box.width * 0.6
-    const ended = await armScrollEnd(trackOf(page))
-    await touch('touchStart', from, y)
-    for (let i = 1; i <= 8; i++) {
-      await touch('touchMove', from + (distance * i) / 8, y)
-      await page.waitForTimeout(16)
-    }
-    await page.waitForTimeout(200)
-    await touch('touchMove', from + distance, y)
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
-    await ended()
-  }
-}
+/** Swipes the salon cards (tests/helpers/swipe.ts). Needs `hasTouch`. */
+const swiper = (page: Page) => swipeTrack(page, { track: trackOf(page), slide: slide(page, 0) })
 
 /**
  * The track's distance from the snap target of a card: its start against the snapport start

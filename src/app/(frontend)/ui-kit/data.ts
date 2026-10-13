@@ -5,10 +5,12 @@ import { getPayloadClient } from '@/lib/payload'
 export type UiKitData = {
   news: News[]
   newsCount: { all: number; news: number; new: number } | null
-  /** «О нас»: a single hero and the history (the home page has the hero scene instead). */
+  /** «О нас»: a single hero, the history, the presentation, the hardware and the exhibitions. */
   hero: About['hero'] | null
   history: About['history'] | null
   mission: About['mission'] | null
+  hardware: About['hardware'] | null
+  exhibitions: About['exhibitions'] | null
   stats: NonNullable<Stat['items']>
   /** Works per category; `reels` — projects that start with a video. */
   workCounts: Partial<Record<Project['category'] | 'reels', number>>
@@ -21,6 +23,8 @@ const EMPTY: UiKitData = {
   hero: null,
   history: null,
   mission: null,
+  hardware: null,
+  exhibitions: null,
   stats: [],
   workCounts: {},
   catalogCounts: {},
@@ -72,6 +76,8 @@ export async function getUiKitData(): Promise<UiKitData> {
       hero: about.hero,
       history: about.history,
       mission: about.mission,
+      hardware: about.hardware,
+      exhibitions: about.exhibitions,
       stats: stats.items ?? [],
       workCounts: {
         ...countBy(projects.docs.map((p) => p.category)),

@@ -17,6 +17,7 @@ import { StatCard } from '@/components/ui/StatCard'
 import { MESSENGER_NAMES, toChrome } from '@/lib/chrome'
 import { getSettings } from '@/lib/queries'
 import { getUiKitData } from './data'
+import { PlayerDemo, SliderDemo } from './MediaDemo'
 import { CatalogsSegmentDemo, ViewSegmentDemo, WorksSegmentDemo } from './SegmentDemo'
 
 // Dev sandbox: hidden from search engines and never listed in the sitemap.
@@ -51,8 +52,21 @@ export default async function UiKitPage() {
   await connection()
   if (process.env.ENABLE_UI_KIT !== 'true') notFound()
 
-  const [{ news, newsCount, hero, history, mission, stats, workCounts, catalogCounts }, settings] =
-    await Promise.all([getUiKitData(), getSettings()])
+  const [
+    {
+      news,
+      newsCount,
+      hero,
+      history,
+      mission,
+      hardware,
+      exhibitions,
+      stats,
+      workCounts,
+      catalogCounts,
+    },
+    settings,
+  ] = await Promise.all([getUiKitData(), getSettings()])
   // Messengers from the settings, in their order; 1 / 2 / 3 of them for the variants
   const { messengers } = toChrome({}, settings)
   const [first, second, third] = news
@@ -429,13 +443,23 @@ export default async function UiKitPage() {
         </Row>
         <Row note="В карточке (MediaCard video): монтируется и играет, когда видна половина блока; меньше — пауза">
           <MediaCard
-            media={mission?.poster}
-            video={mission?.video}
+            media={hardware?.poster}
+            video={hardware?.video}
             sizes={{ base: '100vw', md: '50vw' }}
             ratio="4/5"
             className="w-full md:w-1/2"
           />
         </Row>
+      </Section>
+
+      <Section title="PosterPlayer">
+        <Row note="Постер → видео со звуком по клику: файл (нативные controls, по окончании — снова постер), RuTube и VK Видео (плеер площадки на месте блока), без видео — постер без ▶. Звук — только у одного плеера.">
+          <PlayerDemo mission={mission} />
+        </Row>
+      </Section>
+
+      <Section title="MediaSlider">
+        <SliderDemo exhibitions={exhibitions} />
       </Section>
 
       <Section title="SegmentFilter">

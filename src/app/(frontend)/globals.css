@@ -163,6 +163,20 @@
   --text-title-s--letter-spacing: -0.01em;
   --text-title-s--font-weight: 700;
 
+  /* Media slider card title: exhibitions «О нас» (design: about v2 §2.7) */
+  --text-expo-title: 1.75rem;
+  --text-expo-title--line-height: 1.05;
+  --text-expo-title--letter-spacing: -0.03em;
+  --text-expo-title--font-weight: 700;
+  --text-expo-title-md: 2.75rem;
+  --text-expo-title-md--line-height: 1.05;
+  --text-expo-title-md--letter-spacing: -0.03em;
+  --text-expo-title-md--font-weight: 700;
+  --text-expo-title-xl: 3.5rem;
+  --text-expo-title-xl--line-height: 1.05;
+  --text-expo-title-xl--letter-spacing: -0.03em;
+  --text-expo-title-xl--font-weight: 700;
+
   /* Article (/news/[slug]) */
   --text-article-title: 2.375rem;
   --text-article-title--line-height: 1;
@@ -215,6 +229,19 @@
   /* Salon card in the slider: 82% mobile, 44% tablet of the track (design: salons v2 §3) */
   --spacing-salon-slide: 82%;
   --spacing-salon-slide-md: 44%;
+  /* Play button of the poster player (design: about v2 §2.5) */
+  --spacing-play: 88px;
+  /* Media slider cards: exhibitions «О нас» — width of the track and height (design: about v2
+     §2.7); projects «Дизайнерам» — width, the height comes from the aspect ratio (designers v2 §2.3) */
+  --spacing-expo-slide: 86%;
+  --spacing-expo-slide-md: 62%;
+  --spacing-expo-slide-xl: min(78%, 1120px);
+  --spacing-expo-card: 440px;
+  --spacing-expo-card-md: 520px;
+  --spacing-expo-card-xl: 620px;
+  --spacing-project-slide: 86%;
+  --spacing-project-slide-md: 80%;
+  --spacing-project-slide-xl: min(82%, 1180px);
 
   /* Containers */
   --container-page: 1600px;
@@ -479,6 +506,58 @@
     rgb(0 0 0 / 0) 50%,
     rgb(0 0 0 / 0.85) 100%
   );
+}
+
+/* Poster player before it starts (design: about v2 §2.5) */
+@utility bg-overlay-promo {
+  background-image: linear-gradient(
+    180deg,
+    rgb(20 20 19 / 0.7) 0%,
+    rgb(20 20 19 / 0.15) 40%,
+    rgb(20 20 19 / 0.75) 100%
+  );
+}
+
+/* Media slider card: exhibitions «О нас» (design: about v2 §2.7) */
+@utility bg-overlay-expo {
+  background-image: linear-gradient(
+    180deg,
+    rgb(20 20 19 / 0.2) 0%,
+    rgb(20 20 19 / 0.4) 40%,
+    rgb(20 20 19 / 0.95) 100%
+  );
+}
+
+/* Project card of the media slider «Дизайнерам» (design: designers v2 §2.3) */
+@utility bg-overlay-project {
+  background-image: linear-gradient(180deg, rgb(20 20 19 / 0) 50%, rgb(20 20 19 / 0.9) 100%);
+}
+
+/*
+ * A heading laid over a poster player from desktop: it fades out while the player plays (the
+ * gradient under it is gone) and comes back with the poster. The section carries
+ * data-player-host, the player sets data-playing on itself. Opacity only, then visibility once
+ * faded — the layout never changes and the heading stays in the document. Reduced motion: at once.
+ */
+@utility media-heading-fade {
+  @variant xl {
+    transition:
+      opacity var(--motion-video-in) ease-out,
+      visibility 0s linear 0s;
+    [data-player-host]:has([data-playing]) & {
+      opacity: 0;
+      visibility: hidden;
+      transition:
+        opacity var(--motion-video-in) ease-out,
+        visibility 0s linear var(--motion-video-in);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &,
+    [data-player-host]:has([data-playing]) & {
+      transition: none;
+    }
+  }
 }
 
 /* «История»: photo grid, a 3:4 photo and a narrower column (design: home) */

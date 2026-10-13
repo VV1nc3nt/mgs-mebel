@@ -56,6 +56,7 @@ describe('validateEmbedUrl', () => {
     expect(validateEmbedUrl(null)).toBe(true)
     expect(validateEmbedUrl('https://rutube.ru/video/abc/')).toBe(true)
     expect(validateEmbedUrl('https://vkvideo.ru/video-1_2')).toBe(true)
+    expect(validateEmbedUrl('https://vk.ru/video-1_2')).toBe(true)
     expect(validateEmbedUrl('https://www.youtube.com/watch?v=abc')).not.toBe(true)
     expect(validateEmbedUrl('http://rutube.ru/video/abc/')).not.toBe(true)
   })

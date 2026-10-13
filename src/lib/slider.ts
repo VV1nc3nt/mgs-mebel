@@ -50,3 +50,28 @@ export const nearestSlide = (targets: number[], scrollLeft: number): number => {
   })
   return nearest
 }
+
+/** Index kept in 0…count−1 (arrows that stop at the ends); 0 for an empty slider. */
+export const clampIndex = (index: number, count: number): number =>
+  count > 0 ? Math.min(Math.max(index, 0), count - 1) : 0
+
+export const atStart = (index: number): boolean => index <= 0
+
+export const atEnd = (index: number, count: number): boolean => index >= count - 1
+
+/**
+ * The inline-axis value of a computed `scroll-snap-align`: «block inline» or one value for both,
+ * so the last word.
+ */
+export const snapAlignOf = (value: string | undefined): SnapAlign =>
+  value?.trim().split(/\s+/).pop() === 'center' ? 'center' : 'start'
+
+/** The track is off a snap target by a pixel or more: it has to move there. */
+export const needsRealign = (target: number, scrollLeft: number): boolean =>
+  Math.abs(target - scrollLeft) >= 1
+
+/** Slider counter «01 / 04»: the current slide (1-based) and the count, two digits at least. */
+export const counterParts = (index: number, count: number): [string, string] => [
+  String(index + 1).padStart(2, '0'),
+  String(count).padStart(2, '0'),
+]
