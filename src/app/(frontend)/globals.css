@@ -39,6 +39,9 @@
   --color-map-line-2: #212325;
   /* Bottom line of the sticky segment bar (design: works/catalogs pages) */
   --color-line-sticky: #1f1f1e;
+  /* Catalog booklet mockup: back sheet and cover face (design: catalogs) */
+  --color-booklet-back: #2c2c2a;
+  --color-booklet-face: #191918;
 
   /* Font */
   --font-sans: var(--font-manrope), system-ui, sans-serif;
@@ -143,6 +146,20 @@
   --text-logo-sub--line-height: 1;
   --text-logo-sub--letter-spacing: 0.7em;
   --text-logo-sub--font-weight: 600;
+  /* The same logo on the catalog booklet mockup (design: catalogs) */
+  --text-logo-booklet: 0.9375rem;
+  --text-logo-booklet--line-height: 1;
+  --text-logo-booklet--letter-spacing: -0.03em;
+  --text-logo-booklet--font-weight: 800;
+  --text-logo-booklet-sub: 0.3125rem;
+  --text-logo-booklet-sub--line-height: 1;
+  --text-logo-booklet-sub--letter-spacing: 0.7em;
+  --text-logo-booklet-sub--font-weight: 600;
+  /* Catalog title on the booklet, uppercase (design: catalogs) */
+  --text-booklet-title: 0.5625rem;
+  --text-booklet-title--line-height: 1.2;
+  --text-booklet-title--letter-spacing: 0.02em;
+  --text-booklet-title--font-weight: 700;
 
   /* Footer (design: <footer> of every page) */
   --text-slogan: 1.625rem;
@@ -173,6 +190,11 @@
   --text-title-s--line-height: 1.25;
   --text-title-s--letter-spacing: -0.01em;
   --text-title-s--font-weight: 700;
+  /* Catalog card title (design: catalogs) */
+  --text-card-title: 1.3125rem;
+  --text-card-title--line-height: 1.2;
+  --text-card-title--letter-spacing: -0.015em;
+  --text-card-title--font-weight: 700;
 
   /* Media slider card title: exhibitions «О нас» (design: about v2 §2.7) */
   --text-expo-title: 1.75rem;
@@ -287,6 +309,10 @@
   --shadow-dock: 0 10px 30px rgb(0 0 0 / 0.35);
   /* Active item of the segment bar (design: works/catalogs pages) */
   --shadow-segment: 0 2px 10px rgb(0 0 0 / 0.35);
+  /* Catalog booklet mockup (README §3: mockup shadows; design: catalogs) */
+  --shadow-booklet: 24px 30px 40px rgb(0 0 0 / 0.55), inset 0 0 0 1px rgb(255 255 255 / 0.04);
+  --shadow-booklet-back: 16px 20px 30px rgb(0 0 0 / 0.4);
+  --shadow-booklet-face: inset 0 0 0 1px rgb(255 255 255 / 0.05);
 
   /* Backdrop blur: soft — buttons over media, glass — badges, sticky — sticky bar and dock */
   --blur-soft: 8px;
@@ -563,6 +589,101 @@
   );
 }
 
+/*
+ * Catalog cover (design: catalogs; README §6.5): 260 high on a soft radial gradient. Without a
+ * render — a tilted booklet mockup: a lime line across, the back sheet, the cover face with the
+ * logo, the title and the cover photo in its lower half.
+ */
+@utility catalog-cover {
+  position: relative;
+  height: 260px;
+  overflow: hidden;
+  background-image: radial-gradient(
+    120% 90% at 70% 20%,
+    var(--color-divider) 0%,
+    var(--color-surface-2) 55%,
+    var(--color-bg) 100%
+  );
+}
+
+@utility catalog-line {
+  position: absolute;
+  inset-inline: -40px;
+  bottom: 58px;
+  height: 1px;
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--color-accent) 50%, transparent),
+    transparent
+  );
+  rotate: -24deg;
+}
+
+@utility catalog-booklet {
+  position: relative;
+  width: 150px;
+  height: 200px;
+  border-radius: 4px;
+  background-color: var(--color-surface-selected);
+  box-shadow: var(--shadow-booklet);
+  transform: rotate(-12deg) translateX(-18px);
+}
+
+@utility catalog-booklet-back {
+  position: absolute;
+  left: 10px;
+  top: 12px;
+  width: 132px;
+  height: 176px;
+  border-radius: 3px;
+  background-color: var(--color-booklet-back);
+  box-shadow: var(--shadow-booklet-back);
+  transform: translate(26px, -10px) rotate(4deg);
+}
+
+@utility catalog-booklet-face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 4px;
+  background-color: var(--color-booklet-face);
+  box-shadow: var(--shadow-booklet-face);
+}
+
+/* The cover photo: the lower 52% of the face, darkened at its top edge */
+@utility catalog-booklet-photo {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 52%;
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-booklet-face) 50%, transparent),
+      transparent 40%
+    );
+  }
+}
+
+@utility catalog-booklet-logo {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+@utility catalog-booklet-title {
+  position: absolute;
+  top: 44px;
+  inset-inline: 14px;
+}
+
 /* Project card of the media slider «Дизайнерам» (design: designers v2 §2.3) */
 @utility bg-overlay-project {
   background-image: linear-gradient(180deg, rgb(20 20 19 / 0) 50%, rgb(20 20 19 / 0.9) 100%);
@@ -632,13 +753,18 @@
 }
 
 /*
- * Stacking order, the only place z-index values live: content < header over the hero < dock <
- * project viewer < menu < menu header < skip link. header 8 and dock 20: design (dc.html);
+ * Stacking order, the only place z-index values live: content < sticky bar < header over the
+ * hero < dock < project viewer < menu < menu header < skip link. Sticky bar 5 (segment filters,
+ * under the pinned header), header 8 and dock 20: design (dc.html);
  * viewer 50, menu 60 / 61: README §6.4, §5.3. Inside a media block (its own stacking context,
  * `isolate`): text over the media — 1, above the player that follows it in the document.
  */
 @utility z-media-text {
   z-index: 1;
+}
+
+@utility z-sticky {
+  z-index: 5;
 }
 
 @utility z-header {

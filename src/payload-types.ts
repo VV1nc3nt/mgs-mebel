@@ -443,6 +443,10 @@ export interface Catalog {
   category: 'kitchens' | 'wardrobes' | 'facades' | 'bathrooms' | 'tables';
   cover: number | Media;
   /**
+   * PNG/WebP с прозрачностью; есть — показываем его, нет — мокап из обложки.
+   */
+  render?: (number | null) | Media;
+  /**
    * Размер файла на сайте берётся из загруженного PDF.
    */
   pdf: number | Media;
@@ -739,6 +743,7 @@ export interface CatalogsSelect<T extends boolean = true> {
   title?: T;
   category?: T;
   cover?: T;
+  render?: T;
   pdf?: T;
   pages?: T;
   order?: T;

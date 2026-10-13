@@ -82,5 +82,6 @@ export const catalogs = (id: MediaId): Catalog[] =>
     pages,
     cover: id(cover),
     pdf: id(key),
+    render: null,
     order: index + 1,
   }))
