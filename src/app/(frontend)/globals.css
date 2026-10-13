@@ -195,6 +195,11 @@
   --text-card-title--line-height: 1.2;
   --text-card-title--letter-spacing: -0.015em;
   --text-card-title--font-weight: 700;
+  /* Capability card «Дизайнерам» (design: designers v2 §2.2) */
+  --text-capability-title: 1.1875rem;
+  --text-capability-title--line-height: 1.2;
+  --text-capability-title--letter-spacing: -0.015em;
+  --text-capability-title--font-weight: 700;
 
   /* Media slider card title: exhibitions «О нас» (design: about v2 §2.7) */
   --text-expo-title: 1.75rem;
@@ -251,6 +256,8 @@
   /* Hero height: 640 mobile, 780 tablet and the desktop minimum (README §4) */
   --spacing-hero: 640px;
   --spacing-hero-md: 780px;
+  /* Hero «Дизайнерам», mobile (design: designers v2 §2.1) */
+  --spacing-hero-tall: 680px;
   /* Home statistics card in the mobile carousel (design: home) */
   --spacing-stat-card: 164px;
   /* Home news slider: 440 mobile; tall media blocks 560 tablet, 640 desktop (README §6.1) */
@@ -275,6 +282,9 @@
   --spacing-project-slide: 86%;
   --spacing-project-slide-md: 80%;
   --spacing-project-slide-xl: min(82%, 1180px);
+  /* «Дизайнерам»: capability card in the mobile strip; the manager photo (designers v2 §2.2, §2.4) */
+  --spacing-capability-card: 300px;
+  --spacing-avatar: 88px;
 
   /* Containers */
   --container-page: 1600px;
@@ -284,6 +294,8 @@
   /* Home hero: text block from tablet, its paragraph (design: home) */
   --container-hero: 640px;
   --container-hero-text: 460px;
+  /* Hero paragraph «Дизайнерам» (design: designers v2 §2.1) */
+  --container-hero-lead: 520px;
   /* Text of a news slide (design: home) */
   --container-slide-text: 640px;
   /* Salon card over the map (design: home) */
@@ -313,6 +325,8 @@
   --shadow-booklet: 24px 30px 40px rgb(0 0 0 / 0.55), inset 0 0 0 1px rgb(255 255 255 / 0.04);
   --shadow-booklet-back: 16px 20px 30px rgb(0 0 0 / 0.4);
   --shadow-booklet-face: inset 0 0 0 1px rgb(255 255 255 / 0.05);
+  /* Lime ring of the manager photo, apart from it by the card surface (design: designers v2 §2.4) */
+  --shadow-avatar-ring: 0 0 0 3px var(--color-surface), 0 0 0 4px var(--color-accent);
 
   /* Backdrop blur: soft — buttons over media, glass — badges, sticky — sticky bar and dock */
   --blur-soft: 8px;
