@@ -10,7 +10,7 @@ import { slowHtmlProxy } from '../helpers/slowHtml'
 // the type scale.
 const BASE = 'http://localhost:3000'
 const EMPTY_DB = !!process.env.E2E_EMPTY_DB
-const PAGES = ['/', '/salons', '/about', '/catalogs'] as const
+const PAGES = ['/', '/salons', '/about', '/catalogs', '/designers'] as const
 const VIEWPORTS = [
   [390, 844],
   [834, 1194],
@@ -66,6 +66,7 @@ test.describe('partial paint', () => {
     ['/salons', [HEADER_END_ID, FIRST_SCREEN_END_ID]],
     ['/about', [HEADER_END_ID, FIRST_SCREEN_END_ID]],
     ['/catalogs', [HEADER_END_ID, FIRST_SCREEN_END_ID]],
+    ['/designers', [HEADER_END_ID, FIRST_SCREEN_END_ID]],
     ['/ui-kit', [HEADER_END_ID]],
     ['/nesushchestvuet', [HEADER_END_ID]],
   ] as const) {
