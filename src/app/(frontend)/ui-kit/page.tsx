@@ -299,11 +299,27 @@ export default async function UiKitPage() {
 
       <Section title="StatCard">
         {stats.length ? (
-          <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-6">
-            {stats.map((item) => (
-              <StatCard key={item.id ?? item.value} value={item.value} label={item.label} />
-            ))}
-          </div>
+          <>
+            <Row note="size md — лента под hero «О нас» (до 1280): 34 / 300, до подписи 28">
+              <div className="grid w-full grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-6">
+                {stats.map((item) => (
+                  <StatCard key={item.id ?? item.value} value={item.value} label={item.label} />
+                ))}
+              </div>
+            </Row>
+            <Row note="size lg — сетка 3 колонки в «Истории» (от 1280): 36 / 300, до подписи 24">
+              <div className="grid w-full grid-cols-3 gap-2.5">
+                {stats.map((item) => (
+                  <StatCard
+                    key={item.id ?? item.value}
+                    value={item.value}
+                    label={item.label}
+                    size="lg"
+                  />
+                ))}
+              </div>
+            </Row>
+          </>
         ) : (
           <p className="text-body-s text-text-3">Глобал stats пуст — секция не выводится.</p>
         )}

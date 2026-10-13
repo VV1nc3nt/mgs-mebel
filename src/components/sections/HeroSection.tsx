@@ -15,8 +15,8 @@ type Props = {
 }
 
 /**
- * First screen (README §6.1 п.1): background video over the poster (the LCP image), the hero
- * overlay, label, H1, text, CTA. The header lies over it; the content sits at the bottom.
+ * First screen of «О нас» (about v2 §2.1): background video over the poster (the LCP image), the
+ * «О нас» overlay, label, H1, text, CTA. The header lies over it; the content sits at the bottom.
  */
 export function HeroSection({ hero, messengers, idPrefix = 'home' }: Props) {
   const title = hero?.title?.trim()
@@ -31,7 +31,7 @@ export function HeroSection({ hero, messengers, idPrefix = 'home' }: Props) {
       className="relative h-hero overflow-hidden bg-surface md:h-hero-md xl:h-screen xl:min-h-hero-md"
     >
       {poster && <BgVideo poster={poster} video={hero?.video} sizes={{ base: '100vw' }} priority />}
-      <div aria-hidden="true" className="absolute inset-0 bg-overlay-hero" />
+      <div aria-hidden="true" className="absolute inset-0 bg-overlay-about" />
       <div className="absolute inset-x-0 bottom-8 page-container">
         <div className="flex flex-col gap-4 md:max-w-hero">
           {hero?.label && <SectionLabel>{hero.label}</SectionLabel>}
