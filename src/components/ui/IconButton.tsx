@@ -5,7 +5,7 @@ import { Action, type ActionProps } from './Action'
 import { HIT_AREA } from './hitArea'
 
 export type IconButtonVariant =
-  'surface' | 'glass' | 'ghost' | 'outline' | 'outline-media' | 'light'
+  'surface' | 'glass' | 'ghost' | 'outline' | 'outline-media' | 'light' | 'accent'
 export type IconButtonSize = 32 | 36 | 40 | 44 | 48 | 52 | 56
 
 const VARIANT: Record<IconButtonVariant, string> = {
@@ -17,6 +17,8 @@ const VARIANT: Record<IconButtonVariant, string> = {
   // Over photo/video (README §5.2)
   'outline-media': 'border border-text/25 text-text backdrop-blur-soft hover:border-text',
   light: 'bg-text text-on-accent',
+  // Media slider «→» (design: about v2 §2.7); at the end of the track it looks disabled
+  accent: 'bg-accent text-on-accent hover:bg-accent-hover aria-disabled:bg-surface-3',
 }
 
 // Visual size below 44: ::before extends the hit area to 44 (README §9) without changing the layout.
