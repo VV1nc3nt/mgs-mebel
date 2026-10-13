@@ -1,6 +1,6 @@
 /**
- * E2E data of the pages: the `home`, `about`, `salonsPage`, `catalogsPage` and `stats` globals,
- * news, projects, salons and catalogs with the seed
+ * E2E data of the pages: the `home`, `about`, `salonsPage`, `catalogsPage`, `designers` and
+ * `stats` globals, the designer manager of `settings`, news, projects, salons and catalogs with the seed
  * texts and media generated on the fly (no stock downloads, no binaries in git), then a draft
  * over the published home and a news draft for the «anonymous never sees drafts» checks.
  * Local database only.
@@ -17,6 +17,7 @@ import { salons } from '../../src/seed/data/salons'
 import { isLocalDatabaseUrl } from '../../src/seed/guard'
 import { placeholderPdf } from '../../src/seed/pdf'
 import { catalogPdfFile, E2E_CATALOGS } from './e2eCatalogs'
+import { E2E_MANAGER, E2E_PROJECTS } from './e2eDesigners'
 import {
   ABOUT_CTA,
   E2E_NEWS_COUNT,
@@ -166,7 +167,7 @@ try {
     U2: ids.main,
     U3: ids.secondary,
   }
-  const { home, about, stats, salonsPage, catalogsPage } = globals(
+  const { home, about, stats, salonsPage, catalogsPage, designers } = globals(
     (key) => byKey[key] ?? ids.poster,
   )
   const slides = home.hero?.slides?.map((slide) => ({ ...slide, video: null })) ?? []
@@ -281,7 +282,12 @@ try {
     data: { ...catalogsPage, _status: 'published' },
     depth: 0,
   })
-  const renderId = await upsertFile(payload, 'e2e-catalog-render.png', 'image/png', await renderPng())
+  const renderId = await upsertFile(
+    payload,
+    'e2e-catalog-render.png',
+    'image/png',
+    await renderPng(),
+  )
   for (const [i, catalog] of E2E_CATALOGS.entries()) {
     const { totalDocs } = await payload.count({
       collection: 'catalogs',
@@ -308,8 +314,41 @@ try {
       depth: 0,
     })
   }
+  // «Дизайнерам», published without a draft: the seed texts and the six capabilities with the
+  // generated photos, the projects of E2E_PROJECTS; the manager — a phone and two messengers.
+  await payload.updateGlobal({
+    slug: 'designers',
+    data: {
+      ...designers,
+      hero: { ...designers.hero, video: videoId },
+      capabilities: {
+        ...designers.capabilities,
+        items: designers.capabilities?.items?.map((item, i) => ({
+          ...item,
+          photo: photoIds[i % photoIds.length]!,
+        })),
+      },
+      projects: {
+        ...designers.projects,
+        items: E2E_PROJECTS.map((project, i) => ({
+          title: project.title,
+          meta: 'Дизайн — студия партнёра · производство — MGS MEBEL',
+          poster: photoIds[i % photoIds.length]!,
+          video: project.video ? videoId : null,
+          hidden: project.hidden ?? false,
+        })),
+      },
+      _status: 'published',
+    },
+    depth: 0,
+  })
+  await payload.updateGlobal({
+    slug: 'settings',
+    data: { designerManager: { ...E2E_MANAGER, photo: photoIds[0]! } },
+    depth: 0,
+  })
   console.log(
-    'seedHome: stats, home (published + draft), about, salonsPage, catalogsPage, news, projects, salons, catalogs',
+    'seedHome: stats, home (published + draft), about, salonsPage, catalogsPage, designers, settings.designerManager, news, projects, salons, catalogs',
   )
 } catch (error) {
   console.error(error)

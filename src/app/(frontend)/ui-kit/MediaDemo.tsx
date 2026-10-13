@@ -1,5 +1,5 @@
-import { ExhibitionCard, type Exhibition } from '@/components/about/ExhibitionCard'
-import { BgVideo } from '@/components/ui/BgVideo'
+import { ExhibitionCard } from '@/components/about/ExhibitionCard'
+import { ProjectCard } from '@/components/designers/ProjectCard'
 import { MediaSlider } from '@/components/ui/MediaSlider'
 import { PosterImage } from '@/components/ui/PosterImage'
 import { PosterPlayer } from '@/components/ui/PosterPlayer'
@@ -33,27 +33,6 @@ export function PlayerDemo({ mission }: { mission: About['mission'] | null }) {
       <PosterPlayer poster={poster} embedUrl={VK} caption="VK Видео" className={BLOCK} />
       <PosterPlayer poster={poster} caption="Без видео: постер без ▶" className={BLOCK} />
     </div>
-  )
-}
-
-function ProjectCard({ item, index }: { item: Exhibition; index: number }) {
-  return (
-    <>
-      <BgVideo
-        poster={item.poster}
-        video={item.video}
-        sizes={{ base: '86vw', md: '80vw', xl: '82vw' }}
-        lazySrc
-      />
-      <div aria-hidden="true" className="absolute inset-0 bg-overlay-project" />
-      <p className="absolute top-4 left-4 flex size-9 items-center justify-center rounded-full glass text-body-xs font-bold text-accent">
-        {String(index + 1).padStart(2, '0')}
-      </p>
-      <div className="absolute inset-x-5 bottom-5 flex flex-col gap-1.5">
-        <p className="text-title-s">{item.title}</p>
-        <p className="text-body-xs text-text-2">{item.date}</p>
-      </div>
-    </>
   )
 }
 
@@ -103,7 +82,14 @@ export function SliderDemo({ exhibitions }: { exhibitions: About['exhibitions'] 
           />
         }
         slides={[...items, ...items].map((item, i) => (
-          <ProjectCard key={`${item.id}-${i}`} item={item} index={i} />
+          <ProjectCard
+            key={`${item.id}-${i}`}
+            title={item.title}
+            meta={item.date}
+            poster={item.poster}
+            video={item.video}
+            index={i}
+          />
         ))}
       />
       <MediaSlider
@@ -119,7 +105,16 @@ export function SliderDemo({ exhibitions }: { exhibitions: About['exhibitions'] 
             id="ui-kit-one-title"
           />
         }
-        slides={[<ProjectCard key="one" item={items[0]} index={0} />]}
+        slides={[
+          <ProjectCard
+            key="one"
+            title={items[0].title}
+            meta={items[0].date}
+            poster={items[0].poster}
+            video={items[0].video}
+            index={0}
+          />,
+        ]}
       />
     </div>
   )

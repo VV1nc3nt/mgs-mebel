@@ -98,7 +98,7 @@ export const photos: SeedFile[] = [
     'living-room-with-brown-sofa-and-glass-window-4_jQL4JCS98',
     'Collov Home Design',
     'Гостиная с коричневым диваном и панорамным окном',
-    'постер about.hero, выставка «Презентация 2025», обложка «Конкурс проектов с Korting», каталог «Декоры ALVIC 2026»',
+    'постер about.hero, выставка «Презентация 2025», обложка «Конкурс проектов с Korting», каталог «Декоры ALVIC 2026», проект «Гостиная с ТВ-зоной» (designers)',
   ),
   unsplash(
     'U2',
@@ -108,7 +108,7 @@ export const photos: SeedFile[] = [
     'green-potted-plant-on-table-HmHArS-HvNw',
     'Collov Home Design',
     'Светлая гостиная с растением на журнальном столике',
-    'history.photoMain (about), постеры designers.project и выставки «Выставка 2025», обложка «Презентация в Химках»',
+    'history.photoMain (about), постер выставки «Выставка 2025», обложка «Презентация в Химках»',
   ),
   unsplash(
     'U3',
@@ -199,6 +199,16 @@ export const photos: SeedFile[] = [
     'Joseph Gonzalez',
     'Харламов Максим Игоревич',
     'settings.designerManager.photo',
+  ),
+  unsplash(
+    'U12',
+    'technical-drawings',
+    '1581092160562-40aa08e78837',
+    1280,
+    'engineer-measuring-technical-drawings-on-desk-WDCE0T4khsE',
+    'ThisisEngineering',
+    'Инженер размечает технические чертежи на рабочем столе',
+    'возможности №5 (designers)',
   ),
   // Additional interiors: vertical shots for the works grid, landscapes for sliders.
   unsplash(
@@ -369,7 +379,7 @@ export const photos: SeedFile[] = [
     'a-walk-in-closet-with-a-mirror-and-a-stool-SseNV6Ycb1c',
     'Billy Jo Catbagan',
     'Гардеробная с зеркалом и пуфом',
-    'проекты, слайдеры новостей',
+    'проекты, слайдеры новостей, проект «Гардеробная, 14 м²» (designers)',
   ),
   unsplash(
     'N18',
@@ -389,7 +399,7 @@ export const photos: SeedFile[] = [
     19227878,
     'Curtis Adams',
     'Светлая кухня с белыми фасадами и длинным островом с барными стульями',
-    'постер home.hero, сегмент 01 (кадр видео H9)',
+    'постер home.hero, сегмент 01 (кадр видео H9), проект «Кухня с островом, 28 м²» (designers)',
   ),
   pexelsPhoto(
     'P2',
@@ -442,20 +452,20 @@ export const photos: SeedFile[] = [
     8580895,
     'не подтверждён (страница за Cloudflare)',
     'Выдвинутый белый ящик стола на направляющих с органайзерами внутри',
-    'постер about.hardware (кадр видео H14)',
+    'постер about.hardware (кадр видео H14), возможности №6 (designers)',
+  ),
+  pexelsPhoto(
+    'P8',
+    'dining-room',
+    15887297,
+    'не подтверждён (страница за Cloudflare)',
+    'Тёмный обеденный стол с вазой тюльпанов под люстрой',
+    'постер проекта «Кухня-гостиная, 42 м²» (designers; кадр видео H5)',
   ),
 ]
 
 export const videos: SeedFile[] = [
-  pexels(
-    'H1',
-    'kitchen',
-    15887128,
-    'hd_1920_1080_30fps',
-    'Curtis Adams',
-    'about.hero',
-    true,
-  ),
+  pexels('H1', 'kitchen', 15887128, 'hd_1920_1080_30fps', 'Curtis Adams', 'about.hero', true),
   pexels(
     'H3',
     'living-room',
@@ -480,7 +490,7 @@ export const videos: SeedFile[] = [
     15887297,
     'hd_1920_1080_30fps',
     'не подтверждён (страница за Cloudflare)',
-    'designers.project, выставка «Выставка 2026», видео обложки «Выставка ARTDOM 2026»',
+    'проект «Кухня-гостиная, 42 м²» (designers), выставка «Выставка 2026», видео обложки «Выставка ARTDOM 2026»',
     true,
   ),
   pexels(
@@ -506,7 +516,7 @@ export const videos: SeedFile[] = [
     19227878,
     'hd_1920_1080_30fps',
     'Curtis Adams',
-    'home.hero, сегмент 01',
+    'home.hero, сегмент 01; проект «Кухня с островом, 28 м²» (designers)',
     true,
   ),
   // 1280×720: Pexels has no 1920 version of this video (2560 is 14.5 MB).
