@@ -1,3 +1,4 @@
+import { sql } from '@payloadcms/db-postgres'
 import type { Payload } from 'payload'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
@@ -24,15 +25,17 @@ const { getDesignerManager, getSettings } = await import('@/lib/queries')
 
 describe('getDesignerManager', () => {
   let payload: Payload
-  let before: Setting['designerManager']
+  let before: Setting | undefined
 
   beforeAll(async () => {
     payload = await getTestPayload()
-    before = (await payload.findGlobal({ slug: 'settings', depth: 0 })).designerManager
+    before = await payload.findGlobal({ slug: 'settings', depth: 0 })
     const photo = await createImage(payload)
     await payload.updateGlobal({
       slug: 'settings',
       data: {
+        // Required: a fresh database has no settings yet
+        contacts: { hotlinePhone: before.contacts?.hotlinePhone || '8 800 000-00-00' },
         designerManager: {
           photo: photo.id,
           name: `${PREFIX} manager`,
@@ -48,16 +51,18 @@ describe('getDesignerManager', () => {
   })
 
   afterAll(async () => {
-    await payload.updateGlobal({
-      slug: 'settings',
-      data: {
-        designerManager: {
-          ...before,
-          photo: typeof before?.photo === 'object' ? (before.photo?.id ?? null) : before?.photo,
-        },
-      },
-      depth: 0,
-    })
+    // beforeAll may have failed before reading the global: then there is nothing to restore.
+    if (!payload) return
+    if (before?.createdAt) {
+      // Raw DB write: skips validation of fields other tests may have left empty.
+      await payload.db.updateGlobal({
+        slug: 'settings',
+        data: { contacts: before.contacts, designerManager: before.designerManager },
+      })
+    } else {
+      // The global did not exist before the test: remove the row the test created.
+      await payload.db.drizzle.execute(sql`delete from "settings"`)
+    }
     await cleanup(payload)
   })
 
