@@ -68,6 +68,9 @@ describe('news video block', () => {
     await expect(
       createNews(videoBlock({ embedUrl: 'https://vkvideo.ru/video-1_2' })),
     ).resolves.toBeTruthy()
+    await expect(
+      createNews(videoBlock({ embedUrl: 'https://vk.ru/video-1_2' })),
+    ).resolves.toBeTruthy()
     await expect(createNews(videoBlock({ file: video.id }))).resolves.toBeTruthy()
   })
 
@@ -93,7 +96,10 @@ describe('about.mission (presentation)', () => {
   afterAll(async () => {
     if (before?.createdAt) {
       const { id: _id, createdAt: _c, updatedAt: _u, globalType: _g, ...data } = before
-      await payload.updateGlobal({ slug: 'about', data: { ...data, _status: 'published' } as never })
+      await payload.updateGlobal({
+        slug: 'about',
+        data: { ...data, _status: 'published' } as never,
+      })
     } else {
       await payload.db.drizzle.execute(sql`delete from "_about_v"`)
       await payload.db.drizzle.execute(sql`delete from "about"`)
@@ -122,6 +128,9 @@ describe('about.mission (presentation)', () => {
     await expect(
       publish({ video: null, embedUrl: 'https://rutube.ru/video/abc/' }),
     ).resolves.toBeTruthy()
+    await expect(
+      publish({ video: null, embedUrl: 'https://m.vk.ru/video-1_2' }),
+    ).resolves.toBeTruthy()
   })
 
   it('rejects both a file and a link', async () => {
@@ -134,7 +143,9 @@ describe('about.mission (presentation)', () => {
     await expect(
       publish({ video: null, embedUrl: 'https://www.youtube.com/watch?v=abc' }),
     ).rejects.toThrow()
-    await expect(publish({ video: null, embedUrl: 'http://rutube.ru/video/abc/' })).rejects.toThrow()
+    await expect(
+      publish({ video: null, embedUrl: 'http://rutube.ru/video/abc/' }),
+    ).rejects.toThrow()
   })
 
   it('rejects an image as the video file', async () => {
@@ -228,7 +239,9 @@ describe('salonsPage.map.emptyText', () => {
       ?.fields.flatMap((field) => ('tabs' in field ? field.tabs : []))
       .find((t) => 'name' in t && t.name === 'map')
     const field = tab?.fields.find((f) => 'name' in f && f.name === 'emptyText')
-    expect(field && 'defaultValue' in field ? field.defaultValue : undefined).toBe('Скоро откроемся')
+    expect(field && 'defaultValue' in field ? field.defaultValue : undefined).toBe(
+      'Скоро откроемся',
+    )
 
     // The column default fills the existing rows when the migration adds it.
     const { rows } = await payload.db.drizzle.execute(sql`
