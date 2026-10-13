@@ -1,5 +1,9 @@
 import type { Metadata } from 'next'
 
+import { ExhibitionsSection } from '@/components/about/ExhibitionsSection'
+import { HardwareSection } from '@/components/about/HardwareSection'
+import { IntroSection } from '@/components/about/IntroSection'
+import { PresentationSection } from '@/components/about/PresentationSection'
 import { FirstScreenEnd } from '@/components/app/FirstScreenEnd'
 import { PreviewRefresh } from '@/components/app/PreviewRefresh'
 import { HeroSection } from '@/components/sections/HeroSection'
@@ -23,9 +27,10 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /**
- * «О нас» (about README §2): hero, statistics, history. The v2 sections (intro, presentation,
- * hardware, exhibitions) come with the new layout. Sections without their required content are
- * not rendered.
+ * «О нас» (about v2 §2): hero, the statistics strip (under 1280), the intro (from 1280), history
+ * (with the statistics grid from 1280), the video presentation, hardware, exhibitions. Sections
+ * without their required content are not rendered. The first screen ends after the history
+ * (834×1194 — the tallest checked screen — reaches it).
  */
 export default async function AboutPage() {
   const [about, stats, layout, settings] = await Promise.all([
@@ -48,9 +53,13 @@ export default async function AboutPage() {
         />
       )}
       <HeroSection hero={about.hero} messengers={messengers} idPrefix="about" />
-      <StatsSection items={stats.items} className="pt-2" />
-      <HistorySection history={about.history} />
+      <StatsSection items={stats.items} className="pt-2 xl:hidden" />
+      <IntroSection intro={about.intro} />
+      <HistorySection history={about.history} stats={stats.items} idPrefix="about" />
       <FirstScreenEnd />
+      <PresentationSection mission={about.mission} />
+      <HardwareSection hardware={about.hardware} />
+      <ExhibitionsSection exhibitions={about.exhibitions} />
       <PreviewRefresh />
     </>
   )

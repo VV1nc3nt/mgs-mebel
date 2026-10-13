@@ -97,6 +97,17 @@
   --text-stat--line-height: 1;
   --text-stat--letter-spacing: -0.04em;
   --text-stat--font-weight: 300;
+  /* Statistics grid inside «История» from desktop (design: about v2 §2.4) */
+  --text-stat-lg: 2.25rem;
+  --text-stat-lg--line-height: 1;
+  --text-stat-lg--letter-spacing: -0.04em;
+  --text-stat-lg--font-weight: 300;
+
+  /* «О нас» intro paragraph, desktop only (design: about v2 §2.3) */
+  --text-intro: 1.75rem;
+  --text-intro--line-height: 1.35;
+  --text-intro--letter-spacing: -0.015em;
+  --text-intro--font-weight: 600;
 
   --text-body: 0.9375rem;
   --text-body--line-height: 1.55;
@@ -251,12 +262,15 @@
   /* Home hero: text block from tablet, its paragraph (design: home) */
   --container-hero: 640px;
   --container-hero-text: 460px;
-  /* Text column of «История» (design: home) */
-  --container-history: 560px;
   /* Text of a news slide (design: home) */
   --container-slide-text: 640px;
   /* Salon card over the map (design: home) */
   --container-salon-card: 420px;
+  /* «О нас»: the intro paragraph; text over a media block from desktop; the text under the
+     exhibitions heading (design: about v2 §2.3, §2.5, §2.7) */
+  --container-intro: 880px;
+  --container-media-text: 620px;
+  --container-section-text: 760px;
 
   /* Radii (pill buttons use rounded-full) */
   --radius-thumb: 14px;
@@ -470,6 +484,27 @@
   );
 }
 
+/* Hero «О нас» (design: about v2 §2.1) */
+@utility bg-overlay-about {
+  background-image: linear-gradient(
+    180deg,
+    rgb(20 20 19 / 0.75) 0%,
+    rgb(20 20 19 / 0.3) 22%,
+    rgb(20 20 19 / 0.55) 55%,
+    var(--color-bg) 92%
+  );
+}
+
+/* Text over a media block on its left side, desktop (design: about v2 §2.6) */
+@utility bg-overlay-side {
+  background-image: linear-gradient(
+    90deg,
+    rgb(20 20 19 / 0.9) 0%,
+    rgb(20 20 19 / 0.55) 40%,
+    rgb(20 20 19 / 0) 70%
+  );
+}
+
 @utility bg-overlay-card {
   background-image: linear-gradient(
     180deg,
@@ -565,6 +600,11 @@
   grid-template-columns: 1.15fr 1fr;
 }
 
+/* «История» from desktop: the collage and the text column (design: about v2 §2.4) */
+@utility grid-history-xl {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+}
+
 /* Glass */
 @utility glass {
   background-color: rgb(20 20 19 / 0.6);
@@ -594,8 +634,13 @@
 /*
  * Stacking order, the only place z-index values live: content < header over the hero < dock <
  * project viewer < menu < menu header < skip link. header 8 and dock 20: design (dc.html);
- * viewer 50, menu 60 / 61: README §6.4, §5.3.
+ * viewer 50, menu 60 / 61: README §6.4, §5.3. Inside a media block (its own stacking context,
+ * `isolate`): text over the media — 1, above the player that follows it in the document.
  */
+@utility z-media-text {
+  z-index: 1;
+}
+
 @utility z-header {
   z-index: 8;
 }
