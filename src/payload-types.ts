@@ -1253,7 +1253,7 @@ export interface Designer {
     label?: string | null;
     title?: string | null;
     /**
-     * Номер 01–04 проставляется автоматически.
+     * Номер 01–06 проставляется автоматически.
      */
     items?:
       | {
@@ -1264,22 +1264,37 @@ export interface Designer {
         }[]
       | null;
   };
-  project: {
+  projects?: {
     /**
      * Без «#» — он добавляется автоматически.
      */
     label?: string | null;
     title?: string | null;
     /**
-     * MP4 или WebM, 8–15 с, до 5 МБ, без звука. Необязательно.
+     * Порядок — перетаскиванием. Номер проставляется автоматически, скрытые не выводятся и не считаются.
      */
-    video?: (number | null) | Media;
-    /**
-     * Показывается до загрузки видео и вместо него (экономия трафика, reduced motion).
-     */
-    poster: number | Media;
-    caption?: string | null;
-    subcaption?: string | null;
+    items?:
+      | {
+          /**
+           * Кухня-гостиная, 42 м²
+           */
+          title: string;
+          /**
+           * Дизайн — студия … · производство — MGS MEBEL
+           */
+          meta?: string | null;
+          /**
+           * MP4 или WebM, 8–15 с, до 5 МБ, без звука. Необязательно.
+           */
+          video?: (number | null) | Media;
+          /**
+           * Показывается до загрузки видео и вместо него (экономия трафика, reduced motion).
+           */
+          poster: number | Media;
+          hidden?: boolean | null;
+          id?: string | null;
+        }[]
+      | null;
   };
   cooperation?: {
     /**
@@ -1744,15 +1759,21 @@ export interface DesignersSelect<T extends boolean = true> {
               id?: T;
             };
       };
-  project?:
+  projects?:
     | T
     | {
         label?: T;
         title?: T;
-        video?: T;
-        poster?: T;
-        caption?: T;
-        subcaption?: T;
+        items?:
+          | T
+          | {
+              title?: T;
+              meta?: T;
+              video?: T;
+              poster?: T;
+              hidden?: T;
+              id?: T;
+            };
       };
   cooperation?:
     | T

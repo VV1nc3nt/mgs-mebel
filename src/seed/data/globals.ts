@@ -10,11 +10,12 @@ export type SeedGlobals = { [S in GlobalSlug]: GlobalData<S> }
 
 const MESSENGERS_LABEL = 'Рассчитать проект в мессенджере'
 const HOTLINE_LABEL = 'Бесплатная горячая линия'
+// Projects of «Дизайнерам» (designers v2 §4): studio names come with the client's materials.
+const PROJECT_META = 'Дизайн — студия партнёра · производство — MGS MEBEL'
 
 // Home hero, segment 01 (home README §8).
 const HOME_TITLE = 'Дизайнерская мебель, доступная каждому'
-const HOME_TEXT =
-  'Мебельная фабрика, специализирующаяся на производстве комплексных заказов.'
+const HOME_TEXT = 'Мебельная фабрика, специализирующаяся на производстве комплексных заказов.'
 
 // Section headings of the home page.
 const homeSections = {
@@ -134,7 +135,10 @@ export const globals = (id: MediaId): SeedGlobals => ({
       name: 'Харламов Максим Игоревич',
       position: 'Руководитель развития',
       phone: '8 995 783-94-28',
+      // MAX and Telegram links of the manager: waiting for the client
+      max: null,
       whatsapp: 'https://wa.me/79957839428',
+      telegram: null,
     },
   },
   stats: {
@@ -242,15 +246,27 @@ export const globals = (id: MediaId): SeedGlobals => ({
           title: 'Личный менеджер',
           text: 'Один контакт на весь проект: от расчёта до монтажа, без бесконечных согласований.',
         },
+        {
+          photo: id('U12'),
+          title: 'Собственное производство',
+          text: '20 000 м² площадей и современное оборудование — фиксируем сроки и контролируем каждый этап.',
+        },
+        {
+          photo: id('P7'),
+          title: 'Фурнитура MGS',
+          text: 'Собственный бренд фурнитуры и комплектующих — надёжные механизмы в каждом изделии.',
+        },
       ],
     },
-    project: {
-      label: 'проект',
-      title: 'Пример реализованного проекта',
-      video: id('H5'),
-      poster: id('U2'),
-      caption: 'Кухня-гостиная, 42 м²',
-      subcaption: 'Дизайн — студия партнёра · производство — MGS MEBEL',
+    projects: {
+      label: 'проекты',
+      title: 'Реализованные проекты',
+      items: [
+        { title: 'Кухня-гостиная, 42 м²', video: id('H5'), poster: id('P8') },
+        { title: 'Гардеробная, 14 м²', video: null, poster: id('N17') },
+        { title: 'Гостиная с ТВ-зоной', video: null, poster: id('U1') },
+        { title: 'Кухня с островом, 28 м²', video: id('H9'), poster: id('P1') },
+      ].map((item) => ({ ...item, meta: PROJECT_META, hidden: false })),
     },
     cooperation: {
       label: 'сотрудничество',
@@ -258,7 +274,7 @@ export const globals = (id: MediaId): SeedGlobals => ({
       messengersLabel: MESSENGERS_LABEL,
     },
     meta: seoMeta({
-      title: 'Ваш дизайн.\nНаши возможности.',
+      title: 'Ваш дизайн. Наши возможности.',
       description:
         'Вы создаёте интерьер — мы помогаем реализовать его именно таким, каким он был задуман. Без упрощения идеи, бесконечных согласований и поиска подрядчиков под каждую задачу.',
       image: id('U4'),

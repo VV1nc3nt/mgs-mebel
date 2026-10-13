@@ -3,7 +3,7 @@ import { draftMode } from 'next/headers'
 import { connection } from 'next/server'
 import type { DataFromGlobalSlug, Where } from 'payload'
 
-import type { Catalog, News, Salon } from '@/payload-types'
+import type { Catalog, News, Salon, Setting } from '@/payload-types'
 
 import type { LayoutInput, SettingsInput } from './chrome'
 import { getPayloadClient } from './payload'
@@ -56,6 +56,46 @@ export async function getLayout(): Promise<LayoutInput> {
 export async function getSettings(): Promise<SettingsInput> {
   await connection()
   return settingsCached()
+}
+
+export type DesignerManagerData = NonNullable<Setting['designerManager']>
+
+// The manager of the «Дизайнерам» page: its own entry, so the header and footer data
+// (getSettings) stay without the photo. `url` is computed from `filename` (and `prefix` with S3).
+const MANAGER_PHOTO_SIZE = { url: true, filename: true, width: true, height: true } as const
+
+const designerManagerCached = unstable_cache(
+  async (): Promise<DesignerManagerData> => {
+    const payload = await getPayloadClient()
+    const { designerManager } = await payload.findGlobal({
+      slug: 'settings',
+      depth: 1,
+      select: { designerManager: true },
+      populate: {
+        media: {
+          alt: true,
+          url: true,
+          filename: true,
+          prefix: true,
+          mimeType: true,
+          width: true,
+          height: true,
+          focalX: true,
+          focalY: true,
+          sizes: { thumb: MANAGER_PHOTO_SIZE, card: MANAGER_PHOTO_SIZE },
+        },
+      },
+    })
+    return designerManager ?? {}
+  },
+  ['global:settings:designer-manager'],
+  { tags: [globalTag('settings')] },
+)
+
+/** Manager for designers («Дизайнерам»: cooperation): photo, name, position, phone, messengers. */
+export async function getDesignerManager(): Promise<DesignerManagerData> {
+  await connection()
+  return designerManagerCached()
 }
 
 /** Globals of site pages (README §6): drafts with autosave, read through getPageGlobal. */

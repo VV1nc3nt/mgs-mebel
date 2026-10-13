@@ -65,6 +65,15 @@ export const CHOOSER_CLOSE_LABEL = 'Закрыть выбор мессендже
 export const DOCK_GROUP_LABEL = 'Спросить в мессенджере'
 export const CHOOSER_GROUP_LABEL = 'Выбрать мессенджер'
 
+/** Messenger links of a settings group in MESSENGER_ORDER, without empty ones. */
+export const orderMessengers = (
+  links: Partial<Record<MessengerKind, string | null>> | null | undefined,
+): Messenger[] =>
+  MESSENGER_ORDER.flatMap((kind) => {
+    const href = text(links?.[kind])
+    return href ? [{ kind, href }] : []
+  })
+
 export const toChrome = (layout: LayoutInput, settings: SettingsInput): SiteChrome => {
   const nav = NAV_ROUTES.flatMap(({ key, href }) => {
     const label = text(layout.nav?.[key]?.label)
@@ -75,10 +84,7 @@ export const toChrome = (layout: LayoutInput, settings: SettingsInput): SiteChro
   const phoneText = text(settings.contacts?.hotlinePhone)
   const phoneHref = phoneText && telHref(phoneText)
 
-  const messengers = MESSENGER_ORDER.flatMap((kind) => {
-    const href = text(settings.messengers?.[kind])
-    return href ? [{ kind, href }] : []
-  })
+  const messengers = orderMessengers(settings.messengers)
 
   return {
     nav,
