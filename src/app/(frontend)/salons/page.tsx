@@ -1,11 +1,11 @@
 import type { Metadata } from 'next'
 
 import { FirstScreenEnd } from '@/components/app/FirstScreenEnd'
+import { PageHeading } from '@/components/app/PageHeading'
 import { PreviewRefresh } from '@/components/app/PreviewRefresh'
 import { SalonsEmpty } from '@/components/salons/SalonsEmpty'
 import { SalonsExplorer } from '@/components/salons/SalonsExplorer'
 import { JsonLd } from '@/components/seo/JsonLd'
-import { SectionLabel } from '@/components/ui/SectionLabel'
 import { toChrome } from '@/lib/chrome'
 import { breadcrumbJsonLd, salonJsonLd } from '@/lib/jsonld'
 import { getLayout, getPageGlobal, getSalonCards, getSettings } from '@/lib/queries'
@@ -53,11 +53,7 @@ export default async function SalonsPage() {
       {salons.map((salon) => (
         <JsonLd key={salon.id} data={salonJsonLd(salon)} />
       ))}
-      <div className="page-container flex flex-col gap-2.5 pt-7 xl:pt-18">
-        {page.hero?.label && <SectionLabel>{page.hero.label}</SectionLabel>}
-        {title && <h1 className="text-h1 md:text-h1-md xl:text-h1-xl">{title}</h1>}
-        {lead && <p className="text-body text-text-3">{lead}</p>}
-      </div>
+      <PageHeading label={page.hero?.label} title={title} lead={lead} />
       {salons.length ? (
         <SalonsExplorer
           salons={salons.map(toSalonView)}
