@@ -20,9 +20,9 @@ env:
     tests/e2e/menu.e2e.spec.ts
     tests/e2e/ui-kit.e2e.spec.ts
     tests/e2e/about.e2e.spec.ts
-    tests/e2e/not-found.e2e.spec.ts
     tests/e2e/header.e2e.spec.ts
     tests/e2e/revalidate.e2e.spec.ts
+    tests/e2e/partial-paint.e2e.spec.ts
   E2E_SHARD_2: >-
     tests/e2e/layout.e2e.spec.ts
     tests/e2e/dock.e2e.spec.ts
@@ -31,7 +31,7 @@ env:
     tests/e2e/preview.e2e.spec.ts
     tests/e2e/news-slug.e2e.spec.ts
     tests/e2e/salons.e2e.spec.ts
-    tests/e2e/partial-paint.e2e.spec.ts
+    tests/e2e/not-found.e2e.spec.ts
   # Scaffold specs, not run in CI.
   E2E_NOT_IN_CI: >-
     tests/e2e/admin.e2e.spec.ts
