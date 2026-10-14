@@ -176,8 +176,10 @@ test.describe('works', () => {
     await hydrated(page)
     await expect(cards(page)).toHaveCount(PAGE)
 
+    // A page at a time: the next one may be asked for right after a load (the end of the grid is
+    // still within the preload zone) — then without another scroll
     for (const shown of [2 * PAGE, ALL]) {
-      await toBottom(page)
+      if (!gate.held()) await toBottom(page)
       // A row of skeletons (3 columns) while the page loads
       await expect.poll(() => gate.held()).toBe(1)
       await expect(skeletons(page)).toHaveCount(COLUMNS[390])
@@ -185,9 +187,9 @@ test.describe('works', () => {
       await expect(theEnd(page)).toHaveCount(0)
       await gate.release()
       await expect(cards(page)).toHaveCount(shown)
-      await expect(skeletons(page)).toHaveCount(0)
-      await expect(list(page)).not.toHaveAttribute('aria-busy')
     }
+    await expect(skeletons(page)).toHaveCount(0)
+    await expect(list(page)).not.toHaveAttribute('aria-busy')
     expect(await titles(page)).toEqual(E2E_WORKS.map((w) => w.title))
     await expect(theEnd(page)).toBeVisible()
     // The end: no more requests
@@ -210,6 +212,9 @@ test.describe('works', () => {
     page,
   }) => {
     await page.setViewportSize({ width: 390, height: 844 })
+    // Only the first page of every filter is let through
+    const gate = await actionGate(page)
+    gate.hold()
     await page.goto(URL)
     await hydrated(page)
     const history = await page.evaluate(() => window.history.length)
@@ -221,6 +226,8 @@ test.describe('works', () => {
       await chip(page, name).click()
       await expect(chip(page, name)).toHaveAttribute('aria-pressed', 'true')
       await expect(counter(page)).toHaveText(count)
+      await expect.poll(() => gate.held(`"${key}"`)).toBe(1)
+      await gate.release(`"${key}"`)
       await expect(cards(page)).toHaveCount(Math.min(PAGE, works.length))
       expect(await titles(page)).toEqual(works.slice(0, PAGE).map((w) => w.title))
       expect(new globalThis.URL(page.url()).searchParams.get('category')).toBe(key)
@@ -230,6 +237,7 @@ test.describe('works', () => {
     await expect(page).toHaveURL(URL)
     // The history entry is replaced, not added
     expect(await page.evaluate(() => window.history.length)).toBe(history)
+    await gate.free()
   })
 
   test('filter with the keyboard: Tab, Enter and Space', async ({ page }) => {
@@ -256,18 +264,21 @@ test.describe('works', () => {
   }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     const gate = await actionGate(page)
+    gate.hold()
     await page.goto(URL)
     await hydrated(page)
     await toBottom(page)
+    await expect.poll(() => gate.held()).toBe(1)
+    await gate.release()
     await expect(cards(page)).toHaveCount(2 * PAGE)
 
-    gate.hold()
+    // A next page of «все» may be held already: the filter change leaves it unanswered
     await chip(page, 'комплекс').click()
-    await expect.poll(() => gate.held()).toBe(1)
+    await expect.poll(() => gate.held('"complex"')).toBe(1)
     await expect(cards(page)).toHaveCount(0)
     await expect(list(page).locator('> li[data-skeleton]')).toHaveCount(PAGE)
     await expect(list(page)).toHaveAttribute('aria-busy', 'true')
-    await gate.release()
+    await gate.release('"complex"')
     await expect(cards(page)).toHaveCount(PAGE)
     expect(await titles(page)).toEqual(ofCategory('complex').map((w) => w.title))
     await gate.free()

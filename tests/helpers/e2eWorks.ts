@@ -21,6 +21,8 @@ type Held = { route: Route; body: string }
  * Holds the `loadProjects` Server Action requests (POST with a `Next-Action` header) of the page
  * until released: `hold()` starts holding, `release(match?)` lets the held ones through — all or
  * those whose body contains `match` (e.g. `"kitchens"`), `free()` stops holding.
+ * The feed asks for the next page by itself while its end is in the preload zone, so a test that
+ * counts cards holds the requests and lets through exactly the pages it expects.
  * `count()` — Server Action requests seen so far, held or not.
  */
 export async function actionGate(page: Page) {
@@ -47,7 +49,8 @@ export async function actionGate(page: Page) {
       for (const item of out) held.splice(held.indexOf(item), 1)
       await Promise.all(out.map(({ route }) => route.fallback()))
     },
-    held: () => held.length,
+    /** Held requests: all or those whose body contains `match`. */
+    held: (match?: string) => held.filter(({ body }) => !match || body.includes(match)).length,
     count: () => seen,
   }
 }
