@@ -1,5 +1,5 @@
 /**
- * E2E data of the pages: the `home`, `about`, `salonsPage`, `catalogsPage`, `designers` and
+ * E2E data of the pages: the `home`, `about`, `salonsPage`, `worksPage`, `catalogsPage`, `designers` and
  * `stats` globals, the designer manager of `settings`, news, projects, salons and catalogs with the seed
  * texts and media generated on the fly (no stock downloads, no binaries in git), then a draft
  * over the published home and a news draft for the «anonymous never sees drafts» checks.
@@ -167,7 +167,7 @@ try {
     U2: ids.main,
     U3: ids.secondary,
   }
-  const { home, about, stats, salonsPage, catalogsPage, designers } = globals(
+  const { home, about, stats, salonsPage, worksPage, catalogsPage, designers } = globals(
     (key) => byKey[key] ?? ids.poster,
   )
   const slides = home.hero?.slides?.map((slide) => ({ ...slide, video: null })) ?? []
@@ -276,6 +276,12 @@ try {
       depth: 0,
     })
   }
+  // «Наши работы»: the heading (the projects are above), published without a draft.
+  await payload.updateGlobal({
+    slug: 'worksPage',
+    data: { ...worksPage, _status: 'published' },
+    depth: 0,
+  })
   // «Каталоги»: the heading and the catalogs of E2E_CATALOGS (covers — the generated photos).
   await payload.updateGlobal({
     slug: 'catalogsPage',
@@ -348,7 +354,7 @@ try {
     depth: 0,
   })
   console.log(
-    'seedHome: stats, home (published + draft), about, salonsPage, catalogsPage, designers, settings.designerManager, news, projects, salons, catalogs',
+    'seedHome: stats, home (published + draft), about, salonsPage, worksPage, catalogsPage, designers, settings.designerManager, news, projects, salons, catalogs',
   )
 } catch (error) {
   console.error(error)
