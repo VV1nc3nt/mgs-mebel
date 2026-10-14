@@ -1,10 +1,7 @@
-import { Play } from 'lucide-react'
-
-import { CarouselIcon } from '@/components/icons/CarouselIcon'
 import { Button } from '@/components/ui/Button'
-import { MediaCard } from '@/components/ui/MediaCard'
 import { SectionHeading } from '@/components/ui/SectionHeading'
-import { initialWorkFilter, type WorkPanel, type WorkPreview } from '@/lib/works'
+import { WorkCard } from '@/components/works/WorkCard'
+import { initialWorkFilter, type WorkPanel } from '@/lib/works'
 import type { SectionWorks } from '@/payload-types'
 import { WorksChips } from './WorksChips'
 
@@ -14,37 +11,6 @@ type Props = {
   panels: WorkPanel[]
   /** Prefix of the heading ids: one per page (`home-…`, `about-…`). */
   idPrefix?: string
-}
-
-function WorkCard({ work }: { work: WorkPreview }) {
-  return (
-    <MediaCard
-      media={work.image}
-      sizes={{ base: '50vw', md: '25vw' }}
-      ratio="9/14"
-      radius="thumb-lg"
-      overlay="work"
-      inset="work"
-      href={work.href}
-      top={
-        <span className="flex size-8 items-center justify-center rounded-full glass text-text [&_svg]:size-4">
-          {work.kind === 'video' ? (
-            <Play aria-hidden="true" fill="currentColor" />
-          ) : (
-            <CarouselIcon />
-          )}
-          <span className="sr-only">{work.kind === 'video' ? 'Видео' : 'Фото'}</span>
-        </span>
-      }
-    >
-      <div className="flex flex-col gap-1">
-        {work.category && (
-          <p className="text-caption-s font-normal text-text-2 lowercase">{work.category}</p>
-        )}
-        <h3 className="text-body-xs font-bold text-text">{work.title}</h3>
-      </div>
-    </MediaCard>
-  )
 }
 
 /**
@@ -77,7 +43,7 @@ export function WorksSection({ section, panels, idPrefix = 'home' }: Props) {
           <ul key={panel.key} className="page-container grid grid-cols-2 gap-2 md:grid-cols-4">
             {panel.works.map((work) => (
               <li key={work.id}>
-                <WorkCard work={work} />
+                <WorkCard work={work} variant="home" />
               </li>
             ))}
           </ul>
