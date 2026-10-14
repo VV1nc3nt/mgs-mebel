@@ -10,12 +10,19 @@ import { getPayloadClient } from './payload'
 import { getPreviewUser } from './preview'
 import { collectionTag, globalTag, newsTag, type PAGE_GLOBALS } from './revalidate'
 import {
+  ALL_WORKS,
   HOME_WORKS_LIMIT,
   REELS,
   WORK_FILTERS,
+  WORKS_FEED_FILTERS,
+  WORKS_PAGE_SIZE,
+  toFeedWork,
   workPanels,
   type ProjectRow,
   type WorkPanel,
+  type WorksCounts,
+  type WorksFeedFilter,
+  type WorksFeedPage,
 } from './works'
 
 const layoutCached = unstable_cache(
@@ -212,10 +219,18 @@ export async function getNewsBySlug(slug: string): Promise<NewsArticle | null> {
   )()
 }
 
+// A video can only be the first slide, so «has a video» means a video project.
+const worksWhere = (filter: WorksFeedFilter): Where | undefined =>
+  filter === ALL_WORKS
+    ? undefined
+    : filter === REELS
+      ? { 'slides.type': { equals: 'video' } }
+      : { category: { equals: filter } }
+
 const homeWorksCached = unstable_cache(
   async (): Promise<WorkPanel[]> => {
     const payload = await getPayloadClient()
-    const find = async (where: Where): Promise<ProjectRow[]> => {
+    const find = async (where: Where | undefined): Promise<ProjectRow[]> => {
       const { docs } = await payload.find({
         collection: 'projects',
         where,
@@ -229,12 +244,7 @@ const homeWorksCached = unstable_cache(
       return docs
     }
     const lists = await Promise.all(
-      WORK_FILTERS.map(async ({ key }) => {
-        // A video can only be the first slide, so «has a video» means a video project.
-        const where: Where =
-          key === REELS ? { 'slides.type': { equals: 'video' } } : { category: { equals: key } }
-        return [key, await find(where)] as const
-      }),
+      WORK_FILTERS.map(async ({ key }) => [key, await find(worksWhere(key))] as const),
     )
     return workPanels(Object.fromEntries(lists))
   },
@@ -246,6 +256,75 @@ const homeWorksCached = unstable_cache(
 export async function getHomeWorks(): Promise<WorkPanel[]> {
   await connection()
   return homeWorksCached()
+}
+
+// Media fields the feed cards and Open Graph read. `url` is computed from `filename` (and `prefix`
+// with S3), so those are selected too.
+const WORK_MEDIA_SIZE = { url: true, filename: true, width: true, height: true } as const
+
+const worksPageCached = unstable_cache(
+  async (filter: WorksFeedFilter, page: number): Promise<WorksFeedPage> => {
+    const payload = await getPayloadClient()
+    const { docs, hasNextPage } = await payload.find({
+      collection: 'projects',
+      where: worksWhere(filter),
+      // The editor's order; the id keeps pages stable when order and date are equal
+      sort: ['order', '-createdAt', '-id'],
+      limit: WORKS_PAGE_SIZE,
+      page,
+      depth: 1,
+      overrideAccess: false,
+      select: { title: true, slug: true, category: true, slides: true },
+      populate: {
+        media: {
+          alt: true,
+          url: true,
+          filename: true,
+          prefix: true,
+          mimeType: true,
+          width: true,
+          height: true,
+          focalX: true,
+          focalY: true,
+          sizes: { thumb: WORK_MEDIA_SIZE, card: WORK_MEDIA_SIZE, og: WORK_MEDIA_SIZE },
+        },
+      },
+    })
+    return { items: docs.map(toFeedWork), hasMore: hasNextPage }
+  },
+  ['collection:projects:feed'],
+  { tags: [collectionTag('projects')] },
+)
+
+/** A page of the works feed (12 cards) for «все», reels or a category. */
+export async function getWorksPage(filter: WorksFeedFilter, page: number): Promise<WorksFeedPage> {
+  await connection()
+  return worksPageCached(filter, page)
+}
+
+const worksCountsCached = unstable_cache(
+  async (): Promise<WorksCounts> => {
+    const payload = await getPayloadClient()
+    const counts = await Promise.all(
+      WORKS_FEED_FILTERS.map(async (filter) => {
+        const { totalDocs } = await payload.count({
+          collection: 'projects',
+          where: worksWhere(filter),
+          overrideAccess: false,
+        })
+        return [filter, totalDocs] as const
+      }),
+    )
+    return Object.fromEntries(counts) as WorksCounts
+  },
+  ['collection:projects:counts'],
+  { tags: [collectionTag('projects')] },
+)
+
+/** Works per filter («все», reels, categories): the counter and the chips that have works. */
+export async function getWorksCounts(): Promise<WorksCounts> {
+  await connection()
+  return worksCountsCached()
 }
 
 export type SalonPin = Pick<
