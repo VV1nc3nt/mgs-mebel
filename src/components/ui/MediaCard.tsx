@@ -83,6 +83,8 @@ export type MediaCardProps = {
   href?: string
   /** Id of the element that names the link card (e.g. its heading) instead of all its text. */
   labelledBy?: string
+  /** No prefetch of the linked page (it does not exist yet, or is too heavy for a grid). */
+  prefetch?: false
   /** LCP image: preloaded, not lazy. */
   priority?: boolean
   as?: 'div' | 'article' | 'figure'
@@ -107,6 +109,7 @@ export function MediaCard({
   children,
   href,
   labelledBy,
+  prefetch,
   priority = false,
   as: Tag = 'div',
   className,
@@ -163,6 +166,7 @@ export function MediaCard({
       <Action
         href={href}
         aria-labelledby={labelledBy}
+        prefetch={prefetch}
         className={cn(classes, 'transition-opacity hover:opacity-88')}
       >
         {content}

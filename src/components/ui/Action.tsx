@@ -13,6 +13,8 @@ export type ActionLinkProps = Common &
   Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href' | 'className' | 'children'> & {
     href: string
     ref?: Ref<HTMLAnchorElement>
+    /** Prefetch of an own page by next/link (default: in view); other links ignore it. */
+    prefetch?: false
   }
 
 export type ActionButtonProps = Common &
@@ -35,7 +37,7 @@ export function Action(props: ActionProps) {
     return <button type={type} {...rest} />
   }
 
-  const { href, disabled, ...rest } = props
+  const { href, disabled, prefetch, ...rest } = props
   if (disabled) {
     return <a {...rest} role="link" aria-disabled="true" tabIndex={-1} />
   }
@@ -43,7 +45,7 @@ export function Action(props: ActionProps) {
   const target = classifyHref(href)
   switch (target.kind) {
     case 'internal':
-      return <Link href={target.href} {...rest} />
+      return <Link href={target.href} prefetch={prefetch} {...rest} />
     case 'external':
       return <a href={target.href} target="_blank" rel="noopener noreferrer" {...rest} />
     default:

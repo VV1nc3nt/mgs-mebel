@@ -137,6 +137,11 @@
   --text-caption-s: 0.6875rem;
   --text-caption-s--line-height: 1.3;
   --text-caption-s--font-weight: 600;
+  /* Category on a works feed card (README §6.4) */
+  --text-work-category: 0.5625rem;
+  --text-work-category--line-height: 1.3;
+  --text-work-category--letter-spacing: 0.06em;
+  --text-work-category--font-weight: 600;
 
   --text-logo: 1.75rem;
   --text-logo--line-height: 1;
@@ -371,10 +376,30 @@
   --motion-hero-text-move: 600ms;
   --motion-hero-tab: 500ms;
   --motion-hero-progress: 8s;
+  /* Skeleton cards while the works feed loads (README §6.4) */
+  --motion-skeleton-pulse: 1.2s;
 
   /* Color and border transitions: 150–200ms ease-out (README §9); 200ms is duration-200 */
   --default-transition-duration: 150ms;
   --default-transition-timing-function: ease-out;
+}
+
+/* Skeleton card while a list loads (works feed): pulsing opacity; still with reduced motion */
+@utility skeleton-pulse {
+  animation: skeleton-pulse var(--motion-skeleton-pulse) ease-in-out infinite;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 /* Background video over its poster: fades in once it plays (opacity is set by the component) */
