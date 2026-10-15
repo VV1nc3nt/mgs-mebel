@@ -141,4 +141,22 @@ describe('ContactButton', () => {
     expect(button.getAttribute('aria-expanded')).toBe('false')
     expect(document.activeElement).toBe(button)
   })
+
+  it('Esc while open: closes and marks the key handled; without a choice the key is untouched', () => {
+    render(<ContactButton caption={CAPTION} messengers={[MAX, TG]} />)
+    const button = screen.getByRole('button')
+    const esc = () => {
+      const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+      act(() => {
+        document.dispatchEvent(event)
+      })
+      return event
+    }
+    expect(esc().defaultPrevented).toBe(false)
+    fireEvent.click(button, { detail: 1 })
+    expect(button.getAttribute('aria-expanded')).toBe('true')
+    expect(esc().defaultPrevented).toBe(true)
+    expect(button.getAttribute('aria-expanded')).toBe('false')
+    expect(esc().defaultPrevented).toBe(false)
+  })
 })

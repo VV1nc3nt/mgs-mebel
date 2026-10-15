@@ -9,7 +9,7 @@ import { getPayload } from 'payload'
 
 import { globals } from '../../src/seed/data/globals'
 import { isLocalDatabaseUrl } from '../../src/seed/guard'
-import { e2eEditor } from './e2eEditor'
+import { e2eEditor, e2eManager } from './e2eEditor'
 
 if (!isLocalDatabaseUrl(process.env.DATABASE_URL)) {
   console.error('seedChrome: только локальная БД (localhost, 127.0.0.1, ::1)')
@@ -27,14 +27,16 @@ try {
     data: { contacts: settings.contacts, messengers: settings.messengers },
     depth: 0,
   })
-  const { docs } = await payload.find({
-    collection: 'users',
-    where: { email: { equals: e2eEditor.email } },
-    limit: 1,
-    depth: 0,
-  })
-  if (!docs[0]) await payload.create({ collection: 'users', data: e2eEditor })
-  console.log('seedChrome: layout, settings, editor')
+  for (const user of [e2eEditor, e2eManager]) {
+    const { docs } = await payload.find({
+      collection: 'users',
+      where: { email: { equals: user.email } },
+      limit: 1,
+      depth: 0,
+    })
+    if (!docs[0]) await payload.create({ collection: 'users', data: user })
+  }
+  console.log('seedChrome: layout, settings, editor, manager')
 } catch (error) {
   console.error(error)
   code = 1

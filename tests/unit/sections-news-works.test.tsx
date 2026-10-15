@@ -90,7 +90,7 @@ describe('works chips', () => {
   it('preview the video poster or the first photo, with the project’s own category', () => {
     const reel = toWorkPreview(project(1, 'bathrooms', 'video'))
     expect(reel).toMatchObject({ kind: 'video', category: 'Санузлы', image: photo })
-    expect(reel.href).toBe('/works?category=bathrooms')
+    expect(reel.href).toBe('/works/rabota-1')
     expect(toWorkPreview(project(2, 'hallways'))).toMatchObject({
       kind: 'photo',
       category: 'Прихожие',
@@ -232,7 +232,7 @@ describe('WorksSection', () => {
     expect(chips[0]!.getAttribute('aria-controls')).toBe('works-reels')
     expect(reels.hidden).toBe(false)
     expect(complex.hidden).toBe(true)
-    expect(within(reels).getByRole('link').getAttribute('href')).toBe('/works?category=kitchens')
+    expect(within(reels).getByRole('link').getAttribute('href')).toMatch(/^\/works\/rabota-\d+$/)
     expect(within(reels).getByText('Видео')).toBeTruthy()
   })
 

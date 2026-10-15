@@ -152,8 +152,8 @@ describe('works feed helpers', () => {
       kind: 'video',
     })
     expect(toFeedWork(project(2, 'hallways'))).toMatchObject({ kind: 'photo', image: photo })
-    // The home previews keep their link to the filtered feed
-    expect(toWorkPreview(project(2, 'hallways')).href).toBe('/works?category=hallways')
+    // The home previews open the project page too
+    expect(toWorkPreview(project(2, 'hallways')).href).toBe('/works/rabota-2')
   })
 
   it('a page: an integer from 1 within the works, at most WORKS_MAX_PAGE', () => {
@@ -222,7 +222,7 @@ describe('WorkCard', () => {
     const { container } = render(<WorkCard work={work} variant="home" />)
     expect(screen.getByRole('heading', { level: 3 }).textContent).toBe('Работа 1')
     const link = screen.getByRole('link')
-    expect(link.getAttribute('href')).toBe('/works?category=complex')
+    expect(link.getAttribute('href')).toBe('/works/rabota-1')
     expect(link.className).toContain('aspect-9/14')
     expect(link.className).toContain('rounded-thumb-lg')
     expect(container.querySelector('.size-8')).not.toBeNull()
@@ -273,7 +273,13 @@ describe('WorksFeed', () => {
 
   const mount = (filter: WorksFeedFilter = ALL_WORKS, items = works(1, 12), hasMore = true) =>
     render(
-      <WorksView initial={{ filter, items, hasMore }} counts={COUNTS} listTitle="Работы">
+      <WorksView
+        initial={{ filter, items, hasMore }}
+        counts={COUNTS}
+        listTitle="Работы"
+        origin="https://mgs.test"
+        cta={{ label: null, messengers: [] }}
+      >
         <WorksFeed chips={chips} counts={COUNTS} />
       </WorksView>,
     )
