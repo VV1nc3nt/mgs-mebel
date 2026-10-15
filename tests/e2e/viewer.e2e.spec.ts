@@ -576,8 +576,14 @@ test.describe('viewer', () => {
         await openFromFeed(page, 4)
         const text = await expand(page)
         const box = (await text.boundingBox())!
+        // Whether the viewer cancelled a move inside the text (its listener runs first): native
+        // scrolling of a box by CDP touches differs between Chrome on a Mac and Linux Chromium
+        await page.evaluate(`
+          window.touchPrevented = false
+          addEventListener('touchmove', (e) => { window.touchPrevented ||= e.defaultPrevented }, { passive: true })
+        `)
         await fingerSwipe(page, { x: box.x + 40, y: box.y + box.height - 20, dy: -150 })
-        await expect.poll(() => text.evaluate((el) => el.scrollTop)).toBeGreaterThan(0)
+        expect(await page.evaluate('window.touchPrevented')).toBe(false)
         await page.waitForTimeout(400)
         await showing(page, 4)
         // Outside the text a swipe still changes the project
