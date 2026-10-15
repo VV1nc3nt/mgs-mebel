@@ -433,6 +433,15 @@
   }
 }
 
+/*
+ * Fill of a viewer segment (README §6.4): --viewer-progress 0…1 — 1 for a passed frame or a photo,
+ * the share of the file for the current video (written each frame while it plays, no transition).
+ */
+@utility viewer-progress-fill {
+  transform-origin: left;
+  transform: scaleX(var(--viewer-progress, 1));
+}
+
 /* Bottom block of the viewer: 20 above the bottom edge and the home indicator */
 @utility viewer-bottom {
   padding-bottom: calc(var(--spacing) * 5 + env(safe-area-inset-bottom));
