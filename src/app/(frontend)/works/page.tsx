@@ -1,18 +1,11 @@
 import type { Metadata } from 'next'
 
-import { FirstScreenEnd } from '@/components/app/FirstScreenEnd'
-import { PageHeading } from '@/components/app/PageHeading'
-import { PreviewRefresh } from '@/components/app/PreviewRefresh'
-import { JsonLd } from '@/components/seo/JsonLd'
-import { WorksFeed } from '@/components/works/WorksFeed'
-import { toChrome } from '@/lib/chrome'
-import { breadcrumbJsonLd } from '@/lib/jsonld'
-import { getLayout, getPageGlobal, getSettings, getWorksCounts, getWorksPage } from '@/lib/queries'
+import { WorksPageBody } from '@/components/works/WorksPageBody'
+import { getPageGlobal, getWorksCounts, getWorksPage } from '@/lib/queries'
 import { parseFilter } from '@/lib/segmentFilter'
 import { buildMetadata } from '@/lib/seo'
+import { WORKS_PATH } from '@/lib/viewer'
 import { ALL_WORKS, worksChips } from '@/lib/works'
-
-const PATH = '/works'
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> }
 
@@ -25,50 +18,22 @@ export async function generateMetadata(): Promise<Metadata> {
   return buildMetadata({
     meta,
     fallback: { title: hero?.title, image: first.items[0]?.image },
-    path: PATH,
+    path: WORKS_PATH,
   })
 }
 
 /**
- * «Наши работы» (README §6.4): heading, sticky filter bar with the counter, infinite grid of works.
- * No works — the heading only.
+ * «Наши работы» (README §6.4): heading, sticky filter bar with the counter, infinite grid of works;
+ * a card opens the project viewer over it. No works — the heading only.
  */
 export default async function WorksPage({ searchParams }: Props) {
-  const [page, counts, layout, settings, params] = await Promise.all([
-    getPageGlobal('worksPage'),
-    getWorksCounts(),
-    getLayout(),
-    getSettings(),
-    searchParams,
-  ])
-  const { nav } = toChrome(layout, settings)
-  const navLabel = nav.find((item) => item.href === PATH)?.label
-  const title = page.hero?.title?.trim() || navLabel
-  const pageName = navLabel ?? title
+  const [counts, params] = await Promise.all([getWorksCounts(), searchParams])
   // The same values as the bar on the client: an empty or unknown filter is «все»
-  const chips = worksChips(counts)
   const category = typeof params.category === 'string' ? params.category : null
   const filter = parseFilter(
     category,
-    chips.map((chip) => chip.value),
+    worksChips(counts).map((chip) => chip.value),
     ALL_WORKS,
   )
-  const first = chips.length > 0 ? await getWorksPage(filter, 1) : null
-
-  return (
-    <>
-      {pageName && (
-        <JsonLd
-          data={breadcrumbJsonLd([
-            { name: 'Главная', path: '/' },
-            { name: pageName, path: PATH },
-          ])}
-        />
-      )}
-      <PageHeading label={page.hero?.label} title={title} />
-      {first && <WorksFeed chips={chips} counts={counts} initial={{ filter, ...first }} />}
-      <FirstScreenEnd />
-      <PreviewRefresh />
-    </>
-  )
+  return <WorksPageBody filter={filter} />
 }

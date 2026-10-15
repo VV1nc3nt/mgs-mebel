@@ -2,6 +2,7 @@ import { slugField, type CollectionConfig } from 'payload'
 import { array as validateArray } from 'payload/shared'
 
 import { contentEditors, publicRead } from '@/access'
+import { PREVIEW_BREAKPOINTS, previewUrl } from '@/globals/shared'
 import { checkMediaKind, imageField, mediaField, mimeFilter } from '@/fields/media'
 import { projectCategoryOptions } from '@/lib/projectCategories'
 import { revalidateCollection } from '@/lib/revalidate'
@@ -16,6 +17,11 @@ export const Projects: CollectionConfig = {
     group: 'Контент',
     useAsTitle: 'title',
     defaultColumns: ['title', 'category', 'place', 'featured', 'order', 'updatedAt'],
+    // The project page with the viewer open; no drafts — it shows what was saved
+    livePreview: {
+      url: ({ data }) => previewUrl(data?.slug ? `/works/${data.slug}` : '/works'),
+      breakpoints: PREVIEW_BREAKPOINTS,
+    },
   },
   defaultSort: '-createdAt',
   access: {

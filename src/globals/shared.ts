@@ -5,11 +5,15 @@ import { revalidateGlobal } from '@/lib/revalidate'
 import { siteUrl } from '@/lib/site'
 
 // Live Preview iframe sizes: the three reference widths of the design (README §4).
-const PREVIEW_BREAKPOINTS = [
+export const PREVIEW_BREAKPOINTS = [
   { name: 'mobile', label: 'Телефон 390', width: 390, height: 844 },
   { name: 'tablet', label: 'Планшет 834', width: 834, height: 1194 },
   { name: 'desktop', label: 'Десктоп 1440', width: 1440, height: 900 },
 ]
+
+/** Live Preview address of a site path: the /preview draft mode handler redirects to it. */
+export const previewUrl = (path: string) =>
+  `${siteUrl()}/preview?path=${encodeURIComponent(path)}`
 
 type PageGlobalOptions = {
   group?: string
@@ -34,7 +38,7 @@ export const pageGlobal = (
     group,
     livePreview: previewPath
       ? {
-          url: () => `${siteUrl()}/preview?path=${encodeURIComponent(previewPath)}`,
+          url: () => previewUrl(previewPath),
           breakpoints: PREVIEW_BREAKPOINTS,
         }
       : undefined,

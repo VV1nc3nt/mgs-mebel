@@ -52,7 +52,10 @@ export type ViewerProject = {
   frames: ViewerFrame[]
 }
 
-export const projectHref = (slug: string) => `/works/${slug}`
+/** The works list the viewer opens over. */
+export const WORKS_PATH = '/works'
+
+export const projectHref = (slug: string) => `${WORKS_PATH}/${slug}`
 
 type Slides = ProjectRecord['slides']
 

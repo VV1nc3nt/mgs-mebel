@@ -201,6 +201,15 @@
   --text-card-title--letter-spacing: -0.015em;
   --text-card-title--font-weight: 700;
   /* Capability card «Дизайнерам» (design: designers v2 §2.2) */
+  /* Project viewer: project title, «MGS» in the avatar (README §6.4) */
+  --text-viewer-title: 1.5rem;
+  --text-viewer-title--line-height: 1.1;
+  --text-viewer-title--letter-spacing: -0.025em;
+  --text-viewer-title--font-weight: 700;
+  --text-viewer-mark: 0.625rem;
+  --text-viewer-mark--line-height: 1;
+  --text-viewer-mark--letter-spacing: -0.02em;
+  --text-viewer-mark--font-weight: 800;
   --text-capability-title: 1.1875rem;
   --text-capability-title--line-height: 1.2;
   --text-capability-title--letter-spacing: -0.015em;
@@ -290,6 +299,8 @@
   /* «Дизайнерам»: capability card in the mobile strip; the manager photo (designers v2 §2.2, §2.4) */
   --spacing-capability-card: 300px;
   --spacing-avatar: 88px;
+  /* Project viewer window from tablet: 92% of the screen height, 9:16 (README §6.4) */
+  --spacing-viewer: 92dvh;
 
   /* Containers */
   --container-page: 1600px;
@@ -378,10 +389,53 @@
   --motion-hero-progress: 8s;
   /* Skeleton cards while the works feed loads (README §6.4) */
   --motion-skeleton-pulse: 1.2s;
+  /* Project viewer: appears with fade + scale .94 → 1 (README §6.4), closes with a fade */
+  --motion-viewer-in: 320ms;
+  --motion-viewer-out: 200ms;
 
   /* Color and border transitions: 150–200ms ease-out (README §9); 200ms is duration-200 */
   --default-transition-duration: 150ms;
   --default-transition-timing-function: ease-out;
+}
+
+/*
+ * Project viewer (README §6.4): `data-state` enter → open → leave. Opening fades the backdrop
+ * and scales the window .94 → 1; closing only fades. will-change only while it moves.
+ */
+@utility viewer-dialog {
+  opacity: 0;
+  transition: opacity var(--motion-viewer-out) ease-out;
+  &[data-state='open'] {
+    opacity: 1;
+    transition-duration: var(--motion-viewer-in);
+    transition-timing-function: var(--ease-soft);
+  }
+  &[data-animating] {
+    will-change: opacity;
+  }
+}
+
+@utility viewer-window {
+  [data-state='enter'] > & {
+    scale: 0.94;
+  }
+  [data-state='open'] > & {
+    transition: scale var(--motion-viewer-in) var(--ease-soft);
+  }
+  [data-animating] > & {
+    will-change: scale;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    [data-state] > & {
+      scale: none;
+      transition: none;
+    }
+  }
+}
+
+/* Bottom block of the viewer: 20 above the bottom edge and the home indicator */
+@utility viewer-bottom {
+  padding-bottom: calc(var(--spacing) * 5 + env(safe-area-inset-bottom));
 }
 
 /* Skeleton card while a list loads (works feed): pulsing opacity; still with reduced motion */
