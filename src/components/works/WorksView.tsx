@@ -54,9 +54,11 @@ export function WorksView({
           cta={cta}
         />
         {afterViewer}
-        {/* Under the open viewer the list is covered (the backdrop is opaque): hidden too, so its
-            cards, parsed after the viewer on a slow connection, never count as layout shifts.
-            Shown again as soon as the viewer starts to close. */}
+        {/* Under the fully shown viewer the list is covered (the backdrop is opaque): hidden too,
+            so its cards, parsed after the viewer on a slow connection, never count as layout
+            shifts. Opened on the server — hidden from the first paint; opened from the feed —
+            once its appearing has ended (no flash under the fading backdrop); visible again
+            from the first frame of closing (`leave`). */}
         <div
           className={cn('contents', viewer.slug !== null && viewer.phase === 'open' && 'invisible')}
           inert={viewer.slug !== null}

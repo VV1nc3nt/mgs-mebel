@@ -316,11 +316,18 @@ function ViewerDialog({
   const dataState = leaving ? 'leave' : shown ? 'open' : 'enter'
 
   // End of appearing / closing: the dialog's opacity transition, or its duration as a fallback
-  const settle = viewer.settle
+  const { settle, opened } = viewer
   useEffect(() => {
     const dialog = dialogRef.current
     if (!dialog || !(leaving || animating)) return
-    const done = () => (leaving ? settle() : setAnimating(false))
+    const done = () => {
+      if (leaving) {
+        settle()
+        return
+      }
+      setAnimating(false)
+      opened()
+    }
     const onEnd = (event: TransitionEvent) => {
       if (event.target === dialog && event.propertyName === 'opacity') done()
     }
@@ -330,7 +337,7 @@ function ViewerDialog({
       dialog.removeEventListener('transitionend', onEnd)
       window.clearTimeout(timer)
     }
-  }, [leaving, animating, settle])
+  }, [leaving, animating, settle, opened])
 
   // «ещё» is in the HTML from the start (as in the design): a text that fits in two lines keeps
   // its place but hides it — measured only on the client, so showing or removing it would shift
