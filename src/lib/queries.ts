@@ -9,6 +9,7 @@ import type { LayoutInput, SettingsInput } from './chrome'
 import { getPayloadClient } from './payload'
 import { getPreviewUser } from './preview'
 import { collectionTag, globalTag, newsTag, type PAGE_GLOBALS } from './revalidate'
+import { isProjectSlug, toViewerProject, type ProjectRecord, type ViewerProject } from './viewer'
 import {
   ALL_WORKS,
   HOME_WORKS_LIMIT,
@@ -325,6 +326,126 @@ const worksCountsCached = unstable_cache(
 export async function getWorksCounts(): Promise<WorksCounts> {
   await connection()
   return worksCountsCached()
+}
+
+const projectSlugsCached = unstable_cache(
+  async (): Promise<string[]> => {
+    const payload = await getPayloadClient()
+    const { docs } = await payload.find({
+      collection: 'projects',
+      pagination: false,
+      depth: 0,
+      overrideAccess: false,
+      select: { slug: true },
+    })
+    return docs.map((doc) => doc.slug)
+  },
+  ['collection:projects:slugs'],
+  { tags: [collectionTag('projects')] },
+)
+
+// The viewer shows frames full-screen: the `hero` size (1920) on top of the feed's ones.
+const PROJECT_MEDIA = {
+  alt: true,
+  url: true,
+  filename: true,
+  prefix: true,
+  mimeType: true,
+  width: true,
+  height: true,
+  focalX: true,
+  focalY: true,
+  sizes: {
+    thumb: WORK_MEDIA_SIZE,
+    card: WORK_MEDIA_SIZE,
+    hero: WORK_MEDIA_SIZE,
+    og: WORK_MEDIA_SIZE,
+  },
+} as const
+
+/** A project of the viewer with its SEO fields and its place in the feed order. */
+export type ProjectPageData = {
+  project: ViewerProject
+  meta: ProjectRecord['meta']
+  sort: Pick<ProjectRecord, 'id' | 'order' | 'createdAt'>
+}
+
+/**
+ * A project by its slug, or null (the page answers 404). An unknown slug is answered from the
+ * list of slugs before the per-slug cache, so made-up URLs leave no cache entries.
+ */
+export async function getProjectBySlug(slug: string): Promise<ProjectPageData | null> {
+  await connection()
+  if (!isProjectSlug(slug) || !(await projectSlugsCached()).includes(slug)) return null
+  return unstable_cache(
+    async (): Promise<ProjectPageData | null> => {
+      const payload = await getPayloadClient()
+      const { docs } = await payload.find({
+        collection: 'projects',
+        where: { slug: { equals: slug } },
+        limit: 1,
+        depth: 1,
+        overrideAccess: false,
+        select: {
+          title: true,
+          slug: true,
+          category: true,
+          place: true,
+          area: true,
+          duration: true,
+          description: true,
+          slides: true,
+          meta: true,
+          order: true,
+          createdAt: true,
+        },
+        populate: { media: PROJECT_MEDIA },
+      })
+      const doc = docs[0]
+      if (!doc) return null
+      return {
+        project: toViewerProject(doc),
+        meta: doc.meta,
+        sort: { id: doc.id, order: doc.order, createdAt: doc.createdAt },
+      }
+    },
+    ['collection:projects:slug', slug],
+    { tags: [collectionTag('projects')] },
+  )()
+}
+
+/**
+ * Projects before this one in the order of the feed «все» (`order, -createdAt, -id`): its 0-based
+ * position. An empty `order` sorts last (Postgres, ascending).
+ */
+export const projectsBefore = ({ id, order, createdAt }: ProjectPageData['sort']): Where => {
+  const sameOrder: Where =
+    order == null ? { order: { exists: false } } : { order: { equals: order } }
+  return {
+    or: [
+      ...(order == null ? [{ order: { exists: true } }] : [{ order: { less_than: order } }]),
+      { and: [sameOrder, { createdAt: { greater_than: createdAt } }] },
+      { and: [sameOrder, { createdAt: { equals: createdAt } }, { id: { greater_than: id } }] },
+    ],
+  }
+}
+
+/** 0-based position of a project in the feed «все». */
+export async function getProjectPosition(sort: ProjectPageData['sort']): Promise<number> {
+  await connection()
+  return unstable_cache(
+    async (): Promise<number> => {
+      const payload = await getPayloadClient()
+      const { totalDocs } = await payload.count({
+        collection: 'projects',
+        where: projectsBefore(sort),
+        overrideAccess: false,
+      })
+      return totalDocs
+    },
+    ['collection:projects:position', String(sort.id), String(sort.order), sort.createdAt],
+    { tags: [collectionTag('projects')] },
+  )()
 }
 
 export type SalonPin = Pick<
