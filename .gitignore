@@ -46,6 +46,8 @@ node_modules/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+# Local e2e media directories (MEDIA_DIR of the fixture and the standalone server)
+/.e2e-media*/
 
 # IDE
 .vscode/
