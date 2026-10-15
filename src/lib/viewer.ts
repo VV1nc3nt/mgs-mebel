@@ -58,6 +58,12 @@ export const WORKS_PATH = '/works'
 
 export const projectHref = (slug: string) => `${WORKS_PATH}/${slug}`
 
+/**
+ * Absolute URL of a project page, to share. `origin` comes from the server (`siteUrl()`): the
+ * run-time SITE_URL is not available in the browser.
+ */
+export const projectUrl = (origin: string, slug: string) => `${origin}${projectHref(slug)}`
+
 type Slides = ProjectRecord['slides']
 
 export const toViewerFrames = (slides: Slides): ViewerFrame[] =>
