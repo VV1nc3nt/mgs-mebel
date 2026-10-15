@@ -392,6 +392,9 @@
   /* Project viewer: appears with fade + scale .94 → 1 (README §6.4), closes with a fade */
   --motion-viewer-in: 320ms;
   --motion-viewer-out: 200ms;
+  /* «Поделиться» of the viewer: «Ссылка скопирована» shows for 2 s (README §6.8), fades 200ms */
+  --share-status-time: 2s;
+  --motion-status-fade: 200ms;
 
   /* Color and border transitions: 150–200ms ease-out (README §9); 200ms is duration-200 */
   --default-transition-duration: 150ms;
@@ -440,6 +443,29 @@
 @utility viewer-progress-fill {
   transform-origin: left;
   transform: scaleX(var(--viewer-progress, 1));
+}
+
+/*
+ * Status of «Поделиться» (README §6.4): fades in when `data-shown` is set, fades out keeping its
+ * text, then hidden (visibility) so it is not read; reduced motion — no fade.
+ */
+@utility share-status {
+  transition:
+    opacity var(--motion-status-fade) ease-out,
+    visibility 0s linear;
+  &:not([data-shown]) {
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity var(--motion-status-fade) ease-out,
+      visibility 0s linear var(--motion-status-fade);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+    &:not([data-shown]) {
+      transition: none;
+    }
+  }
 }
 
 /* Bottom block of the viewer: 20 above the bottom edge and the home indicator */

@@ -2,11 +2,20 @@
 
 import { ArrowUp, X } from 'lucide-react'
 import Image from 'next/image'
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type MouseEvent,
+} from 'react'
 
 import { loadProject } from '@/app/(frontend)/works/[slug]/actions'
 import { Action } from '@/components/ui/Action'
 import { Chip } from '@/components/ui/Chip'
+import { ContactButton } from '@/components/ui/ContactButton'
 import { HIT_AREA_Y } from '@/components/ui/hitArea'
 import { IconButton } from '@/components/ui/IconButton'
 import { transitionTime } from '@/hooks/useMenu'
@@ -14,7 +23,8 @@ import { useProjectViewer } from '@/hooks/useProjectViewer'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
 import { useScrollLock } from '@/hooks/useScrollLock'
 import { useViewerInput, VIEWER_SCROLL_ATTR } from '@/hooks/useViewerInput'
-import { closeChooser } from '@/lib/chooser'
+import { closeChooser, getActiveChooser, subscribeChooser } from '@/lib/chooser'
+import type { Messenger } from '@/lib/chrome'
 import { cn } from '@/lib/cn'
 import { focalPosition, imageSizes, imageSource } from '@/lib/media'
 import { setOverlay } from '@/lib/overlay'
@@ -25,6 +35,7 @@ import {
   pendingStep,
   prevFrame,
   projectSubtitle,
+  projectUrl,
   shouldLoadMore,
   swipeMove,
   viewerCounter,
@@ -37,6 +48,7 @@ import {
 import type { WorksCounts } from '@/lib/works'
 import { useWorksFeed } from './WorksFeedProvider'
 import { ViewerProgress } from './ViewerProgress'
+import { ViewerShare } from './ViewerShare'
 import { ViewerSoundButton, ViewerVideo } from './ViewerVideo'
 
 type Props = {
@@ -45,7 +57,15 @@ type Props = {
   initialProject: ViewerProject | null
   /** <title> of the works list: back on it after closing a viewer opened on the server. */
   listTitle: string
+  /** Origin of the site (`siteUrl()` on the server): «Поделиться» gives the absolute link. */
+  origin: string
+  cta: ViewerCta
 }
+
+/** «Хочу такой же проект» (worksPage.viewer.ctaLabel): no label or messengers — no button. */
+export type ViewerCta = { label: string | null; messengers: Messenger[] }
+
+const chooserOpen = () => getActiveChooser() !== null
 
 /**
  * Project viewer (README §6.4), Reels-like: frames of a project and the projects of the loaded
@@ -66,7 +86,14 @@ const plainClick = (event: MouseEvent) =>
 
 const FRAME_SIZES = imageSizes({ base: '100vw', md: '52vh' })
 
-function ViewerDialog({ counts, initialProject, listTitle, slug }: Props & { slug: string }) {
+function ViewerDialog({
+  counts,
+  initialProject,
+  listTitle,
+  origin,
+  cta,
+  slug,
+}: Props & { slug: string }) {
   const viewer = useProjectViewer()
   const feed = useWorksFeed()
   const reducedMotion = useReducedMotion()
@@ -115,6 +142,16 @@ function ViewerDialog({ counts, initialProject, listTitle, slug }: Props & { slu
   const current = frames[frame]
   const video = current?.kind === 'video' && videoFailed !== frameKey ? current.video : null
   const fillRef = useRef<HTMLDivElement>(null)
+
+  // The messenger choice of the CTA, open in place over the frame: the viewer's keys, wheel and
+  // swipes wait (useViewerInput), the video pauses, a tap that closes it does nothing else
+  const choosing = useSyncExternalStore(subscribeChooser, chooserOpen, () => false)
+  const chooserTap = useRef(false)
+  const tapClosesChooser = () => {
+    const closing = chooserTap.current
+    chooserTap.current = false
+    return closing
+  }
 
   const bounds: ViewerBounds = {
     frames: project ? frames.length : entry === 'error' ? 1 : null,
@@ -272,6 +309,10 @@ function ViewerDialog({ counts, initialProject, listTitle, slug }: Props & { slu
     return () => cancelAnimationFrame(frameId)
   }, [shown, viewer.phase])
   const leaving = viewer.phase === 'leave'
+  // Another project or closing: the choice closes with what it was opened over
+  useEffect(() => {
+    closeChooser()
+  }, [slug, leaving])
   const dataState = leaving ? 'leave' : shown ? 'open' : 'enter'
 
   // End of appearing / closing: the dialog's opacity transition, or its duration as a fallback
@@ -333,8 +374,18 @@ function ViewerDialog({ counts, initialProject, listTitle, slug }: Props & { slu
       data-frame={frame}
       data-animating={animating || leaving ? '' : undefined}
       inert={leaving}
-      // From tablet the window floats: a click on the backdrop around it closes
-      onClick={(event) => event.target === event.currentTarget && close()}
+      // A press that starts with the messenger choice open only closes it (useChooser)
+      onPointerDownCapture={() => {
+        chooserTap.current = chooserOpen()
+      }}
+      onPointerCancel={() => {
+        chooserTap.current = false
+      }}
+      // From tablet the window floats: a click on the backdrop around it closes. Child handlers
+      // come first, so the press is over here either way.
+      onClick={(event) => {
+        if (!tapClosesChooser() && event.target === event.currentTarget) close()
+      }}
       className="fixed inset-0 z-viewer flex items-center justify-center bg-bg-outer viewer-dialog focus-visible:outline-none"
     >
       <div className="relative isolate size-full viewer-window overflow-hidden bg-bg-outer md:aspect-9/16 md:h-viewer md:w-auto md:max-w-full md:rounded-thumb-lg">
@@ -381,7 +432,7 @@ function ViewerDialog({ counts, initialProject, listTitle, slug }: Props & { slu
               key={frameKey}
               source={video}
               muted={muted}
-              active={!leaving}
+              active={!leaving && !choosing}
               fillRef={fillRef}
               onEnded={() => frameStep(1)}
               onFallback={() => setVideoFailed(frameKey)}
@@ -415,9 +466,7 @@ function ViewerDialog({ counts, initialProject, listTitle, slug }: Props & { slu
                   </p>
                 )}
               </div>
-              {video && (
-                <ViewerSoundButton muted={muted} onToggle={() => setMuted(!muted)} />
-              )}
+              {video && <ViewerSoundButton muted={muted} onToggle={() => setMuted(!muted)} />}
               <IconButton
                 href={WORKS_PATH}
                 prefetch={false}
@@ -432,13 +481,13 @@ function ViewerDialog({ counts, initialProject, listTitle, slug }: Props & { slu
           </div>
 
           {/* Tap zones between the header and the bottom block: 35 % back, 65 % forward */}
-          <div className="flex min-h-0 flex-1">
+          <div className="relative flex min-h-0 flex-1">
             <button
               type="button"
               tabIndex={-1}
               aria-label="Предыдущий кадр"
               aria-busy={bounds.frames === null ? true : undefined}
-              onClick={() => frameStep(-1)}
+              onClick={() => !chooserTap.current && frameStep(-1)}
               className="w-7/20 cursor-w-resize"
             />
             <button
@@ -446,9 +495,13 @@ function ViewerDialog({ counts, initialProject, listTitle, slug }: Props & { slu
               tabIndex={-1}
               aria-label="Следующий кадр"
               aria-busy={bounds.frames === null ? true : undefined}
-              onClick={() => frameStep(1)}
+              onClick={() => !chooserTap.current && frameStep(1)}
               className="flex-1 cursor-e-resize"
             />
+            {/* Right rail (README §6.4): next to the tap zones, not in them — its clicks are its own */}
+            <div className="pointer-events-none absolute inset-x-3 bottom-3 flex items-end justify-end gap-3 *:pointer-events-auto">
+              <ViewerShare key={slug} title={title} url={projectUrl(origin, slug)} />
+            </div>
           </div>
 
           <div className="flex max-h-1/2 min-h-0 flex-col gap-3 px-5 viewer-bottom">
@@ -490,6 +543,13 @@ function ViewerDialog({ counts, initialProject, listTitle, slug }: Props & { slu
                 )}
               </div>
             )}
+            <ContactButton
+              caption={cta.label}
+              messengers={cta.messengers}
+              size={52}
+              fullWidth
+              arrow
+            />
             {known && (
               <div className="flex items-center justify-between gap-4 text-caption-s">
                 {prev ? (

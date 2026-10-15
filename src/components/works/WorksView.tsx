@@ -3,9 +3,10 @@
 import type { ReactNode } from 'react'
 
 import { ProjectViewerContext, useViewerState } from '@/hooks/useProjectViewer'
+import { cn } from '@/lib/cn'
 import type { ViewerProject } from '@/lib/viewer'
 import type { FeedWork, WorksCounts, WorksFeedFilter } from '@/lib/works'
-import { ProjectViewer } from './ProjectViewer'
+import { ProjectViewer, type ViewerCta } from './ProjectViewer'
 import { WorksFeedProvider } from './WorksFeedProvider'
 
 type Props = {
@@ -16,6 +17,10 @@ type Props = {
   project?: ViewerProject | null
   /** <title> of /works, restored after closing the server's viewer. */
   listTitle: string
+  /** Origin of the site (`siteUrl()`): the shared links are absolute. */
+  origin: string
+  /** «Хочу такой же проект» of the viewer. */
+  cta: ViewerCta
   /** Right after the viewer: the first-screen marker of the project page. */
   afterViewer?: ReactNode
   /** Heading and feed: inert while the viewer covers them. */
@@ -32,6 +37,8 @@ export function WorksView({
   counts,
   project = null,
   listTitle,
+  origin,
+  cta,
   afterViewer,
   children,
 }: Props) {
@@ -39,9 +46,21 @@ export function WorksView({
   return (
     <WorksFeedProvider initial={initial}>
       <ProjectViewerContext value={viewer}>
-        <ProjectViewer counts={counts} initialProject={project} listTitle={listTitle} />
+        <ProjectViewer
+          counts={counts}
+          initialProject={project}
+          listTitle={listTitle}
+          origin={origin}
+          cta={cta}
+        />
         {afterViewer}
-        <div className="contents" inert={viewer.slug !== null}>
+        {/* Under the open viewer the list is covered (the backdrop is opaque): hidden too, so its
+            cards, parsed after the viewer on a slow connection, never count as layout shifts.
+            Shown again as soon as the viewer starts to close. */}
+        <div
+          className={cn('contents', viewer.slug !== null && viewer.phase === 'open' && 'invisible')}
+          inert={viewer.slug !== null}
+        >
           {children}
         </div>
       </ProjectViewerContext>

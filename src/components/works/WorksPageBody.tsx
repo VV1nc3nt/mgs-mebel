@@ -6,6 +6,7 @@ import { toChrome } from '@/lib/chrome'
 import { breadcrumbJsonLd } from '@/lib/jsonld'
 import { getLayout, getPageGlobal, getSettings, getWorksCounts, getWorksPage } from '@/lib/queries'
 import { seoTitle } from '@/lib/seo'
+import { siteUrl } from '@/lib/site'
 import { pageOf, WORKS_PATH, type ViewerProject } from '@/lib/viewer'
 import { ALL_WORKS, appendWorks, worksChips, type WorksFeedFilter } from '@/lib/works'
 import { WorksFeed } from './WorksFeed'
@@ -34,7 +35,7 @@ export async function WorksPageBody({ filter = ALL_WORKS, project }: Props) {
     getLayout(),
     getSettings(),
   ])
-  const { nav } = toChrome(layout, settings)
+  const { nav, messengers } = toChrome(layout, settings)
   const navLabel = nav.find((item) => item.href === WORKS_PATH)?.label
   const title = page.hero?.title?.trim() || navLabel
   const pageName = navLabel ?? title
@@ -79,6 +80,8 @@ export async function WorksPageBody({ filter = ALL_WORKS, project }: Props) {
           counts={counts}
           project={project?.data}
           listTitle={worksListTitle(page)}
+          origin={siteUrl()}
+          cta={{ label: page.viewer?.ctaLabel ?? null, messengers }}
           afterViewer={project && <FirstScreenEnd />}
         >
           {heading}

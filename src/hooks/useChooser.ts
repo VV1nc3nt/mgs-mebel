@@ -47,6 +47,8 @@ export function useChooser() {
     if (!open) return
     const onKey = (event: globalThis.KeyboardEvent) => {
       if (event.key !== 'Escape') return
+      // Handled: an overlay under the choice (the project viewer) does not close with it
+      event.preventDefault()
       closeChooser(id)
       focusButton()
     }
