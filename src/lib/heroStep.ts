@@ -5,45 +5,24 @@
  * Pure decisions with the reference numbers; listeners live in hooks/useHeroStep.
  */
 
-/** |accumulated wheel delta| that makes a step (px). */
-export const STEP_DELTA = 24
-/** Wheel deltas add up while they come at most this far apart (ms) in one direction. */
-export const ACC_GAP = 250
-/** After a step every event is swallowed for this long (ms); shorter with reduced motion. */
-export const LOCK = 600
-export const LOCK_RM = 300
-/** Inertia tail: events closer than this (ms) in the step's direction, not growing… */
-export const TAIL_GAP = 120
-/** …for at most this long after the step (ms), belong to the gesture that made it. */
-export const TAIL_SPAN = 1800
+import { KEY_DELTA, lockFor, wheelGesture, type StepState } from './wheelGesture'
+
+export {
+  ACC_GAP,
+  initialStepState,
+  KEY_DELTA,
+  LOCK,
+  LOCK_RM,
+  STEP_DELTA,
+  TAIL_GAP,
+  TAIL_SPAN,
+  type StepState,
+} from './wheelGesture'
+
 /** The scene steps only while the page is scrolled at most this far (px). */
 export const TOP_Y = 4
 /** Swipe distance that makes a step (px). */
 export const TOUCH_DELTA = 24
-/** Delta of one key press: far above STEP_DELTA, so one press is one step. */
-export const KEY_DELTA = 100
-
-export type StepState = {
-  lockUntil: number
-  acc: number
-  accT: number
-  tail: boolean
-  tailDir: number
-  tailA: number
-  tailT: number
-  tailEnd: number
-}
-
-export const initialStepState = (): StepState => ({
-  lockUntil: 0,
-  acc: 0,
-  accT: 0,
-  tail: false,
-  tailDir: 0,
-  tailA: 0,
-  tailT: 0,
-  tailEnd: 0,
-})
 
 type StepInput = {
   /** Wheel deltaY (down > 0) or ±KEY_DELTA. */
@@ -66,51 +45,20 @@ export type WheelResult = {
   resetScroll: boolean
 }
 
-const lockFor = (rm: boolean) => (rm ? LOCK_RM : LOCK)
-
 /** The scene has a segment to go to in this direction. */
 const wants = (dy: number, slide: number) => (dy > 0 && slide === 0) || (dy < 0 && slide === 1)
 
-/** One wheel event (or key press, with dy = ±KEY_DELTA). */
+/** One wheel event (or key press, with dy = ±KEY_DELTA): the shared gesture at the top only. */
 export function wheelStep(s: StepState, { dy, now, scrollY, slide, rm }: StepInput): WheelResult {
-  const none = { consume: false, resetScroll: false }
-  if (!dy) return { state: s, ...none }
-  const a = Math.abs(dy)
-  const dir = Math.sign(dy)
-  const top = scrollY <= TOP_Y
-  if (now < s.lockUntil) {
-    return { state: { ...s, tailA: a, tailT: now }, consume: true, resetScroll: false }
-  }
-  let state = s
-  if (s.tail) {
-    const inertia =
-      now < s.tailEnd && now - s.tailT < TAIL_GAP && dir === s.tailDir && a <= s.tailA + 1
-    if (inertia) return { state: { ...s, tailA: a, tailT: now }, consume: top, resetScroll: false }
-    state = { ...s, tail: false }
-  }
-  if (!top || !wants(dy, slide)) return { state: { ...state, acc: 0 }, ...none }
-  let acc = now - state.accT > ACC_GAP || Math.sign(state.acc) !== dir ? 0 : state.acc
-  acc += dy
-  const resetScroll = scrollY > 0
-  if (Math.abs(acc) >= STEP_DELTA) {
-    return {
-      state: {
-        ...state,
-        acc: 0,
-        accT: now,
-        lockUntil: now + lockFor(rm),
-        tail: true,
-        tailDir: dir,
-        tailA: a,
-        tailT: now,
-        tailEnd: now + TAIL_SPAN,
-      },
-      consume: true,
-      step: dir as 1 | -1,
-      resetScroll,
-    }
-  }
-  return { state: { ...state, acc, accT: now }, consume: true, resetScroll }
+  const { state, consume, step, counted } = wheelGesture(s, {
+    dy,
+    now,
+    rm,
+    active: scrollY <= TOP_Y,
+    wants: wants(dy, slide),
+  })
+  // An event the scene counts puts a slightly moved page back to the top
+  return { state, consume, ...(step && { step }), resetScroll: counted && scrollY > 0 }
 }
 
 export type TouchResult = { state: StepState; consume: boolean; step?: 1 | -1; fired: boolean }
