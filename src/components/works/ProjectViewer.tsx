@@ -19,6 +19,7 @@ import { cn } from '@/lib/cn'
 import { focalPosition, imageSizes, imageSource } from '@/lib/media'
 import { setOverlay } from '@/lib/overlay'
 import {
+  frameWindow,
   jumpProject,
   nextFrame,
   pendingStep,
@@ -36,6 +37,7 @@ import {
 import type { WorksCounts } from '@/lib/works'
 import { useWorksFeed } from './WorksFeedProvider'
 import { ViewerProgress } from './ViewerProgress'
+import { ViewerSoundButton, ViewerVideo } from './ViewerVideo'
 
 type Props = {
   counts: WorksCounts
@@ -105,6 +107,15 @@ function ViewerDialog({ counts, initialProject, listTitle, slug }: Props & { slu
   const frame = at.slug === slug ? Math.min(at.frame, Math.max(frames.length - 1, 0)) : 0
   const expanded = at.slug === slug && at.expanded
 
+  // Video of the current frame: sound off by default, the choice kept until the viewer closes;
+  // a frame whose video failed shows its poster (no sound button) until it is shown again
+  const [muted, setMuted] = useState(true)
+  const [videoFailed, setVideoFailed] = useState<string | null>(null)
+  const frameKey = `${slug}-${frame}`
+  const current = frames[frame]
+  const video = current?.kind === 'video' && videoFailed !== frameKey ? current.video : null
+  const fillRef = useRef<HTMLDivElement>(null)
+
   const bounds: ViewerBounds = {
     frames: project ? frames.length : entry === 'error' ? 1 : null,
     length: feed.items.length,
@@ -121,6 +132,7 @@ function ViewerDialog({ counts, initialProject, listTitle, slug }: Props & { slu
       if (!next) return
       // Every project starts at its first frame, with the description collapsed
       setAt({ slug: next.slug, frame: 0, expanded: false })
+      setVideoFailed(null)
       viewer.go(next.slug)
     },
     [feed.items, viewer],
@@ -130,6 +142,7 @@ function ViewerDialog({ counts, initialProject, listTitle, slug }: Props & { slu
     switch (move.type) {
       case 'frame':
         setAt({ slug, frame: move.frame, expanded })
+        setVideoFailed(null)
         break
       case 'project':
         pending.current = null
@@ -295,6 +308,11 @@ function ViewerDialog({ counts, initialProject, listTitle, slug }: Props & { slu
 
   const prev = index > 0 ? feed.items[index - 1] : undefined
   const next = index >= 0 ? feed.items[index + 1] : undefined
+  // The next project's first frame, loaded ahead (hidden)
+  const nextEntry = next ? loaded[next.slug] : undefined
+  const nextFirst =
+    (nextEntry && nextEntry !== 'error' ? nextEntry.frames[0]?.image : null) ?? next?.image ?? null
+  const nextImage = imageSource(nextFirst, 'hero')
   const total = counts[feed.filter]
   const Title = initialProject && openedOnServer ? 'h1' : 'h2'
 
@@ -321,30 +339,67 @@ function ViewerDialog({ counts, initialProject, listTitle, slug }: Props & { slu
     >
       <div className="relative isolate size-full viewer-window overflow-hidden bg-bg-outer md:aspect-9/16 md:h-viewer md:w-auto md:max-w-full md:rounded-thumb-lg">
         <div className="absolute inset-0 -z-10">
-          {frames.map((item, i) => {
+          {/* The current frame and its neighbours (instant steps); only the current one is read */}
+          {frameWindow(frame, frames.length).map((i) => {
+            const item = frames[i]!
             const image = imageSource(item.image, 'hero')
+            const shown = i === frame
             return (
               image && (
                 <Image
-                  key={`${item.image?.id ?? 'card'}-${i}`}
+                  key={`${slug}-${i}-${item.image?.id ?? 'card'}`}
                   src={image.src}
-                  alt={image.alt}
+                  alt={shown ? image.alt : ''}
+                  aria-hidden={shown ? undefined : true}
+                  data-viewer-frame={i}
                   fill
                   sizes={FRAME_SIZES}
                   preload={Boolean(initialProject) && i === 0}
-                  fetchPriority={i === frame ? 'high' : 'low'}
-                  className={cn('object-cover', i === frame ? 'opacity-100' : 'opacity-0')}
+                  fetchPriority={shown ? 'high' : 'low'}
+                  className={cn('object-cover', shown ? 'opacity-100' : 'opacity-0')}
                   style={{ objectPosition: focalPosition(item.image) }}
                 />
               )
             )
           })}
+          {nextImage && (
+            <Image
+              key={`next-${next?.slug}`}
+              src={nextImage.src}
+              alt=""
+              aria-hidden
+              data-viewer-next=""
+              fill
+              sizes={FRAME_SIZES}
+              fetchPriority="low"
+              className="object-cover opacity-0"
+              style={{ objectPosition: focalPosition(nextFirst) }}
+            />
+          )}
+          {video && (
+            <ViewerVideo
+              key={frameKey}
+              source={video}
+              muted={muted}
+              active={!leaving}
+              fillRef={fillRef}
+              onEnded={() => frameStep(1)}
+              onFallback={() => setVideoFailed(frameKey)}
+              onMuted={() => setMuted(true)}
+            />
+          )}
           <div className="absolute inset-0 bg-overlay-viewer" />
         </div>
 
         <div className="flex h-full flex-col">
           <div className="flex flex-col gap-3 px-3 pt-3">
-            <ViewerProgress count={Math.max(frames.length, 1)} current={frame} />
+            <ViewerProgress
+              count={Math.max(frames.length, 1)}
+              current={frame}
+              playback={Boolean(video)}
+              frameKey={frameKey}
+              fillRef={fillRef}
+            />
             <div className="flex items-center gap-2.5">
               <span
                 aria-hidden="true"
@@ -360,6 +415,9 @@ function ViewerDialog({ counts, initialProject, listTitle, slug }: Props & { slu
                   </p>
                 )}
               </div>
+              {video && (
+                <ViewerSoundButton muted={muted} onToggle={() => setMuted(!muted)} />
+              )}
               <IconButton
                 href={WORKS_PATH}
                 prefetch={false}

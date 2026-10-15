@@ -4,13 +4,16 @@ import type { Media } from '@/payload-types'
 import {
   areaFact,
   canScrollInside,
+  frameWindow,
   isProjectSlug,
   jumpProject,
   mediaFact,
   nextFrame,
   pageOf,
   pendingStep,
+  playRefusal,
   prevFrame,
+  progressShare,
   projectFacts,
   projectSubtitle,
   shouldLoadMore,
@@ -19,6 +22,7 @@ import {
   swipeStep,
   toViewerFrames,
   toViewerProject,
+  videoEvent,
   viewerCounter,
   type ProjectRecord,
   type ViewerBounds,
@@ -169,5 +173,45 @@ describe('gestures', () => {
     expect(canScrollInside(box, -1)).toBe(false)
     expect(canScrollInside({ ...box, scrollTop: 200 }, 1)).toBe(false)
     expect(canScrollInside({ ...box, scrollTop: 200 }, -1)).toBe(true)
+  })
+})
+
+describe('video', () => {
+  it('frame window: the current frame and its neighbours', () => {
+    expect(frameWindow(0, 1)).toEqual([0])
+    expect(frameWindow(0, 4)).toEqual([0, 1])
+    expect(frameWindow(2, 4)).toEqual([1, 2, 3])
+    expect(frameWindow(3, 4)).toEqual([2, 3])
+    expect(frameWindow(0, 0)).toEqual([])
+  })
+
+  it('progress: the share of the file played, unknown length — 0', () => {
+    expect(progressShare(5, 10)).toBe(0.5)
+    expect(progressShare(12, 10)).toBe(1)
+    expect(progressShare(-1, 10)).toBe(0)
+    expect(progressShare(3, NaN)).toBe(0)
+    expect(progressShare(3, Infinity)).toBe(0)
+    expect(progressShare(3, 0)).toBe(0)
+    expect(progressShare(NaN, 10)).toBe(0)
+  })
+
+  it('events: playing shows, ended steps, failures before playing give the poster back', () => {
+    expect(videoEvent('playing', { started: false })).toBe('play')
+    expect(videoEvent('ended', { started: true })).toBe('advance')
+    expect(videoEvent('error', { started: true })).toBe('fallback')
+    expect(videoEvent('stalled', { started: false })).toBe('fallback')
+    expect(videoEvent('stalled', { started: true })).toBe('none')
+    expect(videoEvent('timeout', { started: false })).toBe('fallback')
+    expect(videoEvent('timeout', { started: true })).toBe('none')
+  })
+
+  it('a refused play(): abort is ignored, with sound — muted again, muted — the poster', () => {
+    const abort = Object.assign(new Error('x'), { name: 'AbortError' })
+    const policy = Object.assign(new Error('x'), { name: 'NotAllowedError' })
+    expect(playRefusal(abort, false)).toBe('ignore')
+    expect(playRefusal(abort, true)).toBe('ignore')
+    expect(playRefusal(policy, false)).toBe('retry-muted')
+    expect(playRefusal(policy, true)).toBe('fallback')
+    expect(playRefusal(undefined, true)).toBe('fallback')
   })
 })

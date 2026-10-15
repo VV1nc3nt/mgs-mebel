@@ -6,6 +6,7 @@ import { e2eEditor } from '../helpers/e2eEditor'
 import { E2E_WORKS } from '../helpers/e2eWorks'
 import { layoutShifts } from '../helpers/scroll'
 import { fingerSwipe } from '../helpers/swipe'
+import { PLAYBACK_ATTR, stubMedia } from '../helpers/video'
 
 // Project viewer and the project page /works/<slug> (README §6.4 «Просмотр проекта»).
 const BASE = 'http://localhost:3000'
@@ -51,6 +52,22 @@ const showing = async (page: Page, i: number, frame = 0) => {
   await expect(dialog(page)).toHaveAttribute('aria-label', work(i).title)
   await expect(dialog(page)).toHaveAttribute('data-frame', String(frame))
 }
+
+/** Filled share of each segment (the scaleX of its fill). */
+const fills = (page: Page) =>
+  dialog(page)
+    .locator('.viewer-progress-fill')
+    .evaluateAll((els) => els.map((el) => new DOMMatrix(getComputedStyle(el).transform).a))
+/** Filled share of the current frame's segment. */
+const fill = (page: Page) =>
+  dialog(page)
+    .locator('[data-viewer-fill]')
+    .evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).a)
+const frameVideo = (page: Page) => dialog(page).locator('video')
+const soundButton = (page: Page) => dialog(page).getByRole('button', { name: /звук$/ })
+/** Indices of the video projects of the fixture: the first frame is the video. */
+const VIDEO_WORKS = E2E_WORKS.flatMap((w, i) => (w.video ? [i] : []))
+const PHOTO_WORK = E2E_WORKS.findIndex((w) => !w.video)
 
 /** Documents and RSC requests to /works… (no prefetches): the router stays out of it. */
 const watchRouter = (page: Page) => {
@@ -392,7 +409,7 @@ test.describe('viewer', () => {
     await showing(page, 1, 1)
     for (let f = 1; f < frames - 1; f++) await page.keyboard.press('ArrowRight')
     await showing(page, 1, frames - 1)
-    await expect(dialog(page).locator('[aria-hidden] .w-full')).toHaveCount(frames)
+    await expect.poll(() => fills(page)).toEqual(Array(frames).fill(1))
     await page.keyboard.press('ArrowRight')
     await showing(page, 2, 0)
     await page.keyboard.press('ArrowLeft')
@@ -571,6 +588,203 @@ test.describe('viewer', () => {
       await page.waitForTimeout(700)
       // Back on the project: collapsed again
       await expect(dialog(page).getByRole('button', { name: 'ещё' })).toBeVisible()
+    })
+  })
+
+  test.describe('video', () => {
+    const first = VIDEO_WORKS[0]!
+    const next = VIDEO_WORKS[1]!
+
+    for (const width of [390, 834, 1440] as const) {
+      test(`video frame ${width}: one muted inline video, the sound button, one frame read`, async ({
+        page,
+      }) => {
+        await page.setViewportSize({ width, height: HEIGHTS[width] })
+        await stubMedia(page)
+        const errors = watchConsole(page)
+        await page.goto(`${BASE}${href(first)}`)
+        await hydrated(page)
+        await shown(page)
+        await expect(frameVideo(page)).toHaveCount(1)
+        await expect(frameVideo(page)).toHaveAttribute(PLAYBACK_ATTR, 'playing')
+        const attrs = await frameVideo(page).evaluate((v: HTMLVideoElement) => ({
+          muted: v.muted,
+          inline: v.playsInline,
+          loop: v.loop,
+          controls: v.controls,
+          autoplay: v.autoplay,
+        }))
+        expect(attrs).toEqual({
+          muted: true,
+          inline: true,
+          loop: false,
+          controls: false,
+          autoplay: false,
+        })
+        await expect(frameVideo(page)).toHaveCSS('opacity', '1')
+        await expect(soundButton(page)).toHaveAccessibleName('Включить звук')
+        await expect(soundButton(page)).not.toHaveAttribute('aria-pressed')
+        // Only the current frame is read; its neighbour and the next project's first are hidden
+        await expect(dialog(page).locator('img:not([alt=""])')).toHaveCount(1)
+        await expect(dialog(page).locator('img[data-viewer-frame]')).toHaveCount(2)
+        await expect(dialog(page).locator('img[data-viewer-next][aria-hidden="true"]')).toHaveCount(1)
+        expect(await axe(page)).toEqual([])
+        expect(await layoutShifts(page)).toEqual([])
+        expect(errors).toEqual([])
+      })
+    }
+
+    test('the segment fills with the file, ended steps to the next frame; back — from the start', async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 390, height: 844 })
+      await stubMedia(page)
+      await openFromFeed(page, first)
+      await showing(page, first)
+      await expect(frameVideo(page)).toHaveAttribute(PLAYBACK_ATTR, 'playing')
+      // Unknown length: the fill stands at 0
+      expect(await fill(page)).toBe(0)
+      await page.evaluate('window.__e2eMedia.set(5, 10)')
+      await expect.poll(() => fill(page)).toBeCloseTo(0.5, 2)
+      await page.evaluate('window.__e2eMedia.set(7.5)')
+      await expect.poll(() => fill(page)).toBeCloseTo(0.75, 2)
+      await frameVideo(page).evaluate((v) => v.setAttribute('data-e2e-old', ''))
+      await page.evaluate('window.__e2eMedia.end()')
+      await showing(page, first, 1)
+      // A photo: no video, no sound button, the segment filled at once
+      await expect(frameVideo(page)).toHaveCount(0)
+      await expect(soundButton(page)).toHaveCount(0)
+      await expect.poll(() => fills(page)).toEqual([1, 1, 0])
+      await page.keyboard.press('ArrowLeft')
+      await showing(page, first, 0)
+      await expect(frameVideo(page)).toHaveCount(1)
+      await expect(frameVideo(page)).not.toHaveAttribute('data-e2e-old')
+      expect(await fill(page)).toBe(0)
+      // A manual step away mid-video: the next visit starts over too
+      await page.evaluate('window.__e2eMedia.set(3, 10)')
+      await expect.poll(() => fill(page)).toBeCloseTo(0.3, 2)
+      await page.keyboard.press('ArrowRight')
+      await page.keyboard.press('ArrowLeft')
+      await showing(page, first, 0)
+      expect(await fill(page)).toBe(0)
+      expect(await frameVideo(page).evaluate((v: HTMLVideoElement) => v.currentTime)).toBe(0)
+    })
+
+    test('sound: off by default, kept on the next video project, off again after closing', async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 390, height: 844 })
+      await stubMedia(page)
+      await openFromFeed(page, first)
+      await soundButton(page).click()
+      await expect(soundButton(page)).toHaveAccessibleName('Выключить звук')
+      expect(await frameVideo(page).evaluate((v: HTMLVideoElement) => v.muted)).toBe(false)
+      for (let i = first; i < next; i++) {
+        await page.keyboard.press('ArrowDown')
+        await page.waitForTimeout(700)
+      }
+      await showing(page, next)
+      await expect(frameVideo(page)).toHaveAttribute(PLAYBACK_ATTR, 'playing')
+      await expect(soundButton(page)).toHaveAccessibleName('Выключить звук')
+      expect(await frameVideo(page).evaluate((v: HTMLVideoElement) => v.muted)).toBe(false)
+      await page.keyboard.press('Escape')
+      await closed(page)
+      await cardLink(page, next).click()
+      await shown(page)
+      await expect(soundButton(page)).toHaveAccessibleName('Включить звук')
+      expect(await frameVideo(page).evaluate((v: HTMLVideoElement) => v.muted)).toBe(true)
+    })
+
+    test('sound refused by the autoplay policy: muted again, the button back to «off»', async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 390, height: 844 })
+      await stubMedia(page, { rejectUnmuted: true })
+      await openFromFeed(page, first)
+      await expect(frameVideo(page)).toHaveAttribute(PLAYBACK_ATTR, 'playing')
+      // Sound turned on while playing: no new play()
+      await soundButton(page).click()
+      await expect(soundButton(page)).toHaveAccessibleName('Выключить звук')
+      for (let i = first; i < next; i++) {
+        await page.keyboard.press('ArrowDown')
+        await page.waitForTimeout(700)
+      }
+      await showing(page, next)
+      // The next video starts with sound — refused, played muted
+      await expect(frameVideo(page)).toHaveAttribute(PLAYBACK_ATTR, 'playing')
+      expect(await frameVideo(page).evaluate((v: HTMLVideoElement) => v.muted)).toBe(true)
+      await expect(soundButton(page)).toHaveAccessibleName('Включить звук')
+    })
+
+    for (const [name, handler] of [
+      ['a failed file', (route: Route) => route.abort()],
+      ['no answer in 4 s', () => {}],
+    ] as const) {
+      test(`fallback, ${name}: the poster, the segment filled, no step by itself, no sound button`, async ({
+        page,
+      }) => {
+        await page.setViewportSize({ width: 390, height: 844 })
+        await page.route('**/*.mp4', handler)
+        await openFromFeed(page, first)
+        await expect(frameVideo(page)).toHaveCount(0, { timeout: 8000 })
+        await expect(soundButton(page)).toHaveCount(0)
+        await expect.poll(() => fill(page)).toBe(1)
+        await expect(dialog(page).locator('img:not([alt=""])')).toHaveCount(1)
+        await page.waitForTimeout(1000)
+        await showing(page, first, 0)
+        // Taps still step on
+        await page.keyboard.press('ArrowRight')
+        await showing(page, first, 1)
+      })
+    }
+
+    test('a hidden tab pauses and goes on; closing pauses', async ({ page }) => {
+      await page.setViewportSize({ width: 390, height: 844 })
+      await stubMedia(page)
+      await openFromFeed(page, first)
+      await expect(frameVideo(page)).toHaveAttribute(PLAYBACK_ATTR, 'playing')
+      const visibility = (hidden: boolean) =>
+        page.evaluate(`
+          Object.defineProperty(document, 'hidden', { configurable: true, value: ${hidden} })
+          Object.defineProperty(document, 'visibilityState', { configurable: true, value: '${hidden ? 'hidden' : 'visible'}' })
+          document.dispatchEvent(new Event('visibilitychange'))
+        `)
+      await visibility(true)
+      await expect(frameVideo(page)).toHaveAttribute(PLAYBACK_ATTR, 'paused')
+      await visibility(false)
+      await expect(frameVideo(page)).toHaveAttribute(PLAYBACK_ATTR, 'playing')
+      await frameVideo(page).evaluate((v) =>
+        v.addEventListener('pause', () => Object.assign(window, { e2ePaused: true })),
+      )
+      await page.keyboard.press('Escape')
+      await closed(page)
+      expect(await page.evaluate('window.e2ePaused')).toBe(true)
+    })
+
+    test('the DOM keeps the current frame ± 1 and the next project\'s first frame', async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 390, height: 844 })
+      await openFromFeed(page, PHOTO_WORK)
+      const frames = dialog(page).locator('img[data-viewer-frame]')
+      const indices = () => frames.evaluateAll((els) => els.map((el) => el.getAttribute('data-viewer-frame')))
+      await expect.poll(indices).toEqual(['0', '1'])
+      await page.keyboard.press('ArrowRight')
+      await page.keyboard.press('ArrowRight')
+      await showing(page, PHOTO_WORK, 2)
+      await expect.poll(indices).toEqual(['1', '2', '3'])
+      await expect(dialog(page).locator('img[data-viewer-next]')).toHaveCount(1)
+      await expect(dialog(page).locator('img:not([alt=""])')).toHaveCount(1)
+      await expect(dialog(page).locator('img[data-viewer-frame="2"]')).not.toHaveAttribute('alt', '')
+    })
+
+    test('reduced motion: the video still plays', async ({ page }) => {
+      await page.setViewportSize({ width: 390, height: 844 })
+      await page.emulateMedia({ reducedMotion: 'reduce' })
+      await stubMedia(page)
+      await openFromFeed(page, first)
+      await expect(frameVideo(page)).toHaveAttribute(PLAYBACK_ATTR, 'playing')
+      await expect(frameVideo(page)).toHaveCSS('opacity', '1')
     })
   })
 
