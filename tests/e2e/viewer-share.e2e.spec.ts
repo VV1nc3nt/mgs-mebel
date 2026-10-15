@@ -272,6 +272,39 @@ const shared = (page: Page) =>
   page.evaluate(() => (window as unknown as { __shared: unknown[] }).__shared)
 const canonical = (page: Page) => page.locator('link[rel="canonical"]').getAttribute('href')
 
+type Frame = { state: string | null; animating: boolean; opacity: string | null; feed: string }
+
+/**
+ * Every animation frame from now on: the viewer's state and opacity, the visibility of the feed
+ * under it. A string script: named functions would be wrapped in `__name`.
+ */
+const recordFrames = (page: Page) =>
+  page.addInitScript({
+    content: `
+      window.__frames = []
+      requestAnimationFrame(function sample() {
+        const d = document.querySelector('[role=dialog]')
+        const f = document.querySelector('[data-works-feed]')
+        if (f) {
+          window.__frames.push({
+            state: d ? d.dataset.state : null,
+            animating: d ? d.hasAttribute('data-animating') : false,
+            opacity: d ? getComputedStyle(d).opacity : null,
+            feed: getComputedStyle(f).visibility,
+          })
+        }
+        requestAnimationFrame(sample)
+      })
+    `,
+  })
+const frames = async (page: Page) => {
+  const all = await page.evaluate(() => (window as unknown as { __frames: Frame[] }).__frames)
+  await page.evaluate(() => {
+    ;(window as unknown as { __frames: Frame[] }).__frames = []
+  })
+  return all
+}
+
 test.describe('viewer: share and CTA', () => {
   test.skip(EMPTY_DB, 'needs the projects fixture')
 
@@ -464,6 +497,50 @@ test.describe('viewer: share and CTA', () => {
     await expect(video).toHaveAttribute(PLAYBACK_ATTR, 'playing')
     await expect(video).toHaveCount(1)
   })
+
+  test('the feed under the viewer: hidden on a server-opened viewer from the first frame', async ({
+    page,
+  }) => {
+    await recordFrames(page)
+    await visit(page, 1)
+    const seen = await frames(page)
+    expect(seen.length).toBeGreaterThan(0)
+    expect(seen.filter((f) => f.feed !== 'hidden')).toEqual([])
+  })
+
+  for (const how of ['×', 'Esc', 'back'] as const) {
+    test(`the feed under the viewer: visible while it appears from a card, hidden once shown, visible from the first frame of closing (${how})`, async ({
+      page,
+    }) => {
+      await recordFrames(page)
+      await page.goto(`${BASE}/works`)
+      await hydrated(page)
+      await frames(page)
+      await page.locator(`[data-works-feed] a[href="${href(1)}"]`).click()
+      await shown(page)
+      await expect
+        .poll(() =>
+          page.locator('[data-works-feed]').evaluate((f) => getComputedStyle(f).visibility),
+        )
+        .toBe('hidden')
+      const opening = await frames(page)
+      // No flash: visible under the fading backdrop, hidden only once the viewer is opaque
+      const appearing = opening.filter((f) => f.state !== null && f.animating)
+      expect(appearing.length).toBeGreaterThan(0)
+      expect(appearing.filter((f) => f.feed !== 'visible')).toEqual([])
+      const firstHidden = opening.find((f) => f.feed === 'hidden')!
+      expect(firstHidden).toMatchObject({ state: 'open', animating: false, opacity: '1' })
+
+      if (how === '×') await dialog(page).getByRole('link', { name: 'Закрыть' }).click()
+      else if (how === 'Esc') await page.keyboard.press('Escape')
+      else await page.goBack()
+      await expect(dialog(page)).toHaveCount(0)
+      const closing = (await frames(page)).filter((f) => f.state === 'leave')
+      expect(closing.length).toBeGreaterThan(0)
+      expect(closing.filter((f) => f.feed !== 'visible')).toEqual([])
+      await expect(page.locator('[data-works-feed]')).toBeVisible()
+    })
+  }
 
   test('CTA: «Назад» with the choice open closes the viewer and the choice, inert is gone', async ({
     page,
