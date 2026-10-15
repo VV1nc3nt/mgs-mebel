@@ -45,3 +45,27 @@ export const swiper = async (page: Page, { track, slide }: { track: Locator; sli
     await ended()
   }
 }
+
+/**
+ * A vertical swipe with a finger (touch events through CDP) at the finger's pace, from a point
+ * by `dy` (negative — up); the finger rests before it lifts. Needs `hasTouch`.
+ */
+export const fingerSwipe = async (
+  page: Page,
+  { x, y, dy }: { x: number; y: number; dy: number },
+) => {
+  const cdp = await page.context().newCDPSession(page)
+  const touch = (type: 'touchStart' | 'touchMove', ty: number) =>
+    cdp.send('Input.dispatchTouchEvent', {
+      type,
+      touchPoints: [{ x: Math.round(x), y: Math.round(ty) }],
+    })
+  await touch('touchStart', y)
+  for (let i = 1; i <= 8; i++) {
+    await touch('touchMove', y + (dy * i) / 8)
+    await page.waitForTimeout(16)
+  }
+  await page.waitForTimeout(100)
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+  await cdp.detach()
+}

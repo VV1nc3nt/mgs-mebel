@@ -1,7 +1,7 @@
 'use client'
 
 import { useSearchParams } from 'next/navigation'
-import { useCallback, useLayoutEffect, useRef } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 
 import { filterScrollTarget, filterUrl, isStuck, parseFilter } from '@/lib/segmentFilter'
 import { useReducedMotion } from './useReducedMotion'
@@ -16,6 +16,11 @@ type Options<T extends string> = {
   values: readonly T[]
   /** «все»: no parameter in the URL; unknown values fall back to it too. */
   fallback: T
+  /**
+   * Keep the last value while the URL is not the list's own (works: the project viewer is open
+   * on /works/<slug>, whose URL has no filter).
+   */
+  frozen?: boolean
 }
 
 /**
@@ -25,8 +30,16 @@ type Options<T extends string> = {
  * scrolls to the start of the list; otherwise the position stays.
  * `sentinelRef` — an empty element right before the bar, `barRef` — the bar.
  */
-export function useSegmentFilter<T extends string>({ param, values, fallback }: Options<T>) {
-  const value = parseFilter(useSearchParams().get(param), values, fallback)
+export function useSegmentFilter<T extends string>({
+  param,
+  values,
+  fallback,
+  frozen = false,
+}: Options<T>) {
+  const fromUrl = parseFilter(useSearchParams().get(param), values, fallback)
+  const [kept, setKept] = useState(fromUrl)
+  if (!frozen && kept !== fromUrl) setKept(fromUrl)
+  const value = frozen ? kept : fromUrl
   const reducedMotion = useReducedMotion()
   const sentinelRef = useRef<HTMLDivElement>(null)
   const barRef = useRef<HTMLDivElement>(null)
@@ -40,8 +53,8 @@ export function useSegmentFilter<T extends string>({ param, values, fallback }: 
       // Measured before the list changes: a shorter list may move the page by itself
       scrollPending.current = Boolean(
         sentinel &&
-          bar &&
-          isStuck(sentinel.getBoundingClientRect().top, bar.getBoundingClientRect().top),
+        bar &&
+        isStuck(sentinel.getBoundingClientRect().top, bar.getBoundingClientRect().top),
       )
       // Chrome's scroll anchoring would move the page when the cards around the viewport go —
       // first a jump, then the scroll to the list runs down and hides the smart header. Off until

@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
 import { FIRST_SCREEN_END_ID, HEADER_END_ID } from '../../src/components/app/FirstScreenEnd'
+import { E2E_WORKS } from '../helpers/e2eWorks'
 import { layoutShifts } from '../helpers/scroll'
 import { slowHtmlProxy } from '../helpers/slowHtml'
 
@@ -10,7 +11,9 @@ import { slowHtmlProxy } from '../helpers/slowHtml'
 // the type scale.
 const BASE = 'http://localhost:3000'
 const EMPTY_DB = !!process.env.E2E_EMPTY_DB
-const PAGES = ['/', '/salons', '/about', '/catalogs', '/designers', '/works'] as const
+// A project page: the viewer is its first screen
+const PROJECT = `/works/${E2E_WORKS[1]!.slug}`
+const PAGES = ['/', '/salons', '/about', '/catalogs', '/designers', '/works', PROJECT] as const
 const VIEWPORTS = [
   [390, 844],
   [834, 1194],
@@ -68,6 +71,7 @@ test.describe('partial paint', () => {
     ['/catalogs', [HEADER_END_ID, FIRST_SCREEN_END_ID]],
     ['/designers', [HEADER_END_ID, FIRST_SCREEN_END_ID]],
     ['/works', [HEADER_END_ID, FIRST_SCREEN_END_ID]],
+    [PROJECT, [HEADER_END_ID, FIRST_SCREEN_END_ID]],
     ['/ui-kit', [HEADER_END_ID]],
     ['/nesushchestvuet', [HEADER_END_ID]],
   ] as const) {

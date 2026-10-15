@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { WorkCard } from '@/components/works/WorkCard'
 import { WorksFeed } from '@/components/works/WorksFeed'
+import { WorksView } from '@/components/works/WorksView'
 import { parseFilter } from '@/lib/segmentFilter'
 import {
   ALL_WORKS,
@@ -40,6 +41,7 @@ const url = vi.hoisted(() => {
   }
 })
 vi.mock('next/navigation', () => ({
+  usePathname: () => '/works',
   useSearchParams: () =>
     new URLSearchParams(
       useSyncExternalStore(
@@ -270,7 +272,11 @@ describe('WorksFeed', () => {
   })
 
   const mount = (filter: WorksFeedFilter = ALL_WORKS, items = works(1, 12), hasMore = true) =>
-    render(<WorksFeed chips={chips} counts={COUNTS} initial={{ filter, items, hasMore }} />)
+    render(
+      <WorksView initial={{ filter, items, hasMore }} counts={COUNTS} listTitle="Работы">
+        <WorksFeed chips={chips} counts={COUNTS} />
+      </WorksView>,
+    )
 
   const list = () => screen.getAllByRole('list').at(-1)!
   const cardIds = () =>

@@ -1,8 +1,10 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { usePathname } from 'next/navigation'
+import { useEffect, useRef, type MouseEvent } from 'react'
 
 import { SegmentFilter, type SegmentItem } from '@/components/ui/SegmentFilter'
+import { useProjectViewer } from '@/hooks/useProjectViewer'
 import { useSegmentFilter } from '@/hooks/useSegmentFilter'
 import { cn } from '@/lib/cn'
 import {
@@ -11,19 +13,19 @@ import {
   FEED_PRELOAD_PX,
   WORKS_PAGE_SIZE,
   worksCount,
-  type FeedWork,
   type WorksCounts,
   type WorksFeedFilter,
 } from '@/lib/works'
+import { slugFromPath, WORKS_PATH } from '@/lib/viewer'
 import { WorkCard } from './WorkCard'
-import { WorksFeedProvider, useWorksFeed } from './WorksFeedProvider'
+import { useWorksFeed } from './WorksFeedProvider'
 
 type Props = {
   /** «все» and the filters that have works. */
   chips: readonly SegmentItem<WorksFeedFilter>[]
   counts: WorksCounts
-  /** First page of the filter in the URL, rendered on the server. */
-  initial: { filter: WorksFeedFilter; items: FeedWork[]; hasMore: boolean }
+  /** The first row loads with priority (LCP); not under an open viewer. */
+  priority?: boolean
 }
 
 // One row of skeletons while the next page loads: 3 / 4 / 6 columns
@@ -33,24 +35,25 @@ const PAGE_SKELETONS = Array.from({ length: WORKS_PAGE_SIZE }, () => '')
 // Cards of the first row on every width: the LCP image is among them
 const PRIORITY_CARDS = 3
 
+/** Plain left click: a modified one (new tab, window, download) stays a link. */
+const plainClick = (event: MouseEvent) =>
+  event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey
+
 /**
  * «Наши работы» (README §6.4): sticky filter bar with the counter and the infinite grid of works.
  * The filter is in `?category=`, so the server renders the first page of it; another filter
- * starts the list over, the next page loads when the end of the grid comes near.
+ * starts the list over, the next page loads when the end of the grid comes near. A card opens
+ * the project viewer over the list. State — WorksFeedProvider around it (WorksView).
  */
-export function WorksFeed({ initial, ...props }: Props) {
-  return (
-    <WorksFeedProvider initial={initial}>
-      <Feed {...props} />
-    </WorksFeedProvider>
-  )
-}
-
-function Feed({ chips, counts }: Omit<Props, 'initial'>) {
+export function WorksFeed({ chips, counts, priority = true }: Props) {
+  const viewer = useProjectViewer()
+  // On /works/<slug> (viewer open) the URL has no filter: the list keeps its own
+  const frozen = usePathname() !== WORKS_PATH
   const { value, select, sentinelRef, barRef } = useSegmentFilter({
     param: 'category',
     values: chips.map((chip) => chip.value),
     fallback: ALL_WORKS,
+    frozen,
   })
   const feed = useWorksFeed()
   const { filter, items, hasMore, loading, failed, generation, loadMore, reset } = feed
@@ -89,6 +92,16 @@ function Feed({ chips, counts }: Omit<Props, 'initial'>) {
 
   const skeletons = switching ? PAGE_SKELETONS : loading === 'more' ? ROW_SKELETONS : []
 
+  // A card opens the viewer without leaving the list (its link works without JS and in a new tab)
+  const onCardClick = (event: MouseEvent<HTMLUListElement>) => {
+    if (!plainClick(event) || !(event.target instanceof Element)) return
+    const link = event.target.closest('a')
+    const slug = link && slugFromPath(link.getAttribute('href') ?? '')
+    if (!slug) return
+    event.preventDefault()
+    viewer.open(slug)
+  }
+
   return (
     <div className="mt-2">
       <div ref={sentinelRef} aria-hidden="true" />
@@ -101,7 +114,10 @@ function Feed({ chips, counts }: Omit<Props, 'initial'>) {
         sticky
         count={worksCount(counts[value], value)}
       />
+      {/* Clicks of the card links (keyboard Enter too) are caught on the list, before next/link */}
       <ul
+        data-works-feed=""
+        onClickCapture={onCardClick}
         aria-busy={loading ? true : undefined}
         className="page-container grid grid-cols-3 gap-1.5 pt-3.5 md:grid-cols-4 md:gap-2 xl:grid-cols-6 xl:gap-2.5"
       >
@@ -111,7 +127,7 @@ function Feed({ chips, counts }: Omit<Props, 'initial'>) {
               <WorkCard
                 work={work}
                 variant="feed"
-                priority={generation === 0 && i < PRIORITY_CARDS}
+                priority={priority && generation === 0 && i < PRIORITY_CARDS}
               />
             </li>
           ))}

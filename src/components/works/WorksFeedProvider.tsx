@@ -39,8 +39,11 @@ export type WorksFeed = WorksFeedState & {
 const WorksFeedContext = createContext<WorksFeed | null>(null)
 
 type Props = {
-  /** First page rendered on the server. */
-  initial: { filter: WorksFeedFilter; items: FeedWork[]; hasMore: boolean }
+  /**
+   * Pages rendered on the server: the first one, or 1…page on a project page (the viewer is open
+   * on a project further down the feed).
+   */
+  initial: { filter: WorksFeedFilter; items: FeedWork[]; hasMore: boolean; page?: number }
   children: ReactNode
 }
 
@@ -52,7 +55,7 @@ type Props = {
 export function WorksFeedProvider({ initial, children }: Props) {
   const [state, setState] = useState<WorksFeedState & { page: number }>({
     ...initial,
-    page: 1,
+    page: initial.page ?? 1,
     loading: null,
     failed: false,
     generation: 0,

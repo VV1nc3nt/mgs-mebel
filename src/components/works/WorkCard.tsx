@@ -63,7 +63,7 @@ export function WorkCard({ work, variant, priority }: Props) {
       overlay="work"
       inset="sm"
       href={work.href}
-      // The project page comes with the project viewer: until then a prefetch would answer 404
+      // A card opens the viewer over the feed, not the page: a prefetch would render it for nothing
       prefetch={false}
       priority={priority}
       top={

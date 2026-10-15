@@ -1,13 +1,20 @@
-import { slugField, type CollectionConfig } from 'payload'
-import { array as validateArray } from 'payload/shared'
+import { slugField, type CollectionConfig, type TextFieldSingleValidation } from 'payload'
+import { array as validateArray, text as validateText } from 'payload/shared'
 
 import { contentEditors, publicRead } from '@/access'
+import { PREVIEW_BREAKPOINTS, previewUrl } from '@/globals/shared'
 import { checkMediaKind, imageField, mediaField, mimeFilter } from '@/fields/media'
 import { projectCategoryOptions } from '@/lib/projectCategories'
 import { revalidateCollection } from '@/lib/revalidate'
-import { slugify } from '@/lib/slugify'
+import { isSlug, slugify } from '@/lib/slugify'
 
 type SlideRow = { type?: 'video' | 'photo' | null }
+
+const validateSlug: TextFieldSingleValidation = (value, args) => {
+  const base = validateText(value, args)
+  if (base !== true) return base
+  return !value || isSlug(value) ? true : 'Только латиница в нижнем регистре, цифры и дефисы'
+}
 
 export const Projects: CollectionConfig = {
   slug: 'projects',
@@ -16,6 +23,11 @@ export const Projects: CollectionConfig = {
     group: 'Контент',
     useAsTitle: 'title',
     defaultColumns: ['title', 'category', 'place', 'featured', 'order', 'updatedAt'],
+    // The project page with the viewer open; no drafts — it shows what was saved
+    livePreview: {
+      url: ({ data }) => previewUrl(data?.slug ? `/works/${data.slug}` : '/works'),
+      breakpoints: PREVIEW_BREAKPOINTS,
+    },
   },
   defaultSort: '-createdAt',
   access: {
@@ -30,6 +42,16 @@ export const Projects: CollectionConfig = {
     slugField({
       useAsSlug: 'title',
       slugify: ({ valueToSlugify }) => slugify(String(valueToSlugify ?? '')),
+      // The project page answers only well-formed slugs: a hand-typed «_», capital or Cyrillic
+      // letter would leave a card that leads to 404
+      overrides: (row) => {
+        for (const field of row.fields) {
+          if ('name' in field && field.name === 'slug' && field.type === 'text' && !field.hasMany) {
+            field.validate = validateSlug
+          }
+        }
+        return row
+      },
     }),
     {
       name: 'category',
