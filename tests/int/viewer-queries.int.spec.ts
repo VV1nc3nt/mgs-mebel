@@ -26,6 +26,8 @@ vi.mock('next/cache', () => ({
 }))
 
 const { getProjectBySlug, getProjectPosition } = await import('@/lib/queries')
+const { projectPlan, projectSlug } = await import('@/seed/data/projects')
+const { isSlug } = await import('@/lib/slugify')
 const { loadProject } = await import('@/app/(frontend)/works/[slug]/actions')
 
 const slugCalls = (slug: string) =>
@@ -138,5 +140,58 @@ describe('project viewer queries', () => {
     for (const input of [`${PREFIX}-viewer-missing`, 'Bad Slug', 42, null, { slug: slugs[1] }]) {
       expect(await loadProject(input)).toBeNull()
     }
+  })
+  it('the slug: slugified on create, validated on update; seed slugs pass', async () => {
+    const SLUG_ERROR = 'Только латиница в нижнем регистре, цифры и дефисы'
+    const fieldErrors = async (run: () => Promise<unknown>) => {
+      try {
+        await run()
+        return []
+      } catch (error) {
+        const data = (error as { data?: { errors?: { path: string; message: string }[] } }).data
+        return (data?.errors ?? []).map(({ path, message }) => `${path}: ${message}`)
+      }
+    }
+    const image = await createImage(payload)
+    const data = (slug: string) => ({
+      title: `${PREFIX} slug check`,
+      slug,
+      generateSlug: false,
+      category: 'kitchens' as const,
+      slides: [{ type: 'photo' as const, file: image.id }],
+    })
+    // Create: the slug field's hook passes a typed slug through slugify — never malformed
+    const created = await payload.create({
+      collection: 'projects',
+      data: data('Kukhnya_Ostrov кухня'),
+    })
+    expect(created.slug).toBe('kukhnya-ostrov-kukhnya')
+    // Update with the slug unlocked keeps it as typed: the field validates it
+    for (const slug of ['Kukhnya', 'kukhnya_1', 'кухня', 'a--b', '-a']) {
+      expect(
+        await fieldErrors(() =>
+          payload.update({
+            collection: 'projects',
+            id: created.id,
+            data: { slug, generateSlug: false },
+          }),
+        ),
+        slug,
+      ).toEqual([`slug: ${SLUG_ERROR}`])
+    }
+    const { id } = await payload.create({
+      collection: 'projects',
+      data: data(`${PREFIX}-slug-check`),
+    })
+    expect(
+      await fieldErrors(() =>
+        payload.update({
+          collection: 'projects',
+          id,
+          data: { slug: 'Bad_Slug', generateSlug: false },
+        }),
+      ),
+    ).toEqual([`slug: ${SLUG_ERROR}`])
+    expect(projectPlan.map(projectSlug).filter((slug) => !isSlug(slug))).toEqual([])
   })
 })

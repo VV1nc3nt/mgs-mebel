@@ -196,8 +196,17 @@ function ViewerDialog({ counts, initialProject, listTitle, slug }: Props & { slu
     }
   }, [index, feed.items.length, hasMore, loading, failed, loadMore])
 
+  // The project's title while it is shown (the page's own on a direct visit)
+  const titleRef = useRef(initialProject?.documentTitle ?? '')
+  useEffect(() => {
+    if (!project) return
+    document.title = project.documentTitle
+    titleRef.current = project.documentTitle
+  }, [project])
+
   // The page under the viewer: frozen, covered (background videos pause), no messenger choice.
-  // The title of the page before it comes back when it closes.
+  // Closing brings back the list's title (Next does not, for a page restored from history) and
+  // the focus; when the page itself is left, the next page's title and focus stay.
   const [openedOnServer] = useState(viewer.phase === 'open')
   const slugRef = useRef(slug)
   useLayoutEffect(() => {
@@ -208,7 +217,6 @@ function ViewerDialog({ counts, initialProject, listTitle, slug }: Props & { slu
     fromFeedRef.current = viewer.fromFeed
   }, [viewer.fromFeed])
   useEffect(() => {
-    const titleBefore = openedOnServer ? listTitle : document.title
     lock()
     setOverlay('viewer', true)
     closeChooser()
@@ -216,7 +224,9 @@ function ViewerDialog({ counts, initialProject, listTitle, slug }: Props & { slu
     return () => {
       unlock({ toTop: false })
       setOverlay('viewer', false)
-      document.title = titleBefore
+      const title = document.title
+      if (title !== titleRef.current && title !== listTitle) return
+      document.title = listTitle
       // Focus back on the card of the last project shown (the feed has it), else on the content
       const href = `${WORKS_PATH}/${slugRef.current}`
       const cardLink = document.querySelector<HTMLElement>(`[data-works-feed] a[href="${href}"]`)
@@ -234,11 +244,7 @@ function ViewerDialog({ counts, initialProject, listTitle, slug }: Props & { slu
         cardLink.focus()
       }
     }
-  }, [lock, unlock, listTitle, openedOnServer])
-
-  useEffect(() => {
-    if (project) document.title = project.documentTitle
-  }, [project])
+  }, [lock, unlock, listTitle])
 
   // Appearing: the closed styles first, the open ones in the next frame (the work of opening —
   // scroll lock, inert, focus — does not share a frame with the start of the animation)

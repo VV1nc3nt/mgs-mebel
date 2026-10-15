@@ -45,3 +45,10 @@ export const slugify = (value: string): string =>
     .replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
+
+/** Longest slug accepted (a sane URL; titles of any reasonable length fit). */
+export const SLUG_MAX = 1000
+
+/** A slug as `slugify` makes it: lowercase latin, digits, single dashes inside. */
+export const isSlug = (value: unknown): value is string =>
+  typeof value === 'string' && value.length <= SLUG_MAX && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value)

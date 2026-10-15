@@ -88,7 +88,7 @@ describe('view-model', () => {
 
   it('slugs and paths', () => {
     expect(isProjectSlug('kuhnya-ostrov-1')).toBe(true)
-    for (const bad of ['', 'A', 'a--b', '-a', 'a/b', '../x', 'a'.repeat(201), 5, null]) {
+    for (const bad of ['', 'A', 'a--b', '-a', 'a/b', '../x', 'a'.repeat(1001), 5, null]) {
       expect(isProjectSlug(bad)).toBe(false)
     }
     expect(slugFromPath('/works/kuhnya-1')).toBe('kuhnya-1')

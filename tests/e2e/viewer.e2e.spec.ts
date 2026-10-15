@@ -330,6 +330,31 @@ test.describe('viewer', () => {
     expect(router).toEqual([])
   })
 
+  test('back to a project after another page: the viewer opens again, × leaves the title of /works', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await openFromFeed(page, 2)
+    await page.keyboard.press('Escape')
+    await closed(page)
+    await cardLink(page, 2).click()
+    await shown(page)
+    // The header is inert under the viewer: its link is clicked by script — the page is left
+    // with the viewer open, and /about keeps its own title
+    await page.evaluate(() =>
+      (document.querySelector('header a[href="/about"]') as HTMLElement).click(),
+    )
+    await page.waitForURL(`${BASE}/about`)
+    await expect(page).not.toHaveTitle(LIST_TITLE)
+    await page.goBack()
+    await showing(page, 2)
+    await shown(page)
+    await dialog(page).getByRole('link', { name: 'Закрыть' }).click()
+    await closed(page)
+    await expect(page).toHaveURL(`${BASE}/works`)
+    await expect(page).toHaveTitle(LIST_TITLE)
+  })
+
   test('direct visit: × leaves /works with the feed under it, focus on the card', async ({
     page,
   }) => {

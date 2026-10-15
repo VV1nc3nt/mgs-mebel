@@ -2,6 +2,7 @@ import type { Media, Project } from '@/payload-types'
 import { asMedia, videoSource, type VideoSource } from './media'
 import { projectCategoryLabel } from './projectCategories'
 import { seoTitle } from './seo'
+import { isSlug } from './slugify'
 import { WORKS_PAGE_SIZE } from './works'
 
 /**
@@ -115,9 +116,8 @@ export const projectSubtitle = ({ category, place }: Pick<ViewerProject, 'catego
 /** «3 / 30»: the project's place in the current filter and the filter's total. */
 export const viewerCounter = (index: number, total: number) => `${index + 1} / ${total}`
 
-/** Slug as the slug field makes it: lowercase latin, digits, single dashes. */
-export const isProjectSlug = (value: unknown): value is string =>
-  typeof value === 'string' && value.length <= 200 && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value)
+/** Slug of a project: as the slug field makes and validates it (lib/slugify). */
+export const isProjectSlug = isSlug
 
 /** The project of a viewer URL (`/works/<slug>`), or null. */
 export const slugFromPath = (pathname: string): string | null => {
