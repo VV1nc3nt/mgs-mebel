@@ -31,9 +31,9 @@ export type ViewerFrame = {
   kind: 'photo' | 'video'
   /** The photo, or the poster of a video. */
   image: Media | null
-  /** Video file (played from the viewer's next step); null for a photo. */
+  /** Video file (played by the viewer, current frame only); null for a photo. */
   video: VideoSource | null
-  /** Video length from the admin, s; null — from the file. */
+  /** Video length from the admin, s (the viewer goes by the file itself). */
   duration: number | null
 }
 
@@ -220,3 +220,47 @@ export const canScrollInside = (
   }: { scrollTop: number; scrollHeight: number; clientHeight: number },
   dir: 1 | -1,
 ): boolean => (dir > 0 ? scrollTop + clientHeight < scrollHeight - 1 : scrollTop > 0)
+
+/** Frames of a project kept in the DOM: the current one and its neighbours (instant steps). */
+export function frameWindow(current: number, count: number): number[] {
+  const out: number[] = []
+  for (let i = Math.max(current - 1, 0); i <= Math.min(current + 1, count - 1); i++) out.push(i)
+  return out
+}
+
+/** Filled share of a video's segment: the file's own time and length; unknown length — 0. */
+export function progressShare(currentTime: number, duration: number): number {
+  if (!Number.isFinite(duration) || duration <= 0 || !Number.isFinite(currentTime)) return 0
+  return Math.min(Math.max(currentTime / duration, 0), 1)
+}
+
+export type VideoEvent = 'playing' | 'ended' | 'error' | 'stalled' | 'timeout'
+
+/**
+ * What an event of the frame's video does: `playing` shows it, `ended` steps to the next frame,
+ * a failure gives the poster back (`stalled` and the start timeout only before the first
+ * `playing` — later the video is buffering, not broken).
+ */
+export function videoEvent(
+  event: VideoEvent,
+  { started }: { started: boolean },
+): 'play' | 'advance' | 'fallback' | 'none' {
+  switch (event) {
+    case 'playing':
+      return 'play'
+    case 'ended':
+      return 'advance'
+    case 'error':
+      return 'fallback'
+    case 'stalled':
+    case 'timeout':
+      return started ? 'none' : 'fallback'
+  }
+}
+
+/**
+ * A refused `play()`: AbortError is an interruption by `pause()`; with sound it is the autoplay
+ * policy — try again muted; muted — the video cannot play.
+ */
+export const playRefusal = (error: unknown, muted: boolean): 'ignore' | 'retry-muted' | 'fallback' =>
+  (error as Error | null)?.name === 'AbortError' ? 'ignore' : muted ? 'fallback' : 'retry-muted'
