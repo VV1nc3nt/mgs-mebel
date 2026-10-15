@@ -5,7 +5,10 @@ import { projectPlan, projectSlug } from '../../src/seed/data/projects'
 /** Title of the `worksPage` heading draft in the draft-mode check. */
 export const WORKS_DRAFT_TITLE = 'Черновик наших работ'
 
-/** The fixture's projects in feed order (`order` = the seed number): title, slug, category, video. */
+/**
+ * The fixture's projects in feed order (`order` = the seed number): title, slug, category, video,
+ * frames (a video project: the video, then its photos).
+ */
 export const E2E_WORKS = [...projectPlan]
   .sort((a, b) => a.n - b.n)
   .map((p) => ({
@@ -13,6 +16,7 @@ export const E2E_WORKS = [...projectPlan]
     slug: projectSlug(p),
     category: p.category,
     video: Boolean(p.video),
+    frames: p.photos.length + (p.video ? 1 : 0),
   }))
 
 type Held = { route: Route; body: string }
