@@ -542,6 +542,50 @@ test.describe('viewer: share and CTA', () => {
     })
   }
 
+  // Reduced motion keeps the opacity transition of the dialog (only the scale goes): the phase
+  // still reaches «open» — by transitionend or by the fallback timer
+  test('reduced motion: the feed hidden once opened from a card, visible after closing', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.goto(`${BASE}/works`)
+    await hydrated(page)
+    const feed = page.locator('[data-works-feed]')
+    await feed.locator(`a[href="${href(1)}"]`).click()
+    await shown(page)
+    await expect.poll(() => feed.evaluate((f) => getComputedStyle(f).visibility)).toBe('hidden')
+    await page.keyboard.press('Escape')
+    await expect(dialog(page)).toHaveCount(0)
+    await expect(feed).toBeVisible()
+  })
+
+  test('reduced motion: closing while it appears — the feed visible, opening again hides it', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.goto(`${BASE}/works`)
+    await hydrated(page)
+    // A long appearing: a sure window to close in; the fallback timer reads the same duration
+    await page.addStyleTag({ content: ':root{--motion-viewer-in:3s}' })
+    const feed = page.locator('[data-works-feed]')
+    const card = feed.locator(`a[href="${href(1)}"]`)
+    await card.click()
+    await expect(page.locator('[role=dialog][data-animating]')).toHaveCount(1)
+    await page.keyboard.press('Escape')
+    await expect(dialog(page)).toHaveCount(0)
+    await expect(feed).toBeVisible()
+    // Past the opening fallback (3 s + 50): cleared on closing, the phase does not turn «open»
+    await page.waitForTimeout(3200)
+    await expect(dialog(page)).toHaveCount(0)
+    await expect(feed).toBeVisible()
+    await expect(page.locator('html')).not.toHaveAttribute('data-overlay', /./)
+    await expect(page).toHaveURL(`${BASE}/works`)
+
+    await card.click()
+    await shown(page)
+    await expect.poll(() => feed.evaluate((f) => getComputedStyle(f).visibility)).toBe('hidden')
+  })
+
   test('CTA: «Назад» with the choice open closes the viewer and the choice, inert is gone', async ({
     page,
   }) => {
