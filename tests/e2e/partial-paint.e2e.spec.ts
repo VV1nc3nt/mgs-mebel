@@ -13,7 +13,16 @@ const BASE = 'http://localhost:3000'
 const EMPTY_DB = !!process.env.E2E_EMPTY_DB
 // A project page: the viewer is its first screen
 const PROJECT = `/works/${E2E_WORKS[1]!.slug}`
-const PAGES = ['/', '/salons', '/about', '/catalogs', '/designers', '/works', PROJECT] as const
+const PAGES = [
+  '/',
+  '/salons',
+  '/about',
+  '/catalogs',
+  '/designers',
+  '/works',
+  PROJECT,
+  '/news',
+] as const
 const VIEWPORTS = [
   [390, 844],
   [834, 1194],
@@ -60,6 +69,18 @@ test.describe('partial paint', () => {
         })
       }
     }
+
+    // «Показать ещё» comes after the grid: on a tall screen it is on the first screen too
+    test('/news 1440×1600: «Показать ещё» does not shift while the page arrives', async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 1440, height: 1600 })
+      await stubMedia(page)
+      await page.goto(`${proxy.origin}/news`, { waitUntil: 'domcontentloaded' })
+      const button = page.getByRole('button', { name: 'Показать ещё' })
+      await expect(button).toBeInViewport()
+      expect(await layoutShifts(page)).toEqual([])
+    })
   })
 
   // Every page: the header marker (AppShell); pages with a first screen to guard: their own too.
@@ -72,6 +93,7 @@ test.describe('partial paint', () => {
     ['/designers', [HEADER_END_ID, FIRST_SCREEN_END_ID]],
     ['/works', [HEADER_END_ID, FIRST_SCREEN_END_ID]],
     [PROJECT, [HEADER_END_ID, FIRST_SCREEN_END_ID]],
+    ['/news', [HEADER_END_ID, FIRST_SCREEN_END_ID]],
     ['/ui-kit', [HEADER_END_ID]],
     ['/nesushchestvuet', [HEADER_END_ID]],
   ] as const) {
