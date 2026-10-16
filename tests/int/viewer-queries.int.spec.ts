@@ -4,10 +4,13 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { cleanup, createImage, createVideo, getTestPayload, PREFIX } from './helpers'
 
 // Outside a Next request: no request scope for connection(); the cache records its options and
-// every call that would write an entry.
+// every call, keeps the entries of argument-less functions (the lists) and drops them by tag, as
+// the collection hooks do on a change.
 const caches = vi.hoisted(() => ({
   options: [] as { keys: string[]; tags: string[] }[],
   calls: [] as { keys: string[] }[],
+  runs: [] as { keys: string[] }[],
+  entries: new Map<string, { tags: string[]; value: unknown }>(),
 }))
 vi.mock('next/server', () => ({ connection: async () => {} }))
 vi.mock('next/cache', () => ({
@@ -19,13 +22,23 @@ vi.mock('next/cache', () => ({
     caches.options.push({ keys, tags: options.tags })
     return (...args: Parameters<T>) => {
       caches.calls.push({ keys })
-      return fn(...args)
+      const key = keys.join('|')
+      const cached = args.length === 0 ? caches.entries.get(key) : undefined
+      if (cached) return cached.value
+      caches.runs.push({ keys })
+      const value = fn(...args)
+      if (args.length === 0) caches.entries.set(key, { tags: options.tags, value })
+      return value
     }
   },
-  revalidateTag: () => {},
+  revalidateTag: (tag: string) => {
+    for (const [key, entry] of caches.entries) {
+      if (entry.tags.includes(tag)) caches.entries.delete(key)
+    }
+  },
 }))
 
-const { getProjectBySlug, getProjectPosition } = await import('@/lib/queries')
+const { getProjectBySlug, getProjectList, getProjectPosition } = await import('@/lib/queries')
 const { projectPlan, projectSlug } = await import('@/seed/data/projects')
 const { isSlug } = await import('@/lib/slugify')
 const { loadProject } = await import('@/app/(frontend)/works/[slug]/actions')
@@ -123,9 +136,48 @@ describe('project viewer queries', () => {
       tags: ['collection:projects'],
     })
     expect(caches.options).toContainEqual({
-      keys: ['collection:projects:slugs'],
+      keys: ['collection:projects:list'],
       tags: ['collection:projects'],
     })
+  })
+
+  it('the list of /works (ItemList): title and slug in the feed order; renamed after the hook', async () => {
+    const { docs } = await payload.find({
+      collection: 'projects',
+      sort: ['order', '-createdAt', '-id'],
+      pagination: false,
+      depth: 0,
+      select: { slug: true },
+    })
+    const list = await getProjectList()
+    expect(list.map((item) => item.slug)).toEqual(docs.map((doc) => doc.slug))
+    const mine = list.filter((item) => slugs.includes(item.slug))
+    expect(mine.map((item) => item.slug)).toEqual(
+      docs.map((doc) => doc.slug).filter((slug) => slugs.includes(slug)),
+    )
+    for (const item of list) expect(Object.keys(item).sort()).toEqual(['slug', 'title'])
+    expect(mine.find((item) => item.slug === slugs[2])?.title).toBe(`${PREFIX} viewer 2`)
+
+    // One entry: a second read comes from the cache
+    const runs = () => caches.runs.filter((run) => run.keys[0] === 'collection:projects:list')
+    const before = runs().length
+    await getProjectList()
+    expect(runs().length).toBe(before)
+
+    // A rename: the hook expires collection:projects, the list reads the new title
+    const { docs: target } = await payload.find({
+      collection: 'projects',
+      where: { slug: { equals: slugs[2] } },
+      depth: 0,
+    })
+    await payload.update({
+      collection: 'projects',
+      id: target[0]!.id,
+      data: { title: `${PREFIX} viewer 2 renamed` },
+    })
+    const renamed = await getProjectList()
+    expect(renamed.find((item) => item.slug === slugs[2])?.title).toBe(`${PREFIX} viewer 2 renamed`)
+    expect(runs().length).toBe(before + 1)
   })
 
   it('an unknown or malformed slug: null before the per-slug cache', async () => {

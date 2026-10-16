@@ -53,7 +53,8 @@ export function toWorkPreview(project: ProjectRow): WorkPreview {
     id: project.id,
     title: project.title,
     category: projectCategoryLabel(project.category) ?? '',
-    href: `/works?category=${project.category}`,
+    // The project page: the viewer open on it over the feed
+    href: `/works/${project.slug}`,
     ...firstFrame(project),
   }
 }

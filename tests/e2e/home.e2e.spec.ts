@@ -517,16 +517,16 @@ test.describe('home', () => {
     await expect(works.locator('#works-complex')).toBeHidden()
     const panel = works.locator('#works-reels')
     await expect(panel).toBeVisible()
-    // Video projects: ▶ marker, the link to the works page filtered by the project's category
+    // Video projects: ▶ marker, the link to the project page (the viewer open on it)
     const first = panel.getByRole('link').first()
     await expect(first).toContainText('Видео')
-    await expect(first).toHaveAttribute('href', /^\/works\?category=[a-z]+$/)
+    await expect(first).toHaveAttribute('href', /^\/works\/[a-z0-9-]+$/)
 
     await works.getByRole('button', { name: 'Кухни' }).click()
     await expect(works.locator('#works-kitchens')).toBeVisible()
     await expect(works.locator('#works-kitchens').getByRole('link').first()).toHaveAttribute(
       'href',
-      '/works?category=kitchens',
+      /^\/works\/[a-z0-9-]+$/,
     )
   })
 

@@ -48,6 +48,21 @@ export const breadcrumbJsonLd = (items: Breadcrumb[]): JsonLdData => ({
   })),
 })
 
+/** Pages listed in their order (the works feed «все»); none — no list. */
+export const itemListJsonLd = (items: Breadcrumb[]): JsonLdData | null =>
+  items.length
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'ItemList',
+        itemListElement: items.map((item, index) => ({
+          '@type': 'ListItem',
+          position: index + 1,
+          name: item.name,
+          url: absoluteUrl(item.path),
+        })),
+      }
+    : null
+
 const DAYS: Record<string, string> = {
   пн: 'Mo',
   вт: 'Tu',

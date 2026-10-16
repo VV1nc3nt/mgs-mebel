@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { breadcrumbJsonLd, organizationJsonLd, serializeJsonLd } from '@/lib/jsonld'
+import { breadcrumbJsonLd, itemListJsonLd, organizationJsonLd, serializeJsonLd } from '@/lib/jsonld'
 import { safePreviewPath } from '@/lib/preview'
 import { buildMetadata, ogImage } from '@/lib/seo'
 import { absoluteUrl, siteUrl } from '@/lib/site'
@@ -125,6 +125,39 @@ describe('JSON-LD', () => {
         { '@type': 'ListItem', position: 2, name: 'О нас', item: 'https://mgs.example/about' },
       ],
     })
+  })
+})
+
+describe('itemListJsonLd', () => {
+  it('lists the pages in the given order with absolute URLs and positions from 1', () => {
+    vi.stubEnv('SITE_URL', 'https://mgs.example')
+    expect(
+      itemListJsonLd([
+        { name: 'Кухня', path: '/works/kuhnya' },
+        { name: 'Гардеробная', path: '/works/garderobnaya' },
+      ]),
+    ).toEqual({
+      '@context': 'https://schema.org',
+      '@type': 'ItemList',
+      itemListElement: [
+        {
+          '@type': 'ListItem',
+          position: 1,
+          name: 'Кухня',
+          url: 'https://mgs.example/works/kuhnya',
+        },
+        {
+          '@type': 'ListItem',
+          position: 2,
+          name: 'Гардеробная',
+          url: 'https://mgs.example/works/garderobnaya',
+        },
+      ],
+    })
+  })
+
+  it('no pages — no list', () => {
+    expect(itemListJsonLd([])).toBeNull()
   })
 })
 

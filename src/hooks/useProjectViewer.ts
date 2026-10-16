@@ -13,7 +13,10 @@ import {
 
 import { projectHref, slugFromPath, WORKS_PATH } from '@/lib/viewer'
 
-/** `data-state` of the viewer: mounted invisible, open, closing. */
+/**
+ * Phase of the viewer: `enter` — mounted and appearing, `open` — fully shown (rendered open on the
+ * server, or its appearing has ended), `leave` — closing.
+ */
 export type ViewerPhase = 'enter' | 'open' | 'leave'
 
 export type ViewerState = {
@@ -34,6 +37,8 @@ export type ProjectViewerApi = ViewerState & {
   go: (slug: string) => void
   /** × / Esc / swipe down on the first project / end of the feed. */
   close: () => void
+  /** The appearing has ended: fully shown, the page under it may hide. */
+  opened: () => void
   /** The closing fade has ended: unmount. */
   settle: () => void
 }
@@ -95,6 +100,11 @@ export function useViewerState(initialSlug: string | null): ProjectViewerApi {
     else window.history.replaceState({}, '', WORKS_PATH)
   }, [update])
 
+  const opened = useCallback(() => {
+    const s = stateRef.current
+    if (s.slug && s.phase === 'enter') update({ ...s, phase: 'open' })
+  }, [update])
+
   const settle = useCallback(() => {
     const s = stateRef.current
     if (s.phase === 'leave') update({ slug: null, phase: 'open', fromFeed: false })
@@ -124,7 +134,7 @@ export function useViewerState(initialSlug: string | null): ProjectViewerApi {
     return () => window.removeEventListener('popstate', onPopState)
   }, [update])
 
-  return { ...state, open, go, close, settle }
+  return { ...state, open, go, close, opened, settle }
 }
 
 export const ProjectViewerContext = createContext<ProjectViewerApi | null>(null)

@@ -14,8 +14,10 @@ import { IconButton } from '@/components/ui/IconButton'
 import { MediaCard } from '@/components/ui/MediaCard'
 import { SectionLabel } from '@/components/ui/SectionLabel'
 import { StatCard } from '@/components/ui/StatCard'
+import { ShareButton, ShareStatus } from '@/components/works/ViewerShare'
 import { MESSENGER_NAMES, toChrome } from '@/lib/chrome'
 import { getSettings } from '@/lib/queries'
+import { absoluteUrl } from '@/lib/site'
 import { getUiKitData } from './data'
 import { PlayerDemo, SliderDemo } from './MediaDemo'
 import { CatalogsSegmentDemo, ViewSegmentDemo, WorksSegmentDemo } from './SegmentDemo'
@@ -186,7 +188,7 @@ export default async function UiKitPage() {
                 />
               </div>
             </Row>
-            <Row note="Во всю ширину колонки: просмотрщик (52), карточка салона (48)">
+            <Row note="Во всю ширину колонки: CTA просмотрщика (52, подпись — worksPage), карточка салона (48)">
               <div className="flex w-full max-w-salon-card flex-col gap-3">
                 <ContactButton
                   caption="Хочу такой же проект"
@@ -243,6 +245,24 @@ export default async function UiKitPage() {
           <IconButton disabled aria-label="Скачать PDF">
             <Download />
           </IconButton>
+        </Row>
+      </Section>
+
+      <Section title="Поделиться">
+        <Row note="Рейл просмотрщика: стекло 36, подпись под иконкой; статус — «Ссылка скопирована» (2 с) или сама ссылка, если буфер обмена недоступен">
+          <div className="flex w-full max-w-salon-card flex-col items-end gap-3 rounded-thumb-lg bg-surface-2 p-3">
+            {(
+              [
+                { kind: 'copied' },
+                { kind: 'link', url: absoluteUrl('/works/kuhnya-gostinaya-s-ostrovom') },
+              ] as const
+            ).map((value) => (
+              <div key={value.kind} className="flex w-full items-end justify-end gap-3">
+                <ShareStatus value={value} shown />
+                <ShareButton />
+              </div>
+            ))}
+          </div>
         </Row>
       </Section>
 

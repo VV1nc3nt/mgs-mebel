@@ -328,21 +328,32 @@ export async function getWorksCounts(): Promise<WorksCounts> {
   return worksCountsCached()
 }
 
-const projectSlugsCached = unstable_cache(
-  async (): Promise<string[]> => {
+export type ProjectListItem = { slug: string; title: string }
+
+// Every project in the order of the feed «все»: the slugs a project page may have, and the
+// ItemList of /works.
+const projectListCached = unstable_cache(
+  async (): Promise<ProjectListItem[]> => {
     const payload = await getPayloadClient()
     const { docs } = await payload.find({
       collection: 'projects',
+      sort: ['order', '-createdAt', '-id'],
       pagination: false,
       depth: 0,
       overrideAccess: false,
-      select: { slug: true },
+      select: { slug: true, title: true },
     })
-    return docs.map((doc) => doc.slug)
+    return docs.map((doc) => ({ slug: doc.slug, title: doc.title }))
   },
-  ['collection:projects:slugs'],
+  ['collection:projects:list'],
   { tags: [collectionTag('projects')] },
 )
+
+/** All projects in the order of the feed «все»: slug and title (JSON-LD ItemList of /works). */
+export async function getProjectList(): Promise<ProjectListItem[]> {
+  await connection()
+  return projectListCached()
+}
 
 // The viewer shows frames full-screen: the `hero` size (1920) on top of the feed's ones.
 const PROJECT_MEDIA = {
@@ -376,7 +387,7 @@ export type ProjectPageData = {
  */
 export async function getProjectBySlug(slug: string): Promise<ProjectPageData | null> {
   await connection()
-  if (!isProjectSlug(slug) || !(await projectSlugsCached()).includes(slug)) return null
+  if (!isProjectSlug(slug) || !(await projectListCached()).some((item) => item.slug === slug)) return null
   return unstable_cache(
     async (): Promise<ProjectPageData | null> => {
       const payload = await getPayloadClient()

@@ -3,10 +3,18 @@ import { PageHeading } from '@/components/app/PageHeading'
 import { PreviewRefresh } from '@/components/app/PreviewRefresh'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { toChrome } from '@/lib/chrome'
-import { breadcrumbJsonLd } from '@/lib/jsonld'
-import { getLayout, getPageGlobal, getSettings, getWorksCounts, getWorksPage } from '@/lib/queries'
+import { breadcrumbJsonLd, itemListJsonLd } from '@/lib/jsonld'
+import {
+  getLayout,
+  getPageGlobal,
+  getProjectList,
+  getSettings,
+  getWorksCounts,
+  getWorksPage,
+} from '@/lib/queries'
 import { seoTitle } from '@/lib/seo'
-import { pageOf, WORKS_PATH, type ViewerProject } from '@/lib/viewer'
+import { siteUrl } from '@/lib/site'
+import { pageOf, projectHref, WORKS_PATH, type ViewerProject } from '@/lib/viewer'
 import { ALL_WORKS, appendWorks, worksChips, type WorksFeedFilter } from '@/lib/works'
 import { WorksFeed } from './WorksFeed'
 import { WorksView } from './WorksView'
@@ -28,13 +36,15 @@ type Props =
  * the list heading is an H2 (the project title is the H1). No works — the heading only.
  */
 export async function WorksPageBody({ filter = ALL_WORKS, project }: Props) {
-  const [page, counts, layout, settings] = await Promise.all([
+  const [page, counts, layout, settings, list] = await Promise.all([
     getPageGlobal('worksPage'),
     getWorksCounts(),
     getLayout(),
     getSettings(),
+    // The ItemList is the list page's: a project page has its breadcrumbs
+    project ? null : getProjectList(),
   ])
-  const { nav } = toChrome(layout, settings)
+  const { nav, messengers } = toChrome(layout, settings)
   const navLabel = nav.find((item) => item.href === WORKS_PATH)?.label
   const title = page.hero?.title?.trim() || navLabel
   const pageName = navLabel ?? title
@@ -68,17 +78,24 @@ export async function WorksPageBody({ filter = ALL_WORKS, project }: Props) {
       ]
     : null
 
+  // Every project of the feed «все», whatever the filter: the canonical page is /works
+  const itemList =
+    list && itemListJsonLd(list.map((item) => ({ name: item.title, path: projectHref(item.slug) })))
+
   const heading = <PageHeading label={page.hero?.label} title={title} as={project ? 'h2' : 'h1'} />
 
   return (
     <>
       {crumbs && <JsonLd data={breadcrumbJsonLd(crumbs)} />}
+      {itemList && <JsonLd data={itemList} />}
       {initial ? (
         <WorksView
           initial={initial}
           counts={counts}
           project={project?.data}
           listTitle={worksListTitle(page)}
+          origin={siteUrl()}
+          cta={{ label: page.viewer?.ctaLabel ?? null, messengers }}
           afterViewer={project && <FirstScreenEnd />}
         >
           {heading}

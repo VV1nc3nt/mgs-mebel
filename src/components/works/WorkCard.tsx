@@ -36,6 +36,8 @@ export function WorkCard({ work, variant, priority }: Props) {
         overlay="work"
         inset="work"
         href={work.href}
+        // The project page is heavy (the viewer and the feed under it): rendered on the click only
+        prefetch={false}
         top={
           <KindIcon
             work={work}
