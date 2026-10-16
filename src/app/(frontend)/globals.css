@@ -278,6 +278,8 @@
   --spacing-news-card: 440px;
   --spacing-tall-md: 560px;
   --spacing-tall-xl: 640px;
+  /* News page card: 420 on every width (README §6.7) */
+  --spacing-news-tile: 420px;
   /* Home salon map, mobile; tablet and desktop use the tall heights (design: home) */
   --spacing-map: 500px;
   /* Salon card in the slider: 82% mobile, 44% tablet of the track (design: salons v2 §3) */

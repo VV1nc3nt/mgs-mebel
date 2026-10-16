@@ -47,7 +47,8 @@ export function FilterChip({ selected, count, children, className, ...props }: F
       {count !== undefined && (
         <>
           {/* Space text node: «все 7» in the accessible name; not rendered in the flex row */}{' '}
-          <span className={cn('text-caption', selected ? 'opacity-60' : 'text-text-4')}>
+          {/* Muted on the accent: 80 % keeps the contrast ≥ 4.5 (design: 60 %, 3.5) */}
+          <span className={cn('text-caption', selected ? 'text-on-accent/80' : 'text-text-4')}>
             {count}
           </span>
         </>
