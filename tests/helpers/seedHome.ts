@@ -1,5 +1,5 @@
 /**
- * E2E data of the pages: the `home`, `about`, `salonsPage`, `worksPage`, `catalogsPage`, `designers` and
+ * E2E data of the pages: the `home`, `about`, `salonsPage`, `worksPage`, `catalogsPage`, `designers`, `newsPage` and
  * `stats` globals, the designer manager of `settings`, news, projects, salons and catalogs with the seed
  * texts and media generated on the fly (no stock downloads, no binaries in git), then a draft
  * over the published home and a news draft for the «anonymous never sees drafts» checks.
@@ -18,6 +18,7 @@ import { isLocalDatabaseUrl } from '../../src/seed/guard'
 import { placeholderPdf } from '../../src/seed/pdf'
 import { catalogPdfFile, E2E_CATALOGS } from './e2eCatalogs'
 import { E2E_MANAGER, E2E_PROJECTS } from './e2eDesigners'
+import { E2E_EXTRA_NEWS } from './e2eNews'
 import {
   ABOUT_CTA,
   E2E_NEWS_COUNT,
@@ -167,7 +168,7 @@ try {
     U2: ids.main,
     U3: ids.secondary,
   }
-  const { home, about, stats, salonsPage, worksPage, catalogsPage, designers } = globals(
+  const { home, about, stats, salonsPage, worksPage, catalogsPage, designers, newsPage } = globals(
     (key) => byKey[key] ?? ids.poster,
   )
   const slides = home.hero?.slides?.map((slide) => ({ ...slide, video: null })) ?? []
@@ -232,6 +233,21 @@ try {
       payload.create({ collection: 'news', data: { ...item, body: [] }, depth: 0 }),
     )
   }
+  // More published news for the news page (older than the ones above, in creation order).
+  for (const [i, item] of E2E_EXTRA_NEWS.entries()) {
+    await upsertBySlug(payload, 'news', item.slug, () =>
+      payload.create({
+        collection: 'news',
+        data: { ...item, cover: photoIds[i % photoIds.length]!, body: [], _status: 'published' },
+        depth: 0,
+      }),
+    )
+  }
+  await payload.updateGlobal({
+    slug: 'newsPage',
+    data: { ...newsPage, _status: 'published' },
+    depth: 0,
+  })
   await upsertBySlug(payload, 'news', NEWS_DRAFT_SLUG, () =>
     payload.create({
       collection: 'news',
@@ -354,7 +370,7 @@ try {
     depth: 0,
   })
   console.log(
-    'seedHome: stats, home (published + draft), about, salonsPage, worksPage, catalogsPage, designers, settings.designerManager, news, projects, salons, catalogs',
+    'seedHome: stats, home (published + draft), about, salonsPage, worksPage, catalogsPage, designers, newsPage, settings.designerManager, news, projects, salons, catalogs',
   )
 } catch (error) {
   console.error(error)
