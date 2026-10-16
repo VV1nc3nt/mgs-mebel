@@ -9,6 +9,15 @@ import type { LayoutInput, SettingsInput } from './chrome'
 import { getPayloadClient } from './payload'
 import { getPreviewUser } from './preview'
 import { collectionTag, globalTag, newsTag, type PAGE_GLOBALS } from './revalidate'
+import {
+  ALL_NEWS,
+  NEWS_FEED_FILTERS,
+  NEWS_PAGE_SIZE,
+  toNewsCard,
+  type NewsCounts,
+  type NewsFilter,
+  type NewsPage,
+} from './news'
 import { isProjectSlug, toViewerProject, type ProjectRecord, type ViewerProject } from './viewer'
 import {
   ALL_WORKS,
@@ -220,6 +229,112 @@ export async function getNewsBySlug(slug: string): Promise<NewsArticle | null> {
   )()
 }
 
+// Published news of a tab: «все» or one type.
+const newsWhere = (filter: NewsFilter): Where =>
+  filter === ALL_NEWS
+    ? { _status: { equals: 'published' } }
+    : { _status: { equals: 'published' }, type: { equals: filter } }
+
+// Newest first; the id keeps pages stable when dates are equal
+const NEWS_SORT = ['-date', '-id']
+
+// Media fields the news cards and Open Graph read. `url` is computed from `filename` (and `prefix`
+// with S3), so those are selected too.
+const NEWS_MEDIA_SIZE = { url: true, filename: true, width: true, height: true } as const
+
+const newsPageCached = unstable_cache(
+  async (filter: NewsFilter, page: number): Promise<NewsPage> => {
+    const payload = await getPayloadClient()
+    // As an anonymous visitor: the collection's read access lets through published news only.
+    const { docs, hasNextPage } = await payload.find({
+      collection: 'news',
+      where: newsWhere(filter),
+      sort: NEWS_SORT,
+      limit: NEWS_PAGE_SIZE,
+      page,
+      depth: 1,
+      draft: false,
+      overrideAccess: false,
+      select: { title: true, slug: true, type: true, date: true, lead: true, cover: true },
+      populate: {
+        media: {
+          alt: true,
+          url: true,
+          filename: true,
+          prefix: true,
+          mimeType: true,
+          width: true,
+          height: true,
+          focalX: true,
+          focalY: true,
+          sizes: { thumb: NEWS_MEDIA_SIZE, card: NEWS_MEDIA_SIZE, og: NEWS_MEDIA_SIZE },
+        },
+      },
+    })
+    return { items: docs.map(toNewsCard), hasMore: hasNextPage }
+  },
+  ['collection:news:feed'],
+  { tags: [collectionTag('news')] },
+)
+
+/** A page of the news list (6 cards) for «все» or one type. */
+export async function getNewsPage(filter: NewsFilter, page: number): Promise<NewsPage> {
+  await connection()
+  return newsPageCached(filter, page)
+}
+
+const newsCountsCached = unstable_cache(
+  async (): Promise<NewsCounts> => {
+    const payload = await getPayloadClient()
+    const counts = await Promise.all(
+      NEWS_FEED_FILTERS.map(async (filter) => {
+        const { totalDocs } = await payload.count({
+          collection: 'news',
+          where: newsWhere(filter),
+          overrideAccess: false,
+        })
+        return [filter, totalDocs] as const
+      }),
+    )
+    return Object.fromEntries(counts) as NewsCounts
+  },
+  ['collection:news:counts'],
+  { tags: [collectionTag('news')] },
+)
+
+/** Published news per tab («все», news, new): the counters and the tabs that have news. */
+export async function getNewsCounts(): Promise<NewsCounts> {
+  await connection()
+  return newsCountsCached()
+}
+
+export type NewsListItem = { slug: string; title: string }
+
+const newsListCached = unstable_cache(
+  async (): Promise<NewsListItem[]> => {
+    const payload = await getPayloadClient()
+    const { docs } = await payload.find({
+      collection: 'news',
+      where: newsWhere(ALL_NEWS),
+      sort: NEWS_SORT,
+      pagination: false,
+      depth: 0,
+      draft: false,
+      overrideAccess: false,
+      select: { slug: true, title: true },
+    })
+    return docs.map((doc) => ({ slug: doc.slug, title: doc.title }))
+  },
+  ['collection:news:list'],
+  { tags: [collectionTag('news')] },
+)
+
+/** All published news in the order of the list «все»: slug and title (ItemList of /news). */
+export async function getNewsList(): Promise<NewsListItem[]> {
+  await connection()
+  return newsListCached()
+}
+
 // A video can only be the first slide, so «has a video» means a video project.
 const worksWhere = (filter: WorksFeedFilter): Where | undefined =>
   filter === ALL_WORKS
@@ -387,7 +502,8 @@ export type ProjectPageData = {
  */
 export async function getProjectBySlug(slug: string): Promise<ProjectPageData | null> {
   await connection()
-  if (!isProjectSlug(slug) || !(await projectListCached()).some((item) => item.slug === slug)) return null
+  if (!isProjectSlug(slug) || !(await projectListCached()).some((item) => item.slug === slug))
+    return null
   return unstable_cache(
     async (): Promise<ProjectPageData | null> => {
       const payload = await getPayloadClient()

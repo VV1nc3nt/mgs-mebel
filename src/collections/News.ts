@@ -3,6 +3,7 @@ import { slugField, type CollectionConfig } from 'payload'
 import { contentEditors, publishedOrLoggedIn } from '@/access'
 import { newsBlocks } from '@/blocks/news'
 import { imageField, videoField } from '@/fields/media'
+import { newsTypeOptions } from '@/lib/newsTypes'
 import { readingTime } from '@/lib/readingTime'
 import { newsTags, revalidateCollection } from '@/lib/revalidate'
 import { slugify } from '@/lib/slugify'
@@ -45,10 +46,7 @@ export const News: CollectionConfig = {
           label: 'Тип',
           required: true,
           defaultValue: 'news',
-          options: [
-            { label: 'Новость', value: 'news' },
-            { label: 'Новинка', value: 'new' },
-          ],
+          options: [...newsTypeOptions],
         },
         {
           name: 'date',
