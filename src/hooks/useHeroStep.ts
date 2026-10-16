@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useSyncExternalStore } from 'react'
 
-import { initialStepState, keyDelta, touchStep, wheelStep } from '@/lib/heroStep'
+import { subscribePageScroll } from '@/hooks/usePageScroll'
+import { initialStepState, keyDelta, TOP_Y, touchStep, wheelStep } from '@/lib/heroStep'
 import { isOverlayOpen, subscribeOverlay } from '@/lib/overlay'
 
 type Options = {
@@ -23,7 +24,9 @@ const ownsKeys = (target: EventTarget | null) =>
 /**
  * Scroll step of the hero scene (lib/heroStep): window listeners while the hero is mounted, has
  * two segments and no overlay (menu) is open — the overlay is checked again at event time.
- * No scroll-direction listener: wheel / touch / keys only.
+ * No scroll-direction listener: wheel / touch / keys only. Wheel and touchmove block scrolling
+ * (non-passive) only at the very top, where the scene takes them; below it they stay passive, so
+ * the page scrolls without waiting for the main thread, and the gesture state still sees them.
  */
 export function useHeroStep({ enabled, slide, reducedMotion, step }: Options): void {
   const overlayOpen = useSyncExternalStore(subscribeOverlay, isOverlayOpen, () => false)
@@ -36,6 +39,8 @@ export function useHeroStep({ enabled, slide, reducedMotion, step }: Options): v
     let state = initialStepState()
     let touchY: number | null = null
     let fired = false
+    // Wheel and touchmove are non-passive now: preventDefault works
+    let blocking = false
 
     const input = (dy: number) => {
       const { slide, reducedMotion } = current()
@@ -53,7 +58,7 @@ export function useHeroStep({ enabled, slide, reducedMotion, step }: Options): v
 
     const onWheel = (event: WheelEvent) => {
       if (isOverlayOpen()) return
-      if (handle(event.deltaY)) event.preventDefault()
+      if (handle(event.deltaY) && blocking) event.preventDefault()
     }
     const onKeyDown = (event: KeyboardEvent) => {
       if (isOverlayOpen() || event.defaultPrevented || ownsKeys(event.target)) return
@@ -70,19 +75,32 @@ export function useHeroStep({ enabled, slide, reducedMotion, step }: Options): v
       const result = touchStep(state, { ...input(touchY - y), fired })
       state = result.state
       fired = result.fired
-      if (result.consume && event.cancelable) event.preventDefault()
+      if (result.consume && blocking && event.cancelable) event.preventDefault()
       if (result.step) go(result.step)
     }
     const onTouchEnd = () => {
       touchY = null
     }
 
-    window.addEventListener('wheel', onWheel, { passive: false })
+    // The options of a listener are fixed when it is added: switching means remove, then add
+    const listen = (block: boolean) => {
+      window.removeEventListener('wheel', onWheel)
+      window.removeEventListener('touchmove', onTouchMove)
+      window.addEventListener('wheel', onWheel, { passive: !block })
+      window.addEventListener('touchmove', onTouchMove, { passive: !block })
+      blocking = block
+    }
+
+    listen(window.scrollY <= TOP_Y)
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('touchstart', onTouchStart, { passive: true })
-    window.addEventListener('touchmove', onTouchMove, { passive: false })
     window.addEventListener('touchend', onTouchEnd, { passive: true })
+    // The shared page scroll listener: at the top again (or away from it) — switch
+    const unsubscribe = subscribePageScroll(({ y }) => {
+      if ((y <= TOP_Y) !== blocking) listen(!blocking)
+    })
     return () => {
+      unsubscribe()
       window.removeEventListener('wheel', onWheel)
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('touchstart', onTouchStart)
