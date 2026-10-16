@@ -25,6 +25,7 @@ env:
     tests/e2e/partial-paint.e2e.spec.ts
     tests/e2e/works.e2e.spec.ts
     tests/e2e/viewer.e2e.spec.ts
+    tests/e2e/passive-listeners.e2e.spec.ts
   E2E_SHARD_2: >-
     tests/e2e/layout.e2e.spec.ts
     tests/e2e/dock.e2e.spec.ts
