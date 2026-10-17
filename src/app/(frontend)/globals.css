@@ -251,8 +251,21 @@
   --text-article-h2--font-weight: 700;
   --text-article-body: 1.0625rem;
   --text-article-body--line-height: 1.7;
-  --text-article-body-md: 1.125rem;
-  --text-article-body-md--line-height: 1.7;
+  --text-article-body-xl: 1.125rem;
+  --text-article-body-xl--line-height: 1.7;
+  /* List item of the article: 17, 18 from desktop (design: news article) */
+  --text-article-item: 1.0625rem;
+  --text-article-item--line-height: 1.55;
+  --text-article-item-xl: 1.125rem;
+  --text-article-item-xl--line-height: 1.55;
+  /* Quote of the article and its opening mark (design: news article) */
+  --text-article-quote: 1.375rem;
+  --text-article-quote--line-height: 1.35;
+  --text-article-quote--letter-spacing: -0.015em;
+  --text-article-quote--font-weight: 600;
+  --text-quote-mark: 3rem;
+  --text-quote-mark--line-height: 0.6;
+  --text-quote-mark--font-weight: 800;
 
   /* Spacing */
   --spacing-gutter: 20px;
@@ -303,10 +316,17 @@
   --spacing-avatar: 88px;
   /* Project viewer window from tablet: 92% of the screen height, 9:16 (README §6.4) */
   --spacing-viewer: 92dvh;
+  /* Article cover: 300 mobile, 460 tablet, 640 desktop (README §6.8) */
+  --spacing-article-cover: 300px;
+  --spacing-article-cover-md: 460px;
+  --spacing-article-cover-xl: 640px;
 
   /* Containers */
   --container-page: 1600px;
   --container-article: 760px;
+  /* Article heading: the title and the lead (design: news article) */
+  --container-article-title: 1100px;
+  --container-article-lead: 820px;
   /* Menu items and bottom block on tablet (design: MGSMenu) */
   --container-menu: 720px;
   /* Home hero: text block from tablet, its paragraph (design: home) */
