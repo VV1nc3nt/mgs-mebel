@@ -5,6 +5,7 @@ import { cleanup, createImage, createVideo, getTestPayload, PREFIX } from './hel
 
 // Outside a Next request: no request scope for connection(), no incremental cache.
 vi.mock('next/server', () => ({ connection: async () => {} }))
+vi.mock('next/headers', () => ({ draftMode: async () => ({ isEnabled: false }) }))
 vi.mock('next/cache', () => ({
   unstable_cache: <T extends (...args: never[]) => unknown>(fn: T) => fn,
   // Writes in these tests go through the cache hooks (lib/revalidate.ts)

@@ -18,6 +18,7 @@ import { isLocalDatabaseUrl } from '../../src/seed/guard'
 import { placeholderPdf } from '../../src/seed/pdf'
 import { catalogPdfFile, E2E_CATALOGS } from './e2eCatalogs'
 import { E2E_MANAGER, E2E_PROJECTS } from './e2eDesigners'
+import { articleBody, E2E_ARTICLE } from './e2eArticle'
 import { E2E_EXTRA_NEWS } from './e2eNews'
 import {
   ABOUT_CTA,
@@ -233,12 +234,38 @@ try {
       payload.create({ collection: 'news', data: { ...item, body: [] }, depth: 0 }),
     )
   }
-  // More published news for the news page (older than the ones above, in creation order).
+  // More published news for the news page (older than the ones above, in creation order). The
+  // first carries the article body of the news page checks (links to a home news item).
+  const { docs: linked } = await payload.find({
+    collection: 'news',
+    where: { slug: { equals: publishedNews[1]!.slug } },
+    limit: 1,
+    depth: 0,
+  })
   for (const [i, item] of E2E_EXTRA_NEWS.entries()) {
+    const article = item.slug === E2E_ARTICLE.slug
+    const body = article
+      ? articleBody(
+          {
+            photo: photoIds[0]!,
+            wide: photoIds[1]!,
+            gallery: [photoIds[2]!, photoIds[3]!],
+            video: videoId,
+          },
+          linked[0]!.id,
+        )
+      : []
     await upsertBySlug(payload, 'news', item.slug, () =>
       payload.create({
         collection: 'news',
-        data: { ...item, cover: photoIds[i % photoIds.length]!, body: [], _status: 'published' },
+        data: {
+          ...item,
+          // The article has no lead: the head of the page without it is checked
+          lead: article ? null : item.lead,
+          cover: photoIds[i % photoIds.length]!,
+          body,
+          _status: 'published',
+        },
         depth: 0,
       }),
     )
