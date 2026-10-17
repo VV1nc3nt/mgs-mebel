@@ -176,6 +176,39 @@ describe('news', () => {
     expect(tags()).toEqual(['collection:news', `news:${slug}-new`])
   })
 
+  it('autosave of a published news keeps the cache, publishing the draft expires it', async () => {
+    const doc = await payload.create({
+      collection: 'news',
+      data: { ...newsData(), slug: `${slug}-auto`, _status: 'published' },
+      draft: false,
+    })
+    revalidateTag.mockClear()
+    await payload.update({
+      collection: 'news',
+      id: doc.id,
+      data: { lead: 'автосохранение' },
+      draft: true,
+      autosave: true,
+    })
+    await payload.update({
+      collection: 'news',
+      id: doc.id,
+      data: { lead: 'ещё автосохранение' },
+      draft: true,
+      autosave: true,
+    })
+    expect(revalidateTag).not.toHaveBeenCalled()
+
+    await payload.update({
+      collection: 'news',
+      id: doc.id,
+      data: { _status: 'published' },
+      draft: true,
+    })
+    expect(tags()).toEqual(['collection:news', `news:${slug}-auto`])
+    await payload.delete({ collection: 'news', id: doc.id, context: { disableRevalidate: true } })
+  })
+
   it('creating a published news expires the list', async () => {
     const doc = await payload.create({
       collection: 'news',

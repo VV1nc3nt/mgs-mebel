@@ -14,8 +14,12 @@ export const siteUrl = (): string => {
   }
 }
 
-/** Absolute URL of a site path: `/` is the origin itself, other paths have no trailing slash. */
+/**
+ * Absolute URL of a site path: `/` is the origin itself, other paths have no trailing slash.
+ * An absolute http(s) URL (a media file on another host) is returned as it is.
+ */
 export const absoluteUrl = (path: string): string => {
+  if (/^https?:\/\//i.test(path)) return path
   const clean = path === '/' ? '' : path.replace(/\/+$/, '')
   return `${siteUrl()}${clean}`
 }

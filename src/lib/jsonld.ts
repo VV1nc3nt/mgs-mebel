@@ -1,6 +1,6 @@
 import type { SettingsInput } from './chrome'
 import { imageSource, type MediaValue } from './media'
-import { BRAND } from './seo'
+import { BRAND, ogImage } from './seo'
 import { absoluteUrl, siteUrl } from './site'
 
 export type JsonLdData = Record<string, unknown>
@@ -47,6 +47,44 @@ export const breadcrumbJsonLd = (items: Breadcrumb[]): JsonLdData => ({
     item: absoluteUrl(item.path),
   })),
 })
+
+export type NewsArticleInput = {
+  title: string
+  lead?: string | null
+  cover?: MediaValue
+  date: string
+  updatedAt?: string | null
+  path: string
+}
+
+/**
+ * A news article (Яндекс / Google rich results): the company as author and publisher (no logo yet),
+ * the cover as an absolute URL (Open Graph size), the page as its main entity.
+ */
+export const newsArticleJsonLd = ({
+  title,
+  lead,
+  cover,
+  date,
+  updatedAt,
+  path,
+}: NewsArticleInput): JsonLdData => {
+  const organization = { '@type': 'Organization', name: BRAND, url: siteUrl() }
+  const description = lead?.trim()
+  const image = ogImage(cover)?.url
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'NewsArticle',
+    headline: title,
+    ...(description && { description }),
+    ...(image && { image: [image] }),
+    datePublished: date,
+    ...(updatedAt && { dateModified: updatedAt }),
+    author: organization,
+    publisher: organization,
+    mainEntityOfPage: { '@type': 'WebPage', '@id': absoluteUrl(path) },
+  }
+}
 
 /** Pages listed in their order (the works feed «все»); none — no list. */
 export const itemListJsonLd = (items: Breadcrumb[]): JsonLdData | null =>

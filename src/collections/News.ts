@@ -1,6 +1,7 @@
 import { slugField, type CollectionConfig } from 'payload'
 
 import { contentEditors, publishedOrLoggedIn } from '@/access'
+import { PREVIEW_BREAKPOINTS, previewUrl } from '@/globals/shared'
 import { newsBlocks } from '@/blocks/news'
 import { imageField, videoField } from '@/fields/media'
 import { newsTypeOptions } from '@/lib/newsTypes'
@@ -15,9 +16,16 @@ export const News: CollectionConfig = {
     group: 'Контент',
     useAsTitle: 'title',
     defaultColumns: ['title', 'type', 'date', '_status'],
+    // The news page in draft mode: an editor sees the latest version, a never published one too
+    livePreview: {
+      url: ({ data }) => previewUrl(data?.slug ? `/news/${data.slug}` : '/news'),
+      breakpoints: PREVIEW_BREAKPOINTS,
+    },
   },
   defaultSort: '-date',
-  versions: { drafts: true },
+  // As the page globals: every autosave refreshes the preview on the server, 2 s instead of the
+  // default 0.8 s; autosave keeps rewriting one version, so 50 covers many publications.
+  versions: { drafts: { autosave: { interval: 2000 } }, maxPerDoc: 50 },
   access: {
     read: publishedOrLoggedIn,
     readVersions: contentEditors,
