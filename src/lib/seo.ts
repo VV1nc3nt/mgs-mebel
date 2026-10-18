@@ -74,6 +74,8 @@ export type BuildMetadataInput = {
   /** Site path, e.g. `/` or `/news/slug`. */
   path: string
   type?: 'website' | 'article'
+  /** Open Graph article times (ISO): publication and the last change. */
+  article?: { publishedTime?: string | null; modifiedTime?: string | null }
 }
 
 /**
@@ -85,6 +87,7 @@ export const buildMetadata = ({
   fallback,
   path,
   type = 'website',
+  article,
 }: BuildMetadataInput): Metadata => {
   const title = seoTitle(meta?.title || fallback.title || '')
   const description = seoDescription(meta?.description) ?? seoDescription(fallback.description)
@@ -103,6 +106,8 @@ export const buildMetadata = ({
       locale: 'ru_RU',
       type,
       images: image ? [image] : undefined,
+      ...(type === 'article' && article?.publishedTime && { publishedTime: article.publishedTime }),
+      ...(type === 'article' && article?.modifiedTime && { modifiedTime: article.modifiedTime }),
     },
     twitter: {
       card: image ? 'summary_large_image' : 'summary',

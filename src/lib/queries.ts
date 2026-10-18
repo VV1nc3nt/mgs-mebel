@@ -2,6 +2,7 @@ import { unstable_cache } from 'next/cache'
 import { draftMode } from 'next/headers'
 import { connection } from 'next/server'
 import type { DataFromGlobalSlug, Where } from 'payload'
+import { cache } from 'react'
 
 import type { Catalog, News, Salon, Setting } from '@/payload-types'
 
@@ -9,6 +10,7 @@ import type { LayoutInput, SettingsInput } from './chrome'
 import { getPayloadClient } from './payload'
 import { getPreviewUser } from './preview'
 import { collectionTag, globalTag, newsTag, type PAGE_GLOBALS } from './revalidate'
+import { isSlug } from './slugify'
 import {
   ALL_NEWS,
   NEWS_FEED_FILTERS,
@@ -201,33 +203,86 @@ export async function getLatestNews(limit: number): Promise<NewsSlide[]> {
   return latestNewsCached(limit)
 }
 
-export type NewsArticle = Pick<News, 'id' | 'title' | 'slug' | 'date' | 'lead' | 'cover' | 'meta'>
+export type NewsArticle = Pick<
+  News,
+  'id' | 'title' | 'slug' | 'type' | 'date' | 'lead' | 'cover' | 'body' | 'readingTime' | 'meta' | 'updatedAt'
+>
+
+// Media of the article: the cover (page, Open Graph) and the photos of the body blocks.
+const ARTICLE_MEDIA_SIZE = { url: true, filename: true, width: true, height: true } as const
+
+const ARTICLE_QUERY = {
+  collection: 'news',
+  limit: 1,
+  depth: 1,
+  select: {
+    title: true,
+    slug: true,
+    type: true,
+    date: true,
+    lead: true,
+    cover: true,
+    body: true,
+    readingTime: true,
+    meta: true,
+    updatedAt: true,
+  },
+  populate: {
+    media: {
+      alt: true,
+      url: true,
+      filename: true,
+      prefix: true,
+      mimeType: true,
+      width: true,
+      height: true,
+      focalX: true,
+      focalY: true,
+      sizes: {
+        thumb: ARTICLE_MEDIA_SIZE,
+        card: ARTICLE_MEDIA_SIZE,
+        hero: ARTICLE_MEDIA_SIZE,
+        og: ARTICLE_MEDIA_SIZE,
+      },
+    },
+    // Links of the text: the address needs the slug only
+    news: { slug: true },
+    projects: { slug: true },
+  },
+} as const
+
+const findArticle = async (slug: string, draft: boolean): Promise<NewsArticle | null> => {
+  const payload = await getPayloadClient()
+  const { docs } = await payload.find({
+    ...ARTICLE_QUERY,
+    ...(draft
+      ? // The latest version, published or not; the caller is an editor (getPreviewUser)
+        { where: { slug: { equals: slug } }, draft: true }
+      : // As an anonymous visitor: the collection's read access lets through published news only
+        {
+          where: { slug: { equals: slug }, _status: { equals: 'published' } },
+          draft: false,
+          overrideAccess: false,
+        }),
+  })
+  return (docs[0] as NewsArticle | undefined) ?? null
+}
 
 /**
- * A published news item by its slug, or null (unknown slug or draft only): the page answers 404.
- * Drafts are not shown even in draft mode until the full news page gets Live Preview.
+ * A news item by its slug, or null (the page answers 404). Visitors get the published version from
+ * the cache: one entry per slug, expired by `news:<slug>`. In draft mode an editor with a valid
+ * admin session gets the latest version straight from the database, a never published one too.
+ * React `cache`: the page and its metadata read it once per request (the slug is the only key).
  */
-export async function getNewsBySlug(slug: string): Promise<NewsArticle | null> {
+export const getNewsBySlug = cache(async (slug: string): Promise<NewsArticle | null> => {
   await connection()
-  // One cache entry per slug, so a news item can be revalidated by `news:<slug>`.
-  return unstable_cache(
-    async (): Promise<NewsArticle | null> => {
-      const payload = await getPayloadClient()
-      const { docs } = await payload.find({
-        collection: 'news',
-        where: { slug: { equals: slug }, _status: { equals: 'published' } },
-        limit: 1,
-        depth: 1,
-        draft: false,
-        overrideAccess: false,
-        select: { title: true, slug: true, date: true, lead: true, cover: true, meta: true },
-      })
-      return docs[0] ?? null
-    },
-    ['collection:news:slug', slug],
-    { tags: [collectionTag('news'), newsTag(slug)] },
-  )()
-}
+  // A made-up address leaves no cache entry
+  if (!isSlug(slug)) return null
+  if ((await draftMode()).isEnabled && (await getPreviewUser())) return findArticle(slug, true)
+  return unstable_cache(() => findArticle(slug, false), ['collection:news:article', slug], {
+    tags: [collectionTag('news'), newsTag(slug)],
+  })()
+})
 
 // Published news of a tab: «все» or one type.
 const newsWhere = (filter: NewsFilter): Where =>

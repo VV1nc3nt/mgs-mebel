@@ -8,6 +8,7 @@ import * as migration_20261009_113818_salons_data from './20261009_113818_salons
 import * as migration_20261012_214643_about_v2 from './20261012_214643_about_v2'
 import * as migration_20261013_134632_catalogs_render from './20261013_134632_catalogs_render'
 import * as migration_20261013_212556_designers_v2 from './20261013_212556_designers_v2'
+import * as migration_20261017_112548_news_autosave from './20261017_112548_news_autosave'
 
 export const migrations = [
   {
@@ -59,5 +60,10 @@ export const migrations = [
     up: migration_20261013_212556_designers_v2.up,
     down: migration_20261013_212556_designers_v2.down,
     name: '20261013_212556_designers_v2',
+  },
+  {
+    up: migration_20261017_112548_news_autosave.up,
+    down: migration_20261017_112548_news_autosave.down,
+    name: '20261017_112548_news_autosave',
   },
 ]
