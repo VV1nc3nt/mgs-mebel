@@ -8,15 +8,29 @@ import type {
 } from '@/payload-types'
 
 import { classifyHref, type HrefKind } from './href'
-import { asMedia, isImage } from './media'
+import { asMedia, isImage, type SizesPreset } from './media'
 
-/** Name of the news section in the crumbs: nav label, else the news page title, else this. */
+/** Width of the text column, the same as `--container-article` in globals.css (unit test). */
+export const ARTICLE_COLUMN_WIDTH = '760px'
+
+/** `sizes` of a photo in the text column: the column is fixed from desktop. */
+export const COLUMN_PHOTO_SIZES: SizesPreset = {
+  base: '100vw',
+  md: '92vw',
+  xl: ARTICLE_COLUMN_WIDTH,
+}
+
+/** Name of the news section in the visible crumbs when nothing else is set. */
 export const NEWS_CRUMB = 'Новости'
 
+/**
+ * Visible crumb of the news section: the short nav label, else the label, else the news page
+ * title, else «Новости». The breadcrumb list (JSON-LD) keeps the label, as on the other pages.
+ */
 export const newsCrumbName = (
-  navLabel: string | null | undefined,
+  nav: { label?: string | null; shortLabel?: string | null } | null | undefined,
   heroTitle: string | null | undefined,
-): string => navLabel?.trim() || heroTitle?.trim() || NEWS_CRUMB
+): string => nav?.shortLabel?.trim() || nav?.label?.trim() || heroTitle?.trim() || NEWS_CRUMB
 
 /** «N мин чтения»: the stored value, else counted from the body (a draft not saved yet). */
 export const readingLabel = (minutes: number) => `${minutes} мин чтения`

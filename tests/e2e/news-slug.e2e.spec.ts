@@ -19,8 +19,10 @@ const NOT_FOUND_TITLE = `${NOT_FOUND} — MGS MEBEL`
 const published = news(() => 1)[0]!
 const linked = news(() => 1)[1]!
 const ARTICLE = `/news/${E2E_ARTICLE.slug}`
-// The crumb and the breadcrumb list name the news section by its nav label
-const NEWS_LABEL = globals(() => 0).layout.nav!.news!.label!
+// The visible crumb names the news section by the short nav label, the breadcrumb list by the label
+const NEWS_NAV = globals(() => 0).layout.nav!.news!
+const NEWS_LABEL = NEWS_NAV.label!
+const NEWS_CRUMB = 'Новости'
 
 // User agents: a browser (metadata streams) and Яндекс — an HTML-limited bot (metadata blocks)
 const AGENTS = {
@@ -161,7 +163,8 @@ test.describe('news page', () => {
       // Crumbs: Главная / news section, no current page; each link takes its own centre
       const crumbs = main.getByRole('navigation', { name: 'Навигационная цепочка' })
       const links = crumbs.getByRole('link')
-      await expect(links).toHaveText(['Главная', NEWS_LABEL])
+      expect(NEWS_NAV.shortLabel).toBe(NEWS_CRUMB)
+      await expect(links).toHaveText(['Главная', NEWS_CRUMB])
       await expect(links.nth(0)).toHaveAttribute('href', '/')
       await expect(links.nth(1)).toHaveAttribute('href', '/news')
       for (const link of await links.all()) {

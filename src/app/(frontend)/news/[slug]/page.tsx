@@ -49,10 +49,10 @@ export default async function NewsArticlePage({ params }: Props) {
     getPageGlobal('newsPage'),
   ])
   const { nav } = toChrome(layout, settings)
-  const newsCrumb = newsCrumbName(
-    nav.find((item) => item.href === NEWS_PATH)?.label,
-    newsPage.hero?.title,
-  )
+  const navItem = nav.find((item) => item.href === NEWS_PATH)
+  // Visible crumb — the short label; the breadcrumb list — the label, as on the other pages
+  const newsCrumb = newsCrumbName(navItem, newsPage.hero?.title)
+  const newsName = navItem?.label || newsCrumb
   const path = `${NEWS_PATH}/${news.slug}`
 
   return (
@@ -60,7 +60,7 @@ export default async function NewsArticlePage({ params }: Props) {
       <JsonLd
         data={breadcrumbJsonLd([
           { name: 'Главная', path: '/' },
-          { name: newsCrumb, path: NEWS_PATH },
+          { name: newsName, path: NEWS_PATH },
           { name: news.title, path },
         ])}
       />

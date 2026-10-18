@@ -1,9 +1,14 @@
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
+
 import { render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { ArticleBlocks } from '@/components/news/ArticleBlocks'
 import { ArticleHeader } from '@/components/news/ArticleHeader'
 import {
+  ARTICLE_COLUMN_WIDTH,
+  COLUMN_PHOTO_SIZES,
   NEWS_CRUMB,
   articleBlocks,
   figureRatio,
@@ -85,6 +90,14 @@ describe('articleBlocks', () => {
   })
 })
 
+describe('column photo sizes', () => {
+  it('the desktop width is --container-article of globals.css', () => {
+    const css = readFileSync(path.resolve('src/app/(frontend)/globals.css'), 'utf8')
+    expect(css.match(/--container-article:\s*([^;]+);/)?.[1]).toBe(ARTICLE_COLUMN_WIDTH)
+    expect(COLUMN_PHOTO_SIZES.xl).toBe(ARTICLE_COLUMN_WIDTH)
+  })
+})
+
 describe('figureRatio', () => {
   it('takes the ratio of the editor, else 3:2 — 16:9 when wide', () => {
     expect(figureRatio('4x5', false)).toBe('4/5')
@@ -144,10 +157,14 @@ describe('linkHref', () => {
 })
 
 describe('crumbs and reading time', () => {
-  it('names the news section by the nav label, else the page title, else «Новости»', () => {
-    expect(newsCrumbName('Новости / новинки', 'Новости')).toBe('Новости / новинки')
-    expect(newsCrumbName(' ', 'Новости компании')).toBe('Новости компании')
-    expect(newsCrumbName(null, undefined)).toBe(NEWS_CRUMB)
+  it('names the news section: short label, label, page title, «Новости»', () => {
+    const nav = { label: 'Новости / новинки', shortLabel: 'Новости' }
+    expect(newsCrumbName(nav, 'Что нового')).toBe('Новости')
+    expect(newsCrumbName({ ...nav, shortLabel: ' ' }, 'Что нового')).toBe('Новости / новинки')
+    expect(newsCrumbName({ label: '', shortLabel: null }, 'Новости компании')).toBe(
+      'Новости компании',
+    )
+    expect(newsCrumbName(undefined, ' ')).toBe(NEWS_CRUMB)
     expect(readingLabel(3)).toBe('3 мин чтения')
   })
 })

@@ -1,5 +1,5 @@
 import { MediaCard } from '@/components/ui/MediaCard'
-import type { ArticleFigure as Figure } from '@/lib/article'
+import { COLUMN_PHOTO_SIZES, type ArticleFigure as Figure } from '@/lib/article'
 import { cn } from '@/lib/cn'
 
 import { ARTICLE_COLUMN } from './articleStyles'
@@ -14,7 +14,7 @@ export function ArticleFigure({ figure }: { figure: Figure }) {
       <MediaCard
         media={figure.photo}
         imageSize={figure.wide ? 'hero' : 'card'}
-        sizes={figure.wide ? { base: '100vw' } : { base: '100vw', md: '92vw', xl: '53vw' }}
+        sizes={figure.wide ? { base: '100vw' } : COLUMN_PHOTO_SIZES}
         ratio={figure.ratio}
       />
       {figure.caption && (
