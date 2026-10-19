@@ -68,7 +68,8 @@ export function NewsGallery({ slides, perView, caption }: Props) {
         tabIndex={count > inView ? 0 : -1}
         onScroll={onScroll}
         onScrollEnd={onScrollEnd}
-        className="no-scrollbar flex basis-full snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain"
+        // Positioned: the slides' offsetParent, so their snap targets read from the track
+        className="relative no-scrollbar flex basis-full snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain"
       >
         {slides.map((slide, i) => (
           <div

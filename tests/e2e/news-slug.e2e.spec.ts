@@ -366,6 +366,50 @@ test.describe('news page', () => {
     })
   }
 
+  // Wide windows: the container is centred with gutters, so the snap targets must be read from
+  // the track (the slides' offsetParent) — read from an outer box they are off by the gutter and
+  // the centring, and from 1920 the snap took the track back after «Вперёд»
+  for (const [width, height] of [
+    [1440, 900],
+    [1920, 1080],
+  ] as const) {
+    test(`${width}: the 5-photo slider — the track is the slides' offsetParent, the arrows work`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height })
+      await page.goto(`${BASE}${ARTICLE}`)
+      await hydrated(page)
+      const long = page.locator('[data-article-gallery]').nth(1)
+      const track = long.locator('[aria-roledescription="карусель"]')
+      expect(
+        await track.evaluate((el) =>
+          [...el.children].every((slide) => (slide as HTMLElement).offsetParent === el),
+        ),
+      ).toBe(true)
+      const next = long.getByRole('button', { name: 'Вперёд' })
+      const prev = long.getByRole('button', { name: 'Назад' })
+      const scrollLeft = () => track.evaluate((el) => Math.round(el.scrollLeft))
+      const maxScroll = await track.evaluate((el) => Math.round(el.scrollWidth - el.clientWidth))
+      await long.scrollIntoViewIfNeeded()
+
+      const ended = await armScrollEnd(track)
+      await next.click()
+      await ended()
+      await expect(long.getByText('2 / 5')).toBeVisible()
+      // The track stays where the counter says: the snap does not take it back
+      await expect.poll(scrollLeft).toBe(maxScroll)
+      await page.waitForTimeout(300)
+      expect(await scrollLeft()).toBe(maxScroll)
+      await expect(long.getByText('2 / 5')).toBeVisible()
+
+      const back = await armScrollEnd(track)
+      await prev.click()
+      await back()
+      await expect(long.getByText('1 / 5')).toBeVisible()
+      await expect.poll(scrollLeft).toBe(0)
+    })
+  }
+
   test.describe('touch', () => {
     test.use({ hasTouch: true })
 

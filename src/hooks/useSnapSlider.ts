@@ -43,7 +43,11 @@ type Options = {
  * a vertical scroll too), picks are held at once (the browser's own re-snap scrolls before the
  * next frame) and the track moves to the active slide's new target instantly.
  *
- * The track element gets `track`, `onScroll` and `onScrollEnd`; its children are the slides.
+ * The track element gets `track`, `onScroll` and `onScrollEnd`; its children are the slides. The
+ * track must be the slides' offsetParent (positioned, e.g. `relative`): the snap targets come from
+ * their `offsetLeft`, which is otherwise read from an outer box — shifted by the page gutters and
+ * the centring of the container, the targets miss the snap positions and the active slide drifts
+ * from the one in view.
  */
 export function useSnapSlider({ onScrollSelect }: Options = {}) {
   const [active, setActive] = useState(0)
