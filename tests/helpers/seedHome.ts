@@ -250,6 +250,7 @@ try {
             photo: photoIds[0]!,
             wide: photoIds[1]!,
             gallery: [photoIds[2]!, photoIds[3]!],
+            longGallery: photoIds.slice(1),
             video: videoId,
           },
           linked[0]!.id,

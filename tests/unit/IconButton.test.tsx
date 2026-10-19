@@ -46,4 +46,15 @@ describe('IconButton', () => {
     expect(className).toContain('[&_svg]:size-5.5')
     expect(className).not.toContain('before:')
   })
+
+  it('outline-soft: the article slider arrows light up white on hover', () => {
+    render(
+      <IconButton aria-label="Вперёд" variant="outline-soft">
+        <svg />
+      </IconButton>,
+    )
+    const className = screen.getByRole('button', { name: 'Вперёд' }).className
+    expect(className).toContain('border-border-strong')
+    expect(className).toContain('hover:border-text')
+  })
 })

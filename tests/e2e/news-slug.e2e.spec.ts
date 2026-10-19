@@ -4,10 +4,12 @@ import { expect, test, type APIRequestContext, type Page } from '@playwright/tes
 import { formatDate } from '../../src/lib/date'
 import { globals } from '../../src/seed/data/globals'
 import { news } from '../../src/seed/data/news'
-import { ARTICLE_TEXT, E2E_ARTICLE, EXTERNAL_URL } from '../helpers/e2eArticle'
+import { ARTICLE_TEXT, E2E_ARTICLE, EXTERNAL_URL, RUTUBE_ID } from '../helpers/e2eArticle'
 import { e2eEditor } from '../helpers/e2eEditor'
 import { NEWS_DRAFT_SLUG, NEWS_DRAFT_TITLE } from '../helpers/e2eHome'
 import { layoutShifts, settle } from '../helpers/scroll'
+import { armScrollEnd, swiper } from '../helpers/swipe'
+import { PLAYBACK_ATTR, stubMedia } from '../helpers/video'
 
 const BASE = 'http://localhost:3000'
 const EMPTY_DB = !!process.env.E2E_EMPTY_DB
@@ -221,13 +223,16 @@ test.describe('news page', () => {
       await expect(main.locator('figcaption')).toHaveText([
         ARTICLE_TEXT.quoteAuthor,
         ARTICLE_TEXT.caption,
+        ARTICLE_TEXT.galleryCaption,
+        ARTICLE_TEXT.videoCaption,
+        ARTICLE_TEXT.embedCaption,
       ])
       await expect(main.getByText(ARTICLE_TEXT.outro)).toBeVisible()
       // The empty paragraph renders nothing: two paragraphs of text in all
       await expect(main.locator('article p')).toHaveCount(2)
 
       // One photo — the column, 3:2; the wide one — the container, 16:9; both lazy
-      const photos = main.locator('figure:has(img)')
+      const photos = main.locator('[data-article-figure]')
       await expect(photos).toHaveCount(2)
       const [single, wide] = await photos.evaluateAll((figures) =>
         figures.map((figure) => {
@@ -254,9 +259,9 @@ test.describe('news page', () => {
       await expect(external).toHaveAttribute('target', '_blank')
       await expect(external).toHaveAttribute('rel', 'noopener noreferrer')
 
-      // The slider of photos and the video come with their own blocks: nothing of them yet
-      await expect(main.getByText(ARTICLE_TEXT.galleryCaption)).toHaveCount(0)
-      await expect(main.getByText(ARTICLE_TEXT.videoCaption)).toHaveCount(0)
+      // Two photo sliders and three videos; no player is loaded before a click
+      await expect(main.locator('[data-article-gallery]')).toHaveCount(2)
+      await expect(main.locator('[data-article-video]')).toHaveCount(3)
       await expect(main.locator('video, iframe')).toHaveCount(0)
 
       expect(await axe(page)).toEqual([])
@@ -264,6 +269,228 @@ test.describe('news page', () => {
       expect(errors).toEqual([])
     })
   }
+
+  // README §6.8: photos in view of the 2-photo and the 5-photo slider
+  const IN_VIEW = {
+    390: { short: 1, long: 1 },
+    834: { short: 2, long: 3 },
+    1440: { short: 2, long: 4 },
+  } as const
+
+  for (const width of [390, 834, 1440] as const) {
+    test(`${width}: photo sliders — photos in view, counter and arrows`, async ({ page }) => {
+      await page.setViewportSize({ width, height: HEIGHTS[width] })
+      const errors = watchConsole(page)
+      await page.emulateMedia({ reducedMotion: 'reduce' })
+      await page.goto(`${BASE}${ARTICLE}`)
+      await hydrated(page)
+      const [short, long] = [0, 1].map((i) => page.locator('[data-article-gallery]').nth(i))
+      const geometry = (gallery: typeof short) =>
+        gallery.evaluate((figure) => {
+          const track = figure.querySelector('[aria-roledescription="карусель"]') as HTMLElement
+          const slides = [...track.children] as HTMLElement[]
+          const box = slides[0]!.getBoundingClientRect()
+          return {
+            track: track.clientWidth,
+            slide: box.width,
+            ratio:
+              box.width /
+              slides[0]!.querySelector('img')!.parentElement!.getBoundingClientRect().height,
+            radius: getComputedStyle(slides[0]!.querySelector('img')!.parentElement!)
+              .borderTopLeftRadius,
+            scrolls: track.scrollWidth > track.clientWidth,
+          }
+        })
+
+      for (const [gallery, k, n, ratio] of [
+        [short, IN_VIEW[width].short, 2, 4 / 5],
+        [long, IN_VIEW[width].long, 5, 1],
+      ] as const) {
+        const g = await geometry(gallery)
+        // The container, split into k photos with the gap 12
+        expect(g.slide).toBeCloseTo((g.track - 12 * (k - 1)) / k, 0)
+        expect(g.ratio).toBeCloseTo(ratio, 1)
+        expect(g.radius).toBe('20px')
+        expect(g.scrolls).toBe(n > k)
+        const counter = gallery.getByText(`1 / ${n}`)
+        const arrows = gallery.getByRole('button')
+        if (n > k) {
+          await expect(counter).toBeVisible()
+          await expect(arrows).toHaveCount(2)
+          await expect(arrows.first()).toBeVisible()
+        } else {
+          // Everything in view: a plain row, no controls
+          await expect(counter).toBeHidden()
+          await expect(arrows.first()).toBeHidden()
+        }
+      }
+
+      // The 5-photo slider: «Вперёд» moves by the photos in view, the arrows stop at the ends
+      const k = IN_VIEW[width].long
+      const track = long.locator('[aria-roledescription="карусель"]')
+      const prev = long.getByRole('button', { name: 'Назад' })
+      const next = long.getByRole('button', { name: 'Вперёд' })
+      const scrollLeft = () => track.evaluate((el) => Math.round(el.scrollLeft))
+      const maxScroll = await track.evaluate((el) => el.scrollWidth - el.clientWidth)
+      await expect(prev).toHaveAttribute('aria-disabled', 'true')
+      await long.scrollIntoViewIfNeeded()
+      const ended = await armScrollEnd(track)
+      await next.click()
+      await ended()
+      const first = Math.min(1 + k, 5 - k + 1)
+      await expect(long.getByText(`${first} / 5`)).toBeVisible()
+      if (k > 1) {
+        // The last photos share the end of the track
+        await expect(next).toHaveAttribute('aria-disabled', 'true')
+        await expect.poll(scrollLeft).toBe(Math.round(maxScroll))
+        // At the end Enter changes nothing; the arrow keeps the focus
+        await next.focus()
+        await page.keyboard.press('Enter')
+        await expect(long.getByText(`${first} / 5`)).toBeVisible()
+        await expect(next).toBeFocused()
+      } else {
+        await expect(next).not.toHaveAttribute('aria-disabled')
+      }
+      await expect(prev).not.toHaveAttribute('aria-disabled')
+      await prev.focus()
+      const back = await armScrollEnd(track)
+      await page.keyboard.press('Enter')
+      await back()
+      await expect(long.getByText('1 / 5')).toBeVisible()
+      await expect.poll(scrollLeft).toBe(0)
+      await expect(prev).toHaveAttribute('aria-disabled', 'true')
+
+      expect(await axe(page)).toEqual([])
+      expect(await layoutShifts(page)).toEqual([])
+      expect(errors).toEqual([])
+    })
+  }
+
+  test.describe('touch', () => {
+    test.use({ hasTouch: true })
+
+    test('390: a swipe moves the 5-photo slider by one photo', async ({ page }) => {
+      await page.setViewportSize({ width: 390, height: HEIGHTS[390] })
+      await page.goto(`${BASE}${ARTICLE}`)
+      await hydrated(page)
+      const long = page.locator('[data-article-gallery]').nth(1)
+      const track = long.locator('[aria-roledescription="карусель"]')
+      await long.scrollIntoViewIfNeeded()
+      const swipe = await swiper(page, { track, slide: track.locator('> *').first() })
+      await swipe(1)
+      await expect(long.getByText('2 / 5')).toBeVisible()
+      await swipe(-1)
+      await expect(long.getByText('1 / 5')).toBeVisible()
+    })
+  })
+
+  test.describe('video', () => {
+    const PLAY = `Смотреть видео: ${ARTICLE_TEXT.videoCaption}`
+
+    for (const width of [390, 1440] as const) {
+      test(`${width}: sizes, plates; a click / Enter plays the file, ended gives ▶ back`, async ({
+        page,
+      }) => {
+        await page.setViewportSize({ width, height: HEIGHTS[width] })
+        const errors = watchConsole(page)
+        await stubMedia(page)
+        await page.goto(`${BASE}${ARTICLE}`)
+        await hydrated(page)
+        const [column, vertical, wide] = [0, 1, 2].map((i) =>
+          page.locator('[data-article-video]').nth(i),
+        )
+        const container = await page
+          .locator('[data-article-gallery]')
+          .first()
+          .evaluate((el) => el.getBoundingClientRect().width)
+        const block = async (video: typeof column) =>
+          video.locator('> div').evaluate((el) => {
+            const box = el.getBoundingClientRect()
+            return {
+              width: box.width,
+              ratio: box.width / box.height,
+              centre: box.x + box.width / 2,
+              radius: getComputedStyle(el).borderTopLeftRadius,
+            }
+          })
+        const radius = width === 390 ? '24px' : '28px'
+        const c = await block(column)
+        expect(c.width).toBeCloseTo(Math.min(COLUMN, container), 0)
+        expect(c.ratio).toBeCloseTo(16 / 9, 1)
+        expect(c.radius).toBe(radius)
+        const v = await block(vertical)
+        expect(v.width).toBeLessThanOrEqual(420)
+        expect(v.ratio).toBeCloseTo(9 / 16, 1)
+        expect(v.centre).toBeCloseTo(c.centre, 0)
+        const w = await block(wide)
+        expect(w.width).toBeCloseTo(container, 0)
+        expect(w.ratio).toBeCloseTo(16 / 9, 1)
+
+        // «▶ duration» on the poster; no plate without a duration; the caption under the block
+        await expect(column.getByText(ARTICLE_TEXT.duration)).toHaveText(
+          `▶ ${ARTICLE_TEXT.duration}`,
+        )
+        await expect(vertical.locator('.glass')).toHaveCount(0)
+        await expect(column.locator('figcaption')).toHaveText(ARTICLE_TEXT.videoCaption)
+
+        const play = column.getByRole('button', { name: PLAY })
+        await play.scrollIntoViewIfNeeded()
+        await play.click()
+        const video = column.locator('video')
+        await expect(video).toHaveAttribute('controls', '')
+        await expect(video).toHaveAttribute(PLAYBACK_ATTR, 'playing')
+        await expect(video).toBeFocused()
+        await page.evaluate('window.__e2eMedia.end()')
+        await expect(column.locator('video')).toHaveCount(0)
+        await expect(play).toBeFocused()
+
+        await page.keyboard.press('Enter')
+        await expect(column.locator('video')).toHaveAttribute(PLAYBACK_ATTR, 'playing')
+        await expect(column.locator('video')).toBeFocused()
+
+        // One sound at a time: the vertical video starting gives the first one its poster back
+        await vertical.getByRole('button', { name: 'Смотреть видео' }).click()
+        await expect(vertical.locator('video')).toHaveAttribute(PLAYBACK_ATTR, 'playing')
+        await expect(column.locator('video')).toHaveCount(0)
+        await expect(play).toBeVisible()
+
+        expect(await layoutShifts(page)).toEqual([])
+        expect(errors).toEqual([])
+        await page.unrouteAll({ behavior: 'ignoreErrors' })
+      })
+    }
+
+    test('a RuTube link: the platform player in the block, sandboxed', async ({ page }) => {
+      await page.setViewportSize({ width: 1440, height: HEIGHTS[1440] })
+      // No external network: the player page answers empty
+      await page.route('https://rutube.ru/**', (route) =>
+        route.fulfill({ status: 200, contentType: 'text/html', body: '' }),
+      )
+      await page.goto(`${BASE}${ARTICLE}`)
+      await hydrated(page)
+      const wide = page.locator('[data-article-video]').nth(2)
+      await expect(wide.getByText(ARTICLE_TEXT.embedDuration)).toBeVisible()
+      await wide
+        .getByRole('button', { name: `Смотреть видео: ${ARTICLE_TEXT.embedCaption}` })
+        .click()
+      const frame = wide.locator('iframe')
+      await expect(frame).toHaveAttribute(
+        'src',
+        `https://rutube.ru/play/embed/${RUTUBE_ID}/?autoplay=true`,
+      )
+      await expect(frame).toHaveAttribute('title', ARTICLE_TEXT.embedCaption)
+      await expect(frame).toHaveAttribute(
+        'sandbox',
+        'allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox',
+      )
+      await expect(frame).toHaveAttribute(
+        'allow',
+        'autoplay; encrypted-media; fullscreen; picture-in-picture',
+      )
+      await expect(frame).toBeFocused()
+      await page.unrouteAll({ behavior: 'ignoreErrors' })
+    })
+  })
 
   test('metadata and structured data: NewsArticle, BreadcrumbList, canonical, og', async ({
     page,
@@ -310,7 +537,12 @@ test.describe('news page', () => {
       await expect(main.getByRole('navigation', { name: 'Навигационная цепочка' })).toBeVisible()
       await expect(main.locator('h2')).toHaveText([ARTICLE_TEXT.heading])
       await expect(main.locator('blockquote')).toHaveCount(2)
-      await expect(main.locator('figure:has(img)')).toHaveCount(2)
+      await expect(main.locator('[data-article-figure] img')).toHaveCount(2)
+      // The sliders' photos and the video posters, with their captions
+      await expect(main.locator('[data-article-gallery] [role="group"] img')).toHaveCount(7)
+      await expect(main.locator('[data-article-video] img')).toHaveCount(3)
+      await expect(main.getByText(ARTICLE_TEXT.galleryCaption)).toBeVisible()
+      await expect(main.getByText(ARTICLE_TEXT.videoCaption)).toBeVisible()
       await expect(main.getByRole('link', { name: ARTICLE_TEXT.internal })).toBeVisible()
       await expect(main.getByText(ARTICLE_TEXT.outro)).toBeVisible()
     })

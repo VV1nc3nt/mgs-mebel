@@ -5,7 +5,7 @@ import { Action, type ActionProps } from './Action'
 import { HIT_AREA } from './hitArea'
 
 export type IconButtonVariant =
-  'surface' | 'glass' | 'ghost' | 'outline' | 'outline-media' | 'light' | 'accent'
+  'surface' | 'glass' | 'ghost' | 'outline' | 'outline-soft' | 'outline-media' | 'light' | 'accent'
 export type IconButtonSize = 32 | 36 | 40 | 44 | 48 | 52 | 56
 
 const VARIANT: Record<IconButtonVariant, string> = {
@@ -14,6 +14,8 @@ const VARIANT: Record<IconButtonVariant, string> = {
   // Dock «Наверх»: transparent, surface-3 on hover
   ghost: 'text-text hover:bg-surface-3',
   outline: 'border border-border-strong text-text hover:border-accent',
+  // Arrows of the article photo slider: the border lights up white (design: news article)
+  'outline-soft': 'border border-border-strong text-text hover:border-text',
   // Over photo/video (README §5.2)
   'outline-media': 'border border-text/25 text-text backdrop-blur-soft hover:border-text',
   light: 'bg-text text-on-accent',
