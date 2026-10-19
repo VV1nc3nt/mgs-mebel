@@ -22,9 +22,16 @@ export const ARTICLE_TEXT = {
   quoteAuthor: 'Автор цитаты',
   quoteNoAuthor: 'Цитата без автора.',
   caption: 'Подпись к одному фото',
-  galleryCaption: 'Подпись слайдера — не выводится до слайдера',
-  videoCaption: 'Подпись видео — не выводится до плеера',
+  galleryCaption: 'Подпись слайдера фото',
+  videoCaption: 'Подпись видео',
+  embedCaption: 'Видео RuTube',
+  duration: '1:24',
+  embedDuration: '11:52',
 } as const
+
+/** The RuTube video of the article: the page link and the player it opens. */
+export const RUTUBE_ID = '1480655fcab995b927db77bdd9d83986'
+export const RUTUBE_URL = `https://rutube.ru/video/${RUTUBE_ID}/`
 
 export const EXTERNAL_URL = 'https://example.org/mgs-e2e'
 
@@ -70,9 +77,21 @@ const rich = (...paragraphs: ReturnType<typeof paragraph>[]) => ({
   },
 })
 
-type ArticleMedia = { photo: number; wide: number; gallery: number[]; video: number | null }
+type ArticleMedia = {
+  photo: number
+  wide: number
+  /** 2 photos: in view from tablet. */
+  gallery: number[]
+  /** 5 photos: a slider at every width. */
+  longGallery: number[]
+  video: number | null
+}
 
-/** Body with every text block, an empty paragraph, one photo, a wide one, a slider and a video. */
+/**
+ * Body with every text block, an empty paragraph, one photo, a wide one, two sliders (2 photos
+ * 4:5 with a caption; 5 photos 1:1) and videos: a file in the column, a vertical file without a
+ * duration, a wide RuTube link.
+ */
 export const articleBody = (media: ArticleMedia, linkedNewsId: number): Block[] => [
   {
     blockType: 'paragraph',
@@ -97,6 +116,7 @@ export const articleBody = (media: ArticleMedia, linkedNewsId: number): Block[] 
   { blockType: 'media', photos: [media.photo], caption: ARTICLE_TEXT.caption },
   { blockType: 'media', photos: [media.wide], wide: true },
   { blockType: 'media', photos: media.gallery, caption: ARTICLE_TEXT.galleryCaption },
+  { blockType: 'media', photos: media.longGallery, ratio: '1x1' },
   ...(media.video
     ? [
         {
@@ -104,9 +124,19 @@ export const articleBody = (media: ArticleMedia, linkedNewsId: number): Block[] 
           file: media.video,
           poster: media.photo,
           caption: ARTICLE_TEXT.videoCaption,
+          duration: ARTICLE_TEXT.duration,
         } as Block,
+        { blockType: 'video', file: media.video, poster: media.wide, vertical: true } as Block,
       ]
     : []),
+  {
+    blockType: 'video',
+    embedUrl: RUTUBE_URL,
+    poster: media.wide,
+    caption: ARTICLE_TEXT.embedCaption,
+    duration: ARTICLE_TEXT.embedDuration,
+    wide: true,
+  } as Block,
   { blockType: 'quote', text: ARTICLE_TEXT.quoteNoAuthor },
   { blockType: 'paragraph', text: rich(paragraph([text(ARTICLE_TEXT.outro)])) } as Block,
 ]
