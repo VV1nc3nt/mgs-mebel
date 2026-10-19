@@ -22,7 +22,30 @@ type Props = {
   /** Size and corners of the block: aspect ratio per breakpoint, radius. */
   className?: string
   playLabel?: string
+  /**
+   * `promo` — «О нас»: the caption and the duration on the poster. `article` — the news video
+   * block: ▶ 76, «▶ duration» on glass at the bottom left, the caption goes under the block (it
+   * still names ▶ and the platform player), a file plays letterboxed on black.
+   */
+  variant?: PosterPlayerVariant
 }
+
+export type PosterPlayerVariant = 'promo' | 'article'
+
+const VARIANT = {
+  promo: {
+    overlay: 'bg-overlay-promo',
+    button: 'size-play',
+    icon: 'size-6.5',
+    video: 'object-cover',
+  },
+  article: {
+    overlay: 'bg-overlay-article-video',
+    button: 'size-play-article',
+    icon: 'size-6',
+    video: 'object-contain bg-black',
+  },
+} as const
 
 type Mode = 'poster' | 'file' | 'embed'
 
@@ -42,7 +65,9 @@ export function PosterPlayer({
   duration,
   className,
   playLabel = 'Смотреть видео',
+  variant = 'promo',
 }: Props) {
+  const look = VARIANT[variant]
   const [mode, setMode] = useState<Mode>('poster')
   const root = useRef<HTMLDivElement>(null)
   const button = useRef<HTMLButtonElement>(null)
@@ -96,7 +121,7 @@ export function PosterPlayer({
           tabIndex={0}
           preload="none"
           onEnded={() => setMode('poster')}
-          className="absolute inset-0 size-full object-cover"
+          className={cn('absolute inset-0 size-full', look.video)}
         >
           <source src={file.src} type={file.type} />
         </video>
@@ -116,19 +141,29 @@ export function PosterPlayer({
       )}
       {mode === 'poster' && (
         <>
-          <div aria-hidden="true" className="absolute inset-0 bg-overlay-promo" />
+          <div aria-hidden="true" className={cn('absolute inset-0', look.overlay)} />
           {playable && (
             <button
               ref={button}
               type="button"
               aria-label={label}
               onClick={() => setMode(file ? 'file' : 'embed')}
-              className="absolute top-1/2 left-1/2 flex size-play -translate-1/2 cursor-pointer items-center justify-center rounded-full bg-accent pl-1.5 text-on-accent transition-transform duration-200 hover:scale-106 motion-reduce:transition-none motion-reduce:hover:scale-100"
+              className={cn(
+                'absolute top-1/2 left-1/2 flex',
+                look.button,
+                '-translate-1/2 cursor-pointer items-center justify-center rounded-full bg-accent pl-1.5 text-on-accent transition-transform duration-200 hover:scale-106 motion-reduce:transition-none motion-reduce:hover:scale-100',
+              )}
             >
-              <Play aria-hidden="true" className="size-6.5 fill-current" />
+              <Play aria-hidden="true" className={cn(look.icon, 'fill-current')} />
             </button>
           )}
-          {(caption || duration) && (
+          {variant === 'article' && duration && (
+            <span className="absolute bottom-4 left-4 rounded-thumb glass px-3 py-1.5 text-caption">
+              <span aria-hidden="true">▶ </span>
+              {duration}
+            </span>
+          )}
+          {variant === 'promo' && (caption || duration) && (
             <div className="absolute inset-x-5 bottom-5 flex items-center justify-between gap-3">
               {caption && (
                 <p className="rounded-2xl glass px-3.5 py-2 text-body-xs font-semibold">

@@ -10,7 +10,10 @@ import { ARTICLE_COLUMN } from './articleStyles'
  */
 export function ArticleFigure({ figure }: { figure: Figure }) {
   return (
-    <figure className={cn('my-4 flex flex-col gap-2.5', figure.wide ? 'w-full' : ARTICLE_COLUMN)}>
+    <figure
+      data-article-figure=""
+      className={cn('my-4 flex flex-col gap-2.5', figure.wide ? 'w-full' : ARTICLE_COLUMN)}
+    >
       <MediaCard
         media={figure.photo}
         imageSize={figure.wide ? 'hero' : 'card'}

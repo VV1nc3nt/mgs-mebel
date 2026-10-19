@@ -327,6 +327,38 @@ describe('ArticleBlocks', () => {
     expect(screen.getByText('Подпись').tagName).toBe('FIGCAPTION')
   })
 
+  it('renders a photo slider across the container and a video player with its caption', () => {
+    const second = { ...photo, id: 3 }
+    const { container } = render(
+      <ArticleBlocks
+        blocks={articleBlocks([
+          { blockType: 'media', photos: [photo, second], caption: 'Стенд', wide: false },
+          {
+            blockType: 'video',
+            file: video,
+            poster: photo,
+            caption: 'Обзор',
+            duration: '1:24',
+            vertical: true,
+          },
+          { blockType: 'video', poster: photo, wide: true },
+        ] as Block[])}
+      />,
+    )
+    const gallery = container.querySelector('[data-article-gallery]')!
+    expect(within(gallery as HTMLElement).getAllByRole('img')).toHaveLength(2)
+    expect(gallery.className).toContain('w-full')
+    const [vertical, wide] = container.querySelectorAll('[data-article-video]')
+    expect(vertical!.className).toContain('max-w-video-vertical')
+    expect(vertical!.querySelector('.aspect-9\\/16')).toBeTruthy()
+    expect(vertical!.querySelector('figcaption')?.textContent).toBe('Обзор')
+    expect(screen.getByRole('button', { name: 'Смотреть видео: Обзор' })).toBeTruthy()
+    // No file and no link: the poster without ▶
+    expect(wide!.className).toContain('w-full')
+    expect(wide!.querySelector('button')).toBeNull()
+    expect(wide!.querySelector('img')).toBeTruthy()
+  })
+
   it('renders nothing without blocks', () => {
     const { container } = render(<ArticleBlocks blocks={[]} />)
     expect(container.innerHTML).toBe('')

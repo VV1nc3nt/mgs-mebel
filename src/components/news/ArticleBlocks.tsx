@@ -1,8 +1,10 @@
 import type { ArticleBlock } from '@/lib/article'
 
 import { ArticleFigure } from './ArticleFigure'
+import { ArticleGallery } from './ArticleGallery'
 import { ArticleParagraph } from './ArticleParagraph'
 import { ARTICLE_COLUMN } from './articleStyles'
+import { ArticleVideo } from './ArticleVideo'
 import { NewsQuote } from './NewsQuote'
 
 const Block = ({ block }: { block: ArticleBlock }) => {
@@ -32,13 +34,17 @@ const Block = ({ block }: { block: ArticleBlock }) => {
       return <NewsQuote block={block} />
     case 'figure':
       return <ArticleFigure figure={block} />
+    case 'gallery':
+      return <ArticleGallery gallery={block} />
+    case 'video':
+      return <ArticleVideo video={block} />
   }
 }
 
 /**
  * Body of a news article (README §6.8): the blocks in the editor's order, a 760 column with wide
- * photos across the container. Blocks without a view yet (a slider of photos, video) and empty
- * ones are already left out (articleBlocks).
+ * photos and videos and the photo sliders across the container. Empty and unknown blocks are
+ * already left out (articleBlocks).
  */
 export function ArticleBlocks({ blocks }: { blocks: ArticleBlock[] }) {
   if (!blocks.length) return null

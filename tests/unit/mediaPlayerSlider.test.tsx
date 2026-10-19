@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
+import { NewsGallery } from '@/components/news/NewsGallery'
 import { BgVideo } from '@/components/ui/BgVideo'
 import { MediaSlider } from '@/components/ui/MediaSlider'
 import { PosterPlayer } from '@/components/ui/PosterPlayer'
@@ -132,6 +133,91 @@ const slider = (slides: ReturnType<typeof card>[], extra = {}) => (
     {...extra}
   />
 )
+
+describe('PosterPlayer article', () => {
+  it('▶ 76, «▶ duration» on glass, no caption on the poster; a file plays letterboxed', async () => {
+    const { container } = render(
+      <PosterPlayer
+        variant="article"
+        poster={poster}
+        file={FILE}
+        caption="Обзор стенда"
+        duration="1:24"
+      />,
+    )
+    const play = screen.getByRole('button', { name: 'Смотреть видео: Обзор стенда' })
+    expect(play.className).toContain('size-play-article')
+    expect(container.querySelector('.bg-overlay-article-video')).toBeTruthy()
+    expect(container.querySelector('.bg-overlay-promo')).toBeNull()
+    expect(screen.queryByText('Обзор стенда')).toBeNull()
+    const plate = screen.getByText('1:24')
+    expect(plate.textContent).toBe('▶ 1:24')
+    expect(plate.className).toContain('glass')
+    expect(plate.firstElementChild?.getAttribute('aria-hidden')).toBe('true')
+
+    await act(async () => fireEvent.click(play))
+    expect(container.querySelector('video')?.className).toContain('object-contain')
+  })
+
+  it('no duration — no plate', () => {
+    const { container } = render(<PosterPlayer variant="article" poster={poster} file={FILE} />)
+    expect(container.querySelector('.glass')).toBeNull()
+  })
+})
+
+describe('NewsGallery', () => {
+  const photos = (n: number) =>
+    Array.from({ length: n }, (_, i) => <span key={i}>Фото {i + 1}</span>)
+
+  it('slides named «i из n», widths by the photos in view, controls where they do not fit', () => {
+    const { container } = render(
+      <NewsGallery slides={photos(5)} perView={{ base: 1, md: 3, xl: 4 }} caption="Стенд" />,
+    )
+    const track = screen.getByRole('group', { name: 'Фотографии: Стенд' })
+    expect(track.getAttribute('tabindex')).toBe('0')
+    const slides = [...track.children]
+    expect(slides.map((s) => s.getAttribute('aria-label'))).toEqual([
+      '1 из 5',
+      '2 из 5',
+      '3 из 5',
+      '4 из 5',
+      '5 из 5',
+    ])
+    expect(slides[0]!.className).toContain('md:basis-gallery-3')
+    expect(slides[0]!.className).toContain('xl:basis-gallery-4')
+    const controls = screen.getByText('1 / 5').parentElement!
+    expect(controls.className).toContain('md:flex')
+    expect(controls.className).toContain('xl:flex')
+    // The caption is the last child of the figure
+    expect(container.querySelector('figure')!.lastElementChild?.textContent).toBe('Стенд')
+  })
+
+  it('all in view from tablet: the controls only on mobile', () => {
+    render(<NewsGallery slides={photos(2)} perView={{ base: 1, md: 2, xl: 2 }} caption={null} />)
+    expect(screen.getByRole('group', { name: 'Фотографии' })).toBeTruthy()
+    const controls = screen.getByText('1 / 2').parentElement!
+    expect(controls.className).toContain('md:hidden')
+    expect(controls.className).toContain('xl:hidden')
+    expect(document.querySelector('figcaption')).toBeNull()
+  })
+
+  it('arrows move by the photos in view and stay focusable at the ends', async () => {
+    render(<NewsGallery slides={photos(3)} perView={{ base: 1, md: 3, xl: 3 }} caption={null} />)
+    const prev = screen.getByRole('button', { name: 'Назад' })
+    const next = screen.getByRole('button', { name: 'Вперёд' })
+    expect(prev.getAttribute('aria-disabled')).toBe('true')
+    expect(next.hasAttribute('aria-disabled')).toBe(false)
+    await act(async () => fireEvent.click(prev))
+    expect(screen.getByText('1 / 3')).toBeTruthy()
+    await act(async () => fireEvent.click(next))
+    await act(async () => fireEvent.click(next))
+    expect(screen.getByText('3 / 3')).toBeTruthy()
+    expect(next.getAttribute('aria-disabled')).toBe('true')
+    expect(next.hasAttribute('disabled')).toBe(false)
+    await act(async () => fireEvent.click(next))
+    expect(screen.getByText('3 / 3')).toBeTruthy()
+  })
+})
 
 describe('MediaSlider', () => {
   it('no slides: nothing', () => {
