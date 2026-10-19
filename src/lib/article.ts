@@ -5,10 +5,18 @@ import type {
   NewsMediaBlock,
   NewsParagraphBlock,
   NewsQuoteBlock,
+  NewsVideoBlock,
 } from '@/payload-types'
 
 import { classifyHref, type HrefKind } from './href'
-import { asMedia, isImage, type SizesPreset } from './media'
+import {
+  asMedia,
+  isImage,
+  videoSource,
+  type ImageSizeName,
+  type SizesPreset,
+  type VideoSource,
+} from './media'
 
 /** Width of the text column, the same as `--container-article` in globals.css (unit test). */
 export const ARTICLE_COLUMN_WIDTH = '760px'
@@ -19,6 +27,9 @@ export const COLUMN_PHOTO_SIZES: SizesPreset = {
   md: '92vw',
   xl: ARTICLE_COLUMN_WIDTH,
 }
+
+/** Width of a vertical video, the same as `--container-video-vertical` in globals.css (unit test). */
+export const VERTICAL_VIDEO_WIDTH = '420px'
 
 /** Name of the news section in the visible crumbs when nothing else is set. */
 export const NEWS_CRUMB = 'Новости'
@@ -48,6 +59,46 @@ const RATIOS: Record<NonNullable<NewsMediaBlock['ratio']>, FigureRatio> = {
 export const figureRatio = (ratio: NewsMediaBlock['ratio'], wide: boolean): FigureRatio =>
   (ratio && RATIOS[ratio]) || (wide ? '16/9' : '3/2')
 
+/** Photos a slider shows at once, per breakpoint (README §6.8). */
+export type GalleryPerView = { base: 1; md: 2 | 3; xl: 2 | 3 | 4 }
+
+/**
+ * README §6.8: mobile — 1; tablet — 2 when there are 2 or 4 photos, else 3; desktop — 2 for 2
+ * photos, 3 for 3, 6 and 9, else 4.
+ */
+export const galleryPerView = (count: number): GalleryPerView => ({
+  base: 1,
+  md: count <= 2 || count === 4 ? 2 : 3,
+  xl: count <= 2 ? 2 : [3, 6, 9].includes(count) ? 3 : 4,
+})
+
+/** README §6.8: the ratio set by the editor, else 4:5. */
+export const galleryRatio = (ratio: NewsMediaBlock['ratio']): FigureRatio =>
+  (ratio && RATIOS[ratio]) || '4/5'
+
+// Share of the viewport a slide takes with k photos at once, rounded up
+const SLIDE_SHARE = { 1: '100vw', 2: '50vw', 3: '34vw', 4: '25vw' } as const
+
+/** `sizes` of a slider photo: the container split into the photos at once. */
+export const gallerySizes = (perView: GalleryPerView): SizesPreset => ({
+  base: SLIDE_SHARE[perView.base],
+  md: SLIDE_SHARE[perView.md],
+  xl: SLIDE_SHARE[perView.xl],
+})
+
+export type VideoShape = 'column' | 'wide' | 'vertical'
+
+/** README §6.8: vertical — 9:16, at most 420 wide (wins over wide); wide — the container. */
+export const videoShape = (block: Pick<NewsVideoBlock, 'vertical' | 'wide'>): VideoShape =>
+  block.vertical ? 'vertical' : block.wide ? 'wide' : 'column'
+
+/** `sizes` and the Payload size of a video poster by the width of the block. */
+export const VIDEO_POSTER: Record<VideoShape, { sizes: SizesPreset; imageSize: ImageSizeName }> = {
+  column: { sizes: COLUMN_PHOTO_SIZES, imageSize: 'card' },
+  wide: { sizes: { base: '100vw' }, imageSize: 'hero' },
+  vertical: { sizes: { base: '100vw', md: VERTICAL_VIDEO_WIDTH }, imageSize: 'card' },
+}
+
 type LexicalNode = { type?: unknown; text?: unknown; children?: unknown }
 
 /** Whether a Lexical node holds any visible text. */
@@ -67,8 +118,36 @@ export type ArticleFigure = {
   wide: boolean
 }
 
+export type ArticleGallery = {
+  blockType: 'gallery'
+  id?: string | null
+  photos: Media[]
+  caption: string | null
+  ratio: FigureRatio
+  perView: GalleryPerView
+}
+
+export type ArticleVideo = {
+  blockType: 'video'
+  id?: string | null
+  poster: Media
+  /** A file with sound; wins over the link. */
+  file: VideoSource | null
+  /** RuTube / VK page; the player reads it (unknown formats — the poster without ▶). */
+  embedUrl: string | null
+  duration: string | null
+  caption: string | null
+  shape: VideoShape
+}
+
 export type ArticleBlock =
-  NewsParagraphBlock | NewsHeadingBlock | NewsListBlock | NewsQuoteBlock | ArticleFigure
+  | NewsParagraphBlock
+  | NewsHeadingBlock
+  | NewsListBlock
+  | NewsQuoteBlock
+  | ArticleFigure
+  | ArticleGallery
+  | ArticleVideo
 
 type BodyBlock = { blockType?: string } & Record<string, unknown>
 
@@ -92,28 +171,54 @@ const toArticleBlock = (block: BodyBlock): ArticleBlock | null => {
       return quote.text?.trim() ? quote : null
     }
     case 'media': {
-      // One photo — a figure; a slider of 2+ comes with the gallery block
+      // The photos that read as images: one — a figure, 2+ — a slider
       const media = block as unknown as NewsMediaBlock
-      const photos = media.photos ?? []
-      const photo = photos.length === 1 ? asMedia(photos[0]) : null
-      if (!photo || !isImage(photo)) return null
+      const photos = (media.photos ?? []).map(asMedia).filter(isImage)
+      const caption = media.caption?.trim() || null
+      if (!photos.length) return null
+      if (photos.length > 1) {
+        return {
+          blockType: 'gallery',
+          id: media.id,
+          photos,
+          caption,
+          ratio: galleryRatio(media.ratio),
+          perView: galleryPerView(photos.length),
+        }
+      }
       const wide = Boolean(media.wide)
       return {
         blockType: 'figure',
         id: media.id,
-        photo,
-        caption: media.caption?.trim() || null,
+        photo: photos[0]!,
+        caption,
         ratio: figureRatio(media.ratio, wide),
         wide,
       }
     }
-    // Video comes with its player; unknown blocks render nothing
+    case 'video': {
+      // No poster — nothing; no file and no known link — the poster without ▶
+      const video = block as unknown as NewsVideoBlock
+      const poster = asMedia(video.poster)
+      if (!poster || !isImage(poster)) return null
+      return {
+        blockType: 'video',
+        id: video.id,
+        poster,
+        file: videoSource(video.file),
+        embedUrl: video.embedUrl?.trim() || null,
+        duration: video.duration?.trim() || null,
+        caption: video.caption?.trim() || null,
+        shape: videoShape(video),
+      }
+    }
+    // Unknown blocks render nothing
     default:
       return null
   }
 }
 
-/** Blocks of the body that render: empty ones and blocks without a view yet are left out. */
+/** Blocks of the body that render: empty and unknown ones are left out. */
 export const articleBlocks = (body: readonly unknown[] | null | undefined): ArticleBlock[] =>
   (body ?? []).flatMap((block) => {
     if (!block || typeof block !== 'object') return []

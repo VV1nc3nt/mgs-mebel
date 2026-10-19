@@ -320,6 +320,12 @@
   --spacing-article-cover: 300px;
   --spacing-article-cover-md: 460px;
   --spacing-article-cover-xl: 640px;
+  /* Play button of the article video; slider photos — 2 / 3 / 4 in view with the gap 12
+     (gap-3) between them (design: news article) */
+  --spacing-play-article: 76px;
+  --spacing-gallery-2: calc((100% - var(--spacing) * 3) / 2);
+  --spacing-gallery-3: calc((100% - var(--spacing) * 6) / 3);
+  --spacing-gallery-4: calc((100% - var(--spacing) * 9) / 4);
 
   /* Containers */
   --container-page: 1600px;
@@ -327,6 +333,8 @@
   /* Article heading: the title and the lead (design: news article) */
   --container-article-title: 1100px;
   --container-article-lead: 820px;
+  /* Vertical video of the article, 9:16 (design: news article) */
+  --container-video-vertical: 420px;
   /* Menu items and bottom block on tablet (design: MGSMenu) */
   --container-menu: 720px;
   /* Home hero: text block from tablet, its paragraph (design: home) */
@@ -727,6 +735,11 @@
     rgb(20 20 19 / 0.15) 40%,
     rgb(20 20 19 / 0.75) 100%
   );
+}
+
+/* Article video before it starts (design: news article) */
+@utility bg-overlay-article-video {
+  background-image: linear-gradient(180deg, rgb(20 20 19 / 0) 50%, rgb(20 20 19 / 0.7) 100%);
 }
 
 /* Media slider card: exhibitions «О нас» (design: about v2 §2.7) */

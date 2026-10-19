@@ -75,3 +75,22 @@ export const counterParts = (index: number, count: number): [string, string] => 
   String(index + 1).padStart(2, '0'),
   String(count).padStart(2, '0'),
 ]
+
+/**
+ * First photo in view of a track showing `perView` at once: the last ones share the track's end,
+ * so the active index stops at `count − perView` (and after a turn to a wider screen, too).
+ */
+export const pageStart = (active: number, count: number, perView: number): number =>
+  Math.max(Math.min(active, count - perView), 0)
+
+/** Arrow of such a track: a view's worth of photos, stopping at the ends. */
+export const pageStep = (
+  active: number,
+  direction: 1 | -1,
+  count: number,
+  perView: number,
+): number =>
+  Math.min(
+    Math.max(pageStart(active, count, perView) + direction * perView, 0),
+    Math.max(count - perView, 0),
+  )

@@ -10,8 +10,12 @@ import {
   ARTICLE_COLUMN_WIDTH,
   COLUMN_PHOTO_SIZES,
   NEWS_CRUMB,
+  VERTICAL_VIDEO_WIDTH,
+  VIDEO_POSTER,
   articleBlocks,
   figureRatio,
+  galleryPerView,
+  gallerySizes,
   hasText,
   linkHref,
   newsCrumbName,
@@ -61,14 +65,15 @@ describe('articleBlocks', () => {
     expect(blocks[4]).toMatchObject({ photo, caption: 'Подпись', ratio: '16/9', wide: true })
   })
 
-  it('leaves out the slider of 2+ photos, video, unknown and empty blocks', () => {
+  it('leaves out unknown and empty blocks', () => {
     const blocks = articleBlocks([
-      { blockType: 'media', photos: [photo, photo] },
       { blockType: 'media', photos: [] },
       // Not populated (an id) or not an image
       { blockType: 'media', photos: [7] },
       { blockType: 'media', photos: [video] },
-      { blockType: 'video', file: video, poster: photo } as Block,
+      // A video without a poster that reads as an image
+      { blockType: 'video', file: video, poster: 7 } as Block,
+      { blockType: 'video', file: video, poster: video } as Block,
       { blockType: 'gallery' } as unknown as Block,
       p(paragraph(), paragraph(text('  '))),
       { blockType: 'heading', text: '  ' },
@@ -78,6 +83,68 @@ describe('articleBlocks', () => {
     ])
     expect(blocks).toEqual([])
     expect(articleBlocks(null)).toEqual([])
+  })
+
+  it('2+ photos — a slider, 4:5 by default; one readable photo of two — a figure', () => {
+    const second = { ...photo, id: 3 }
+    const [gallery, square, figure] = articleBlocks([
+      { blockType: 'media', photos: [photo, second], caption: ' Стенд ', wide: true },
+      { blockType: 'media', photos: [photo, second, photo], ratio: '1x1' },
+      { blockType: 'media', photos: [photo, 7] },
+    ])
+    expect(gallery).toEqual({
+      blockType: 'gallery',
+      id: undefined,
+      photos: [photo, second],
+      caption: 'Стенд',
+      ratio: '4/5',
+      perView: { base: 1, md: 2, xl: 2 },
+    })
+    expect(square).toMatchObject({ blockType: 'gallery', ratio: '1/1', caption: null })
+    expect(figure).toMatchObject({ blockType: 'figure', photo, ratio: '3/2' })
+  })
+
+  it('video: the file, the link, neither (the poster without ▶); vertical wins over wide', () => {
+    const [file, link, none] = articleBlocks([
+      {
+        blockType: 'video',
+        file: video,
+        poster: photo,
+        duration: ' 1:24 ',
+        caption: 'Обзор',
+        wide: true,
+      },
+      {
+        blockType: 'video',
+        embedUrl: ' https://rutube.ru/video/abc/ ',
+        poster: photo,
+        vertical: true,
+        wide: true,
+      },
+      { blockType: 'video', poster: photo, duration: ' ', caption: ' ' },
+    ] as Block[])
+    expect(file).toEqual({
+      blockType: 'video',
+      id: undefined,
+      poster: photo,
+      file: { src: video.url, type: 'video/mp4' },
+      embedUrl: null,
+      duration: '1:24',
+      caption: 'Обзор',
+      shape: 'wide',
+    })
+    expect(link).toMatchObject({
+      file: null,
+      embedUrl: 'https://rutube.ru/video/abc/',
+      shape: 'vertical',
+    })
+    expect(none).toMatchObject({
+      file: null,
+      embedUrl: null,
+      duration: null,
+      caption: null,
+      shape: 'column',
+    })
   })
 
   it('drops empty list items and an empty caption', () => {
@@ -95,6 +162,39 @@ describe('column photo sizes', () => {
     const css = readFileSync(path.resolve('src/app/(frontend)/globals.css'), 'utf8')
     expect(css.match(/--container-article:\s*([^;]+);/)?.[1]).toBe(ARTICLE_COLUMN_WIDTH)
     expect(COLUMN_PHOTO_SIZES.xl).toBe(ARTICLE_COLUMN_WIDTH)
+  })
+})
+
+describe('photos in view of a slider', () => {
+  // count → [mobile, tablet, desktop] (README §6.8)
+  const TABLE: [number, number, number, number][] = [
+    [2, 1, 2, 2],
+    [3, 1, 3, 3],
+    [4, 1, 2, 4],
+    [5, 1, 3, 4],
+    [6, 1, 3, 3],
+    [7, 1, 3, 4],
+    [8, 1, 3, 4],
+    [9, 1, 3, 3],
+    [12, 1, 3, 4],
+    [15, 1, 3, 4],
+  ]
+  it.each(TABLE)('%i photos: %i / %i / %i', (count, base, md, xl) => {
+    expect(galleryPerView(count)).toEqual({ base, md, xl })
+  })
+
+  it('sizes: the viewport split into the photos in view', () => {
+    expect(gallerySizes(galleryPerView(2))).toEqual({ base: '100vw', md: '50vw', xl: '50vw' })
+    expect(gallerySizes(galleryPerView(5))).toEqual({ base: '100vw', md: '34vw', xl: '25vw' })
+  })
+})
+
+describe('video poster sizes', () => {
+  it('a vertical video is --container-video-vertical of globals.css wide', () => {
+    const css = readFileSync(path.resolve('src/app/(frontend)/globals.css'), 'utf8')
+    expect(css.match(/--container-video-vertical:\s*([^;]+);/)?.[1]).toBe(VERTICAL_VIDEO_WIDTH)
+    expect(VIDEO_POSTER.vertical.sizes.md).toBe(VERTICAL_VIDEO_WIDTH)
+    expect(VIDEO_POSTER.column.sizes).toBe(COLUMN_PHOTO_SIZES)
   })
 })
 
