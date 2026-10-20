@@ -5,6 +5,7 @@ import { formatDate } from '../../src/lib/date'
 import { globals } from '../../src/seed/data/globals'
 import { news } from '../../src/seed/data/news'
 import { ARTICLE_TEXT, E2E_ARTICLE, EXTERNAL_URL, RUTUBE_ID } from '../helpers/e2eArticle'
+import { E2E_NEWS } from '../helpers/e2eNews'
 import { e2eEditor } from '../helpers/e2eEditor'
 import { NEWS_DRAFT_SLUG, NEWS_DRAFT_TITLE } from '../helpers/e2eHome'
 import { layoutShifts, settle } from '../helpers/scroll'
@@ -212,7 +213,7 @@ test.describe('news page', () => {
       })
       const introBox = (await intro.boundingBox())!
       expect(introBox.width).toBeCloseTo(Math.min(COLUMN, container), 1)
-      await expect(main.locator('h2')).toHaveText([ARTICLE_TEXT.heading])
+      await expect(main.locator('article h2')).toHaveText([ARTICLE_TEXT.heading])
       await expect(main.locator('article ul').last().locator('li')).toHaveText([
         ...ARTICLE_TEXT.list,
       ])
@@ -579,7 +580,7 @@ test.describe('news page', () => {
       const main = page.locator('main')
       await expect(page.locator('h1')).toHaveText(E2E_ARTICLE.title)
       await expect(main.getByRole('navigation', { name: 'Навигационная цепочка' })).toBeVisible()
-      await expect(main.locator('h2')).toHaveText([ARTICLE_TEXT.heading])
+      await expect(main.locator('article h2')).toHaveText([ARTICLE_TEXT.heading])
       await expect(main.locator('blockquote')).toHaveCount(2)
       await expect(main.locator('[data-article-figure] img')).toHaveCount(2)
       // The sliders' photos and the video posters, with their captions
@@ -632,6 +633,10 @@ test.describe('news page', () => {
     expect(response?.status()).toBe(200)
     await expect(page.locator('h1')).toHaveText(NEWS_DRAFT_TITLE)
     await expect(page.getByText('Предпросмотр черновика')).toBeVisible()
+    // «Ещё новости» stay published only: the latest three
+    await expect(page.locator('[data-related-news] h3')).toHaveText(
+      E2E_NEWS.slice(0, 3).map((item) => item.title),
+    )
   })
 
   test('draft mode: an editor sees the draft of a published news, a visitor — the published', async ({
@@ -670,6 +675,266 @@ test.describe('news page', () => {
       await save({ title: E2E_ARTICLE.title, _status: 'published' }, false)
       await page.context().clearCookies()
     }
+  })
+})
+
+// Under the article (README §6.8): «Поделиться», the accent CTA, «Ещё новости»
+const NEWS_PAGE = globals(() => 0).newsPage
+const CTA = NEWS_PAGE.articleCta!
+const RELATED_TITLE = NEWS_PAGE.related!.title!
+const SALONS_LABEL = CTA.primaryLabel!
+const CALC_LABEL = CTA.secondaryLabel!
+const MAX_TEMPLATE = 'https://max.example/share?link={url}&title={text}'
+
+const shareRow = (page: Page) => page.getByRole('group', { name: 'Поделиться' })
+const shareStatus = (page: Page) => shareRow(page).getByRole('status')
+const ctaBlock = (page: Page) => page.getByRole('region', { name: CTA.title! })
+const related = (page: Page) => page.getByRole('region', { name: RELATED_TITLE })
+const articleUrl = (page: Page) => page.locator('link[rel="canonical"]').getAttribute('href')
+
+type NewsPageDoc = { articleCta?: Record<string, unknown> } & Record<string, unknown>
+
+/** The published newsPage with some fields changed, back in `finally`. */
+const withNewsPage = async (
+  page: Page,
+  change: (published: NewsPageDoc) => Record<string, unknown>,
+  body: () => Promise<void>,
+) => {
+  await login(page)
+  const url = `${BASE}/api/globals/newsPage?depth=0`
+  const published: NewsPageDoc = await (await page.request.get(`${url}&draft=false`)).json()
+  const save = async (data: Record<string, unknown>) => {
+    const response = await page.request.post(url, { data: { ...data, _status: 'published' } })
+    expect(response.ok(), await response.text()).toBe(true)
+  }
+  try {
+    await save({ ...published, ...change(published) })
+    await page.context().clearCookies()
+    await body()
+  } finally {
+    await login(page)
+    await save(published)
+    await page.context().clearCookies()
+  }
+}
+
+test.describe('under the article', () => {
+  test.skip(EMPTY_DB, 'needs tests/helpers/seedHome.ts data')
+  test.use({ viewport: { width: 390, height: 844 } })
+
+  for (const width of [390, 834, 1440] as const) {
+    test(`${width}: share, CTA, more news; no violations, errors or shifts`, async ({ page }) => {
+      await page.setViewportSize({ width, height: HEIGHTS[width] })
+      const errors = watchConsole(page)
+      await page.goto(`${BASE}${ARTICLE}`)
+      await hydrated(page)
+      await related(page).scrollIntoViewIfNeeded()
+      await settle(page)
+
+      // «Поделиться»: inside the article, in the 760 column; Telegram · WhatsApp · copy (no MAX)
+      const row = shareRow(page)
+      await expect(page.locator('article').getByRole('group', { name: 'Поделиться' })).toHaveCount(
+        1,
+      )
+      const box = (await row.boundingBox())!
+      const container = await page.evaluate(
+        () => document.querySelector('main')!.getBoundingClientRect().width,
+      )
+      expect(box.width).toBeLessThanOrEqual(COLUMN + 0.5)
+      expect(box.x + box.width / 2).toBeCloseTo(container / 2, 0)
+      const controls = row.locator('a, button')
+      await expect(controls).toHaveCount(3)
+      expect(
+        await controls.evaluateAll((nodes) => nodes.map((n) => n.getAttribute('aria-label'))),
+      ).toEqual(['Поделиться в Telegram', 'Поделиться в WhatsApp', 'Скопировать ссылку'])
+      for (const control of await controls.all()) {
+        const size = (await control.boundingBox())!
+        expect(Math.round(size.width)).toBe(44)
+        expect(Math.round(size.height)).toBe(44)
+      }
+      await expect(row).toContainText('Поделиться')
+
+      // CTA after the article: texts of newsPage, «Найти салон» → /salons
+      const cta = ctaBlock(page)
+      await expect(page.locator('article').getByRole('region', { name: CTA.title! })).toHaveCount(0)
+      await expect(cta.getByRole('heading', { level: 2 })).toHaveText(CTA.title!)
+      await expect(cta).toContainText(CTA.text!)
+      await expect(cta.getByRole('link', { name: SALONS_LABEL })).toHaveAttribute('href', '/salons')
+      await expect(cta.getByRole('button', { name: new RegExp(CALC_LABEL) })).toBeVisible()
+
+      // «Ещё новости»: H2, «Все» → /news, the latest three without this one, H3; 2 on tablet
+      const more = related(page)
+      await expect(more.getByRole('heading', { level: 2 })).toHaveText(RELATED_TITLE)
+      await expect(more.getByRole('link', { name: 'Все' })).toHaveAttribute('href', '/news')
+      const expected = E2E_NEWS.filter((item) => item.slug !== E2E_ARTICLE.slug).slice(0, 3)
+      await expect(more.locator('h3')).toHaveText(expected.map((item) => item.title))
+      await expect(more.locator('h2')).toHaveCount(1)
+      const visible = more.locator('li:visible')
+      await expect(visible).toHaveCount(width === 834 ? 2 : 3)
+      await expect(more.getByRole('link', { name: expected[0]!.title })).toHaveAttribute(
+        'href',
+        `/news/${expected[0]!.slug}`,
+      )
+
+      expect(await axe(page)).toEqual([])
+      expect(await layoutShifts(page)).toEqual([])
+      expect(errors).toEqual([])
+    })
+  }
+
+  test('share links: Telegram and WhatsApp with the absolute URL and the title, a new tab', async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}${ARTICLE}`)
+    const url = (await articleUrl(page))!
+    expect(url).toMatch(new RegExp(`^https?://[^/]+${ARTICLE}$`))
+    const enc = encodeURIComponent
+    const telegram = shareRow(page).getByRole('link', { name: 'Поделиться в Telegram' })
+    await expect(telegram).toHaveAttribute(
+      'href',
+      `https://t.me/share/url?url=${enc(url)}&text=${enc(E2E_ARTICLE.title)}`,
+    )
+    const whatsapp = shareRow(page).getByRole('link', { name: 'Поделиться в WhatsApp' })
+    await expect(whatsapp).toHaveAttribute(
+      'href',
+      `https://wa.me/?text=${enc(`${E2E_ARTICLE.title} ${url}`)}`,
+    )
+    for (const link of [telegram, whatsapp]) {
+      await expect(link).toHaveAttribute('target', '_blank')
+      await expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+    }
+  })
+
+  test('MAX: no button without a template, the first one with it — {url} and {text} filled', async ({
+    page,
+  }) => {
+    await page.goto(`${BASE}${ARTICLE}`)
+    await expect(shareRow(page).getByRole('link', { name: 'Поделиться в MAX' })).toHaveCount(0)
+    await withNewsPage(
+      page,
+      () => ({ articleShare: { maxTemplate: MAX_TEMPLATE } }),
+      async () => {
+        await page.goto(`${BASE}${ARTICLE}`)
+        const url = (await articleUrl(page))!
+        const links = shareRow(page).getByRole('link')
+        await expect(links).toHaveCount(3)
+        await expect(links.first()).toHaveAccessibleName('Поделиться в MAX')
+        await expect(links.first()).toHaveAttribute(
+          'href',
+          `https://max.example/share?link=${encodeURIComponent(url)}&title=${encodeURIComponent(E2E_ARTICLE.title)}`,
+        )
+        await expect(links.first()).toHaveAttribute('target', '_blank')
+      },
+    )
+  })
+
+  test('MAX template without {url} or not https: refused by the CMS', async ({ page }) => {
+    await login(page)
+    const url = `${BASE}/api/globals/newsPage?depth=0`
+    for (const maxTemplate of ['https://max.example/share', 'http://max.example/?u={url}']) {
+      const response = await page.request.post(url, {
+        data: { articleShare: { maxTemplate }, _status: 'published' },
+      })
+      expect(response.ok(), maxTemplate).toBe(false)
+    }
+    await page.context().clearCookies()
+  })
+
+  test('copy: «Ссылка скопирована» for the token time, then the label again', async ({
+    page,
+    context,
+  }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+    await page.goto(`${BASE}${ARTICLE}`)
+    await hydrated(page)
+    const copy = shareRow(page).getByRole('button', { name: 'Скопировать ссылку' })
+    await copy.click()
+    await expect(shareStatus(page)).toHaveText('Ссылка скопирована')
+    await expect(shareRow(page)).not.toContainText('Поделиться')
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(await articleUrl(page))
+    // --share-status-time: 2 s
+    await expect(shareStatus(page)).toHaveText('', { timeout: 4000 })
+    await expect(shareRow(page)).toContainText('Поделиться')
+  })
+
+  test('copy without a clipboard: the link itself, kept', async ({ page }) => {
+    await page.addInitScript({
+      // A string, not a function: the e2e runner would wrap named functions in `__name`
+      content: `
+        Object.defineProperty(Navigator.prototype, 'clipboard', {
+          configurable: true,
+          get() {
+            return undefined
+          },
+        })
+      `,
+    })
+    await page.goto(`${BASE}${ARTICLE}`)
+    await hydrated(page)
+    await shareRow(page).getByRole('button', { name: 'Скопировать ссылку' }).click()
+    const url = (await articleUrl(page))!
+    await expect(shareStatus(page)).toHaveText(url)
+    await page.waitForTimeout(2500)
+    await expect(shareStatus(page)).toHaveText(url)
+  })
+
+  test('«Рассчитать проект» opens the choice of messengers in place', async ({ page }) => {
+    await page.goto(`${BASE}${ARTICLE}`)
+    await hydrated(page)
+    const cta = ctaBlock(page)
+    await cta.scrollIntoViewIfNeeded()
+    await cta.getByRole('button', { name: new RegExp(CALC_LABEL) }).click()
+    // Open: the same button closes it, the messengers in place inside the block
+    await expect(cta.getByRole('button', { name: 'Закрыть выбор мессенджера' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+    const links = cta.getByRole('group', { name: 'Выбрать мессенджер' }).getByRole('link')
+    await expect(links).toHaveCount(3)
+    const block = (await cta.locator('div').first().boundingBox())!
+    for (const link of await links.all()) {
+      await expect(link).toBeVisible()
+      const box = (await link.boundingBox())!
+      expect(box.x).toBeGreaterThanOrEqual(block.x)
+      expect(box.x + box.width).toBeLessThanOrEqual(block.x + block.width)
+    }
+  })
+
+  test('empty texts of newsPage: no CTA, no «Ещё новости»', async ({ page }) => {
+    await withNewsPage(
+      page,
+      (published) => ({
+        articleCta: { ...published.articleCta, title: null },
+        related: { title: null },
+      }),
+      async () => {
+        await page.goto(`${BASE}${ARTICLE}`)
+        await expect(page.locator('h1')).toHaveText(E2E_ARTICLE.title)
+        await expect(page.getByText(CTA.text!)).toHaveCount(0)
+        await expect(page.locator('[data-related-news]')).toHaveCount(0)
+        await expect(shareRow(page)).toBeVisible()
+      },
+    )
+  })
+
+  test('an empty button label: no button of its own', async ({ page }) => {
+    await withNewsPage(
+      page,
+      (published) => ({ articleCta: { ...published.articleCta, primaryLabel: null } }),
+      async () => {
+        await page.goto(`${BASE}${ARTICLE}`)
+        const cta = ctaBlock(page)
+        await expect(cta.getByRole('link', { name: SALONS_LABEL })).toHaveCount(0)
+        await expect(cta.getByRole('button', { name: new RegExp(CALC_LABEL) })).toBeVisible()
+      },
+    )
+  })
+
+  test('the newest news: «Ещё новости» are the next three', async ({ page }) => {
+    await page.goto(`${BASE}/news/${E2E_NEWS[0]!.slug}`)
+    await expect(related(page).locator('h3')).toHaveText(
+      E2E_NEWS.slice(1, 4).map((item) => item.title),
+    )
   })
 })
 
