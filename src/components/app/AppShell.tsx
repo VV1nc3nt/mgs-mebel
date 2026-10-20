@@ -11,7 +11,6 @@ import { FloatingDock } from './FloatingDock'
 import { MenuProvider, PageRoot } from './MenuProvider'
 import { PreviewBanner } from './PreviewBanner'
 import { SkipLink } from './SkipLink'
-import { ViewerInert } from './ViewerInert'
 
 /**
  * Everything inside <body> around the page: skip link, header, <main>, footer, dock and menu.
@@ -32,26 +31,18 @@ export async function AppShell({
     <RoutePathProvider value={routePath ?? null}>
       <MenuProvider>
         <PageRoot>
-          <ViewerInert>
-            <SkipLink />
-            <PreviewBanner />
-          </ViewerInert>
+          <SkipLink />
+          <PreviewBanner />
           <div className="relative">
-            <ViewerInert>
-              <AppHeader chrome={chrome} />
-            </ViewerInert>
+            <AppHeader chrome={chrome} />
             {/* No first frame with a half-parsed header (nav shifted, CTA missing) on any page */}
             <FirstScreenEnd id={HEADER_END_ID} />
             <main id="content" tabIndex={-1} className="focus-visible:outline-none">
               {children}
             </main>
-            <ViewerInert>
-              <AppFooter chrome={chrome} />
-            </ViewerInert>
+            <AppFooter chrome={chrome} />
           </div>
-          <ViewerInert>
-            <FloatingDock askLabel={chrome.askLabel} messengers={chrome.messengers} />
-          </ViewerInert>
+          <FloatingDock askLabel={chrome.askLabel} messengers={chrome.messengers} />
         </PageRoot>
         <AppMenu
           chrome={{

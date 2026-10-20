@@ -16,7 +16,7 @@ export const rootTime = (name: string): number => {
 }
 
 /**
- * The status of «Поделиться» (the viewer's rail, the article): «Ссылка скопирована» for
+ * The status of «Поделиться» of the article: «Ссылка скопирована» for
  * --share-status-time, or the link itself to copy by hand when the clipboard is not available —
  * kept until the next press. `hide` clears a shown status at the next press; `copy` writes the link
  * to the clipboard and shows the outcome.
