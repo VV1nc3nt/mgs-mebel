@@ -333,6 +333,8 @@
   /* Article heading: the title and the lead (design: news article) */
   --container-article-title: 1100px;
   --container-article-lead: 820px;
+  /* Accent CTA under the article: its title and text (design: news article) */
+  --container-article-cta: 560px;
   /* Vertical video of the article, 9:16 (design: news article) */
   --container-video-vertical: 420px;
   /* Menu items and bottom block on tablet (design: MGSMenu) */
