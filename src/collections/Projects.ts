@@ -1,14 +1,18 @@
-import { slugField, type CollectionConfig, type TextFieldSingleValidation } from 'payload'
-import { array as validateArray, text as validateText } from 'payload/shared'
+import {
+  slugField,
+  ValidationError,
+  type CollectionAfterChangeHook,
+  type CollectionBeforeDeleteHook,
+  type CollectionConfig,
+  type TextFieldSingleValidation,
+} from 'payload'
+import { text as validateText } from 'payload/shared'
 
 import { contentEditors, publicRead } from '@/access'
 import { PREVIEW_BREAKPOINTS, previewUrl } from '@/globals/shared'
-import { checkMediaKind, imageField, mediaField, mimeFilter } from '@/fields/media'
-import { projectCategoryOptions } from '@/lib/projectCategories'
+import { checkVideoPosters, imageField, videoField } from '@/fields/media'
 import { revalidateCollection } from '@/lib/revalidate'
 import { isSlug, slugify } from '@/lib/slugify'
-
-type SlideRow = { type?: 'video' | 'photo' | null }
 
 const validateSlug: TextFieldSingleValidation = (value, args) => {
   const base = validateText(value, args)
@@ -16,27 +20,72 @@ const validateSlug: TextFieldSingleValidation = (value, args) => {
   return !value || isSlug(value) ? true : 'Только латиница в нижнем регистре, цифры и дефисы'
 }
 
+/** A project with items cannot go: the items would lose their address silently. */
+const keepProjectWithItems: CollectionBeforeDeleteHook = async ({ id, req }) => {
+  const { totalDocs } = await req.payload.count({
+    collection: 'items',
+    where: { project: { equals: id } },
+    req,
+  })
+  if (totalDocs) {
+    throw new ValidationError({
+      collection: 'projects',
+      errors: [
+        {
+          path: 'items',
+          message: `У проекта ${totalDocs} изд. Сначала удалите изделия или уберите у них проект.`,
+        },
+      ],
+    })
+  }
+}
+
+/** Item captions in the admin carry the project title: refreshed when it changes. */
+const refreshItemLabels: CollectionAfterChangeHook = async ({
+  doc,
+  previousDoc,
+  operation,
+  req,
+}) => {
+  if (operation !== 'update' || doc.title === previousDoc?.title) return doc
+  await req.payload.update({
+    collection: 'items',
+    where: { project: { equals: doc.id } },
+    data: {},
+    depth: 0,
+    req,
+  })
+  return doc
+}
+
+const revalidate = revalidateCollection('projects')
+
 export const Projects: CollectionConfig = {
   slug: 'projects',
-  labels: { singular: 'Работа', plural: 'Наши работы' },
+  labels: { singular: 'Проект', plural: 'Проекты' },
   admin: {
-    group: 'Контент',
+    group: 'Наши работы',
     useAsTitle: 'title',
-    defaultColumns: ['title', 'category', 'place', 'featured', 'order', 'updatedAt'],
-    // The project page with the viewer open; no drafts — it shows what was saved
-    livePreview: {
-      url: ({ data }) => previewUrl(data?.slug ? `/works/${data.slug}` : '/works'),
-      breakpoints: PREVIEW_BREAKPOINTS,
-    },
+    defaultColumns: ['title', 'place', 'complex', 'items', 'hidden'],
+    description:
+      'Проект — адрес: всё, что в нём сделано, — его изделия. Порядок на сайте — перетаскиванием в списке.',
+    // «Комплекс» — the default feed of /works; the project page comes later
+    livePreview: { url: () => previewUrl('/works'), breakpoints: PREVIEW_BREAKPOINTS },
   },
-  defaultSort: '-createdAt',
+  // Drag-and-drop order of the list (`_order`); the list must be sorted by it to drag
+  orderable: true,
+  defaultSort: '_order',
   access: {
     read: publicRead,
     create: contentEditors,
     update: contentEditors,
     delete: contentEditors,
   },
-  hooks: revalidateCollection('projects'),
+  hooks: {
+    ...revalidate,
+    afterChange: [...(revalidate?.afterChange ?? []), refreshItemLabels],
+    beforeDelete: [keepProjectWithItems],
+  },
   fields: [
     { name: 'title', type: 'text', label: 'Название', required: true },
     slugField({
@@ -54,107 +103,94 @@ export const Projects: CollectionConfig = {
       },
     }),
     {
-      name: 'category',
-      type: 'select',
-      label: 'Категория',
-      required: true,
-      options: [...projectCategoryOptions],
-    },
-    {
       type: 'row',
       fields: [
         {
           name: 'place',
           type: 'text',
-          label: 'Место',
-          admin: { description: 'Например, ЖК «Остров»' },
+          label: 'ЖК / место',
+          admin: { description: 'На карточке: «ЖК Уно»' },
         },
-        { name: 'area', type: 'number', label: 'Площадь, м²', min: 0 },
-        {
-          name: 'duration',
-          type: 'text',
-          label: 'Срок',
-          admin: { description: 'Например, 4 недели' },
-        },
+        { name: 'city', type: 'text', label: 'Город', defaultValue: 'Москва' },
+        { name: 'year', type: 'number', label: 'Год', min: 1990, max: 2100 },
       ],
     },
-    { name: 'description', type: 'textarea', label: 'Описание' },
     {
-      name: 'slides',
-      type: 'array',
-      label: 'Кадры',
-      labels: { singular: 'Кадр', plural: 'Кадры' },
-      required: true,
-      minRows: 1,
+      name: 'complex',
+      type: 'checkbox',
+      label: 'Комплекс — своя страница',
+      defaultValue: false,
       admin: {
         description:
-          'В видео-проекте первый кадр — видео, дальше фото. Видео допускается только первым.',
+          'Проект на всю квартиру: карточка в ленте «Комплекс» и своя страница. В ленте — только если есть видимые изделия.',
       },
-      validate: (value, args) => {
-        const base = validateArray(value, args)
-        if (base !== true) return base
-        const rows = (args.data as { slides?: SlideRow[] } | undefined)?.slides ?? []
-        const misplaced = rows.findIndex((row, index) => index > 0 && row?.type === 'video')
-        return misplaced === -1
-          ? true
-          : `Видео допускается только в первом кадре (кадр №${misplaced + 1})`
+    },
+    {
+      name: 'items',
+      type: 'join',
+      label: 'Изделия проекта',
+      collection: 'items',
+      on: 'project',
+      // The editor's order of the items list
+      defaultSort: '_order',
+      admin: {
+        defaultColumns: ['label', 'type', 'photos', 'price', 'hidden'],
+        components: { Cell: '/components/admin/CountCell#CountCell' },
+        description:
+          'Каждое изделие само попадает в ленту своего типа. «Добавить» доступно после первого сохранения проекта.',
       },
+    },
+    imageField('cover', {
+      label: 'Обложка',
+      admin: { description: 'Необязательно: иначе — первое фото первого изделия.' },
+    }),
+    {
+      name: 'about',
+      type: 'textarea',
+      label: 'О проекте',
+      admin: { description: 'Блок «О проекте» на странице проекта.' },
+    },
+    {
+      type: 'row',
       fields: [
         {
-          name: 'type',
-          type: 'select',
-          label: 'Тип',
-          required: true,
-          defaultValue: 'photo',
-          options: [
-            { label: 'Фото', value: 'photo' },
-            { label: 'Видео', value: 'video' },
-          ],
-        },
-        mediaField('file', null, {
-          label: 'Файл',
-          required: true,
-          filterOptions: ({ siblingData }) =>
-            mimeFilter((siblingData as SlideRow)?.type === 'video' ? 'video' : 'image'),
-          extraValidate: (value, { req, siblingData }) =>
-            checkMediaKind(
-              value,
-              (siblingData as SlideRow)?.type === 'video' ? 'video' : 'image',
-              req,
-            ),
-        }),
-        imageField('poster', {
-          label: 'Постер',
-          admin: { condition: (_, siblingData) => siblingData?.type === 'video' },
-          extraValidate: (value, { siblingData }) =>
-            (siblingData as SlideRow)?.type === 'video' && !value
-              ? 'Постер обязателен для видео'
-              : true,
-        }),
-        {
-          name: 'duration',
+          name: 'price',
           type: 'number',
-          label: 'Длительность, с',
+          label: 'Стоимость проекта, ₽',
           min: 0,
-          admin: {
-            condition: (_, siblingData) => siblingData?.type === 'video',
-            description: 'Необязательно: иначе берётся из файла.',
-          },
+          admin: { description: 'Необязательно.' },
+        },
+        {
+          name: 'designer',
+          type: 'text',
+          label: 'Дизайнер проекта',
+          admin: { description: 'Имя. Необязательно.' },
         },
       ],
     },
+    videoField('videos', {
+      label: 'Видео проекта',
+      hasMany: true,
+      admin: {
+        isSortable: true,
+        description:
+          'Ролики всей квартиры, не одного изделия: идут в ленту REELS. У каждого видео нужен постер (в карточке файла).',
+      },
+      extraValidate: (value, { req }) => checkVideoPosters(value as never, req),
+    }),
     {
       name: 'featured',
       type: 'checkbox',
       label: 'На главной',
       defaultValue: false,
-      admin: { position: 'sidebar' },
+      admin: { position: 'sidebar', description: 'Показать первым в блоке «Наши работы».' },
     },
     {
-      name: 'order',
-      type: 'number',
-      label: 'Порядок',
-      admin: { position: 'sidebar', description: 'Меньше — выше.' },
+      name: 'hidden',
+      type: 'checkbox',
+      label: 'Скрыть с сайта',
+      defaultValue: false,
+      admin: { position: 'sidebar', description: 'Скрывает и все изделия и видео проекта.' },
     },
   ],
 }

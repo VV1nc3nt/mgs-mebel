@@ -10,6 +10,7 @@ import * as migration_20261013_134632_catalogs_render from './20261013_134632_ca
 import * as migration_20261013_212556_designers_v2 from './20261013_212556_designers_v2'
 import * as migration_20261017_112548_news_autosave from './20261017_112548_news_autosave'
 import * as migration_20261020_025642_news_share_max from './20261020_025642_news_share_max'
+import * as migration_20261020_125550_works_v2 from './20261020_125550_works_v2'
 
 export const migrations = [
   {
@@ -71,5 +72,10 @@ export const migrations = [
     up: migration_20261020_025642_news_share_max.up,
     down: migration_20261020_025642_news_share_max.down,
     name: '20261020_025642_news_share_max',
+  },
+  {
+    up: migration_20261020_125550_works_v2.up,
+    down: migration_20261020_125550_works_v2.down,
+    name: '20261020_125550_works_v2',
   },
 ]

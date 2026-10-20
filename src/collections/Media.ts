@@ -2,6 +2,7 @@ import path from 'path'
 import { APIError, type CollectionConfig } from 'payload'
 
 import { preventDeletingUsedMedia } from './mediaUsage'
+import { imageField } from '@/fields/media'
 import { mediaDeleters, mediaUpdaters, anyRole, publicRead } from '@/access'
 import { ALL_TAGS, revalidateCollection } from '@/lib/revalidate'
 
@@ -38,6 +39,15 @@ export const Media: CollectionConfig = {
     afterChange,
     afterDelete,
     beforeDelete: [preventDeletingUsedMedia],
+    // A poster belongs to a video only: an image keeps none
+    beforeChange: [
+      ({ data, originalDoc }) => {
+        const mimeType = data.mimeType ?? originalDoc?.mimeType
+        return typeof mimeType === 'string' && !mimeType.startsWith('video/')
+          ? { ...data, poster: null }
+          : data
+      },
+    ],
     beforeOperation: [
       ({ args, operation, req }) => {
         if ((operation === 'create' || operation === 'update') && req.file) {
@@ -68,6 +78,15 @@ export const Media: CollectionConfig = {
           ? 'Alt-текст обязателен для изображений'
           : true,
     },
+    imageField('poster', {
+      label: 'Постер',
+      admin: {
+        // mimeType is known after the first save: shown for a new file and for videos
+        condition: (data) => !data?.mimeType || String(data.mimeType).startsWith('video/'),
+        description:
+          'Только для видео: кадр до запуска и обложка в ленте REELS. Обязателен для видео «Наших работ».',
+      },
+    }),
   ],
   upload: {
     // Local disk storage (Docker volume `media` on the server). Ignored when S3 is enabled.

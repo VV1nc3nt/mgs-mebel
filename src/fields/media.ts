@@ -38,6 +38,32 @@ export const checkMediaKind = async (
   return true
 }
 
+/**
+ * Returns an error message if any of the referenced videos has no poster: the site shows a video
+ * of «Наши работы» by its poster (a tile in REELS, the frame before playback).
+ */
+export const checkVideoPosters = async (
+  value: UploadValue | UploadValue[],
+  req: PayloadRequest,
+): Promise<string | true> => {
+  const ids = (Array.isArray(value) ? value : [value]).map(toId).filter((id) => id !== null)
+  for (const id of ids) {
+    const doc = await req.payload
+      .findByID({
+        collection: 'media',
+        id,
+        depth: 0,
+        select: { filename: true, mimeType: true, poster: true },
+        req,
+      })
+      .catch(() => null)
+    if (doc?.mimeType?.startsWith(MIME_PREFIX.video) && !doc.poster) {
+      return `У видео «${doc.filename ?? id}» нет постера: откройте файл в «Медиа» и выберите постер`
+    }
+  }
+  return true
+}
+
 type MediaFieldOptions = Omit<Partial<UploadField>, 'type' | 'relationTo' | 'name' | 'hasMany'> & {
   hasMany?: boolean
   /** Extra check run after the type check. */

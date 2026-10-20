@@ -10,6 +10,7 @@ import { fileURLToPath } from 'url'
 import sharp from 'sharp'
 
 import { Catalogs } from './collections/Catalogs'
+import { Items } from './collections/Items'
 import { Media } from './collections/Media'
 import { News } from './collections/News'
 import { Projects } from './collections/Projects'
@@ -45,7 +46,7 @@ export default buildConfig({
     supportedLanguages: { ru },
     fallbackLanguage: 'ru',
   },
-  collections: [Projects, News, Salons, Catalogs, Media, Users],
+  collections: [Projects, Items, News, Salons, Catalogs, Media, Users],
   globals: [...pageGlobals, Stats, Layout, Settings],
   // Payload defaults are 20 MB per file / 50 MB per request; catalog PDFs are larger.
   // Per-type limits live in collections/Media.ts. Temp files keep large uploads out of RAM.

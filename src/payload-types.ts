@@ -68,6 +68,7 @@ export interface Config {
   blocks: {};
   collections: {
     projects: Project;
+    items: Item;
     news: News;
     salons: Salon;
     catalogs: Catalog;
@@ -78,9 +79,14 @@ export interface Config {
     'payload-preferences': PayloadPreference;
     'payload-migrations': PayloadMigration;
   };
-  collectionsJoins: {};
+  collectionsJoins: {
+    projects: {
+      items: 'items';
+    };
+  };
   collectionsSelect: {
     projects: ProjectsSelect<false> | ProjectsSelect<true>;
+    items: ItemsSelect<false> | ItemsSelect<true>;
     news: NewsSelect<false> | NewsSelect<true>;
     salons: SalonsSelect<false> | SalonsSelect<true>;
     catalogs: CatalogsSelect<false> | CatalogsSelect<true>;
@@ -148,46 +154,66 @@ export interface UserAuthOperations {
   };
 }
 /**
+ * Проект — адрес: всё, что в нём сделано, — его изделия. Порядок на сайте — перетаскиванием в списке.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "projects".
  */
 export interface Project {
   id: number;
+  _order?: string | null;
   title: string;
   /**
    * When enabled, the slug will auto-generate from the title field on save and autosave.
    */
   generateSlug?: boolean | null;
   slug: string;
-  category: 'complex' | 'kitchens' | 'hallways' | 'bedrooms' | 'bathrooms' | 'wardrobes' | 'livingrooms';
   /**
-   * Например, ЖК «Остров»
+   * На карточке: «ЖК Уно»
    */
   place?: string | null;
-  area?: number | null;
+  city?: string | null;
+  year?: number | null;
   /**
-   * Например, 4 недели
+   * Проект на всю квартиру: карточка в ленте «Комплекс» и своя страница. В ленте — только если есть видимые изделия.
    */
-  duration?: string | null;
-  description?: string | null;
+  complex?: boolean | null;
   /**
-   * В видео-проекте первый кадр — видео, дальше фото. Видео допускается только первым.
+   * Каждое изделие само попадает в ленту своего типа. «Добавить» доступно после первого сохранения проекта.
    */
-  slides: {
-    type: 'photo' | 'video';
-    file: number | Media;
-    poster?: (number | null) | Media;
-    /**
-     * Необязательно: иначе берётся из файла.
-     */
-    duration?: number | null;
-    id?: string | null;
-  }[];
+  items?: {
+    docs?: (number | Item)[];
+    hasNextPage?: boolean;
+    totalDocs?: number;
+  };
+  /**
+   * Необязательно: иначе — первое фото первого изделия.
+   */
+  cover?: (number | null) | Media;
+  /**
+   * Блок «О проекте» на странице проекта.
+   */
+  about?: string | null;
+  /**
+   * Необязательно.
+   */
+  price?: number | null;
+  /**
+   * Имя. Необязательно.
+   */
+  designer?: string | null;
+  /**
+   * Ролики всей квартиры, не одного изделия: идут в ленту REELS. У каждого видео нужен постер (в карточке файла).
+   */
+  videos?: (number | Media)[] | null;
+  /**
+   * Показать первым в блоке «Наши работы».
+   */
   featured?: boolean | null;
   /**
-   * Меньше — выше.
+   * Скрывает и все изделия и видео проекта.
    */
-  order?: number | null;
+  hidden?: boolean | null;
   meta?: {
     title?: string | null;
     description?: string | null;
@@ -196,6 +222,72 @@ export interface Project {
      */
     image?: (number | null) | Media;
   };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Изделие само попадает в ленту своего типа на странице «Наши работы». Порядок — перетаскиванием в списке.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "items".
+ */
+export interface Item {
+  id: number;
+  _order?: string | null;
+  /**
+   * Считается сама: название и проект. Для списков и выбора.
+   */
+  label?: string | null;
+  /**
+   * Лента на сайте: «Кухни», «Спальни»…
+   */
+  type: 'kitchens' | 'livingrooms' | 'bathrooms' | 'hallways' | 'wardrobes' | 'bedrooms' | 'kids';
+  /**
+   * Необязательно: иначе — тип («Кухня»).
+   */
+  title?: string | null;
+  /**
+   * Пусто — отдельная работа.
+   */
+  project?: (number | null) | Project;
+  /**
+   * У отдельной работы. Необязательно.
+   */
+  place?: string | null;
+  /**
+   * Перетащите сразу несколько файлов. Alt для всех — «Редактировать все» → «Alt-текст» → «Применить изменения». Первое фото — обложка карточки; порядок — перетаскиванием.
+   */
+  photos?: (number | Media)[] | null;
+  /**
+   * Идут после фото и в ленту REELS. У каждого видео нужен постер (в карточке файла).
+   */
+  videos?: (number | Media)[] | null;
+  description?: string | null;
+  specs?: {
+    korpus?: string | null;
+    fasady?: string | null;
+    furn?: string | null;
+  };
+  extraSpecs?:
+    | {
+        label: string;
+        value: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Необязательно.
+   */
+  price?: number | null;
+  /**
+   * Необязательно: иначе «Хочу такую же» / «Хочу такой же».
+   */
+  ctaLabel?: string | null;
+  /**
+   * Показать первым в блоке «Наши работы».
+   */
+  featured?: boolean | null;
+  hidden?: boolean | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -209,6 +301,10 @@ export interface Media {
    * Описание изображения для незрячих и поисковиков. Обязательно для изображений.
    */
   alt?: string | null;
+  /**
+   * Только для видео: кадр до запуска и обложка в ленте REELS. Обязателен для видео «Наших работ».
+   */
+  poster?: (number | null) | Media;
   prefix?: string | null;
   _objectKey?: string | null;
   updatedAt: string;
@@ -514,6 +610,10 @@ export interface PayloadLockedDocument {
         value: number | Project;
       } | null)
     | ({
+        relationTo: 'items';
+        value: number | Item;
+      } | null)
+    | ({
         relationTo: 'news';
         value: number | News;
       } | null)
@@ -580,25 +680,22 @@ export interface PayloadMigration {
  * via the `definition` "projects_select".
  */
 export interface ProjectsSelect<T extends boolean = true> {
+  _order?: T;
   title?: T;
   generateSlug?: T;
   slug?: T;
-  category?: T;
   place?: T;
-  area?: T;
-  duration?: T;
-  description?: T;
-  slides?:
-    | T
-    | {
-        type?: T;
-        file?: T;
-        poster?: T;
-        duration?: T;
-        id?: T;
-      };
+  city?: T;
+  year?: T;
+  complex?: T;
+  items?: T;
+  cover?: T;
+  about?: T;
+  price?: T;
+  designer?: T;
+  videos?: T;
   featured?: T;
-  order?: T;
+  hidden?: T;
   meta?:
     | T
     | {
@@ -606,6 +703,41 @@ export interface ProjectsSelect<T extends boolean = true> {
         description?: T;
         image?: T;
       };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "items_select".
+ */
+export interface ItemsSelect<T extends boolean = true> {
+  _order?: T;
+  label?: T;
+  type?: T;
+  title?: T;
+  project?: T;
+  place?: T;
+  photos?: T;
+  videos?: T;
+  description?: T;
+  specs?:
+    | T
+    | {
+        korpus?: T;
+        fasady?: T;
+        furn?: T;
+      };
+  extraSpecs?:
+    | T
+    | {
+        label?: T;
+        value?: T;
+        id?: T;
+      };
+  price?: T;
+  ctaLabel?: T;
+  featured?: T;
+  hidden?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -756,6 +888,7 @@ export interface CatalogsSelect<T extends boolean = true> {
  */
 export interface MediaSelect<T extends boolean = true> {
   alt?: T;
+  poster?: T;
   prefix?: T;
   _objectKey?: T;
   updatedAt?: T;
@@ -1168,11 +1301,11 @@ export interface WorksPage {
     label?: string | null;
     title: string;
   };
-  viewer?: {
+  prices?: {
     /**
-     * Например, «Хочу такой же проект»
+     * Подпись под ценами проектов и изделий: «Цена актуальна на октябрь 2026». Например, «октябрь 2026».
      */
-    ctaLabel?: string | null;
+    priceDate?: string | null;
   };
   meta?: {
     title?: string | null;
@@ -1690,10 +1823,10 @@ export interface WorksPageSelect<T extends boolean = true> {
         label?: T;
         title?: T;
       };
-  viewer?:
+  prices?:
     | T
     | {
-        ctaLabel?: T;
+        priceDate?: T;
       };
   meta?:
     | T
