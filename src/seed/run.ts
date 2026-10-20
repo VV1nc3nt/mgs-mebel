@@ -37,7 +37,7 @@ let code = 0
 try {
   await seed(payload, { reset })
   const counts = await Promise.all(
-    (['projects', 'news', 'salons', 'catalogs', 'media'] as const).map(
+    (['projects', 'items', 'news', 'salons', 'catalogs', 'media'] as const).map(
       async (collection) =>
         `${collection} ${(await payload.count({ collection, overrideAccess: true })).totalDocs}`,
     ),

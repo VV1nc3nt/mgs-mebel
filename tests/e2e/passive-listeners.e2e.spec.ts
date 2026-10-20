@@ -5,7 +5,7 @@ import { blockingScroll, pageListeners } from '../helpers/listeners'
 const BASE = 'http://localhost:3000'
 const EMPTY_DB = !!process.env.E2E_EMPTY_DB
 
-// Only the home hero scene and the open viewer listen to these on window (React's own listeners
+// Only the home hero scene listens to these on window (React's own listeners
 // on document are passive)
 const GESTURES = ['wheel', 'touchstart', 'touchmove', 'touchend']
 
@@ -42,9 +42,12 @@ const scrollTo = async (page: Page, top: number) => {
 
 /** A client-side transition by the header's link (no Playwright scrolling). */
 const goWorks = async (page: Page) => {
-  await page.locator('header a[href="/works"]').first().evaluate((a: HTMLElement) => a.click())
+  await page
+    .locator('header a[href="/works"]')
+    .first()
+    .evaluate((a: HTMLElement) => a.click())
   await expect(page).toHaveURL(`${BASE}/works`)
-  await page.locator('[data-works-feed]').waitFor()
+  await page.locator('[data-works-grid]').waitFor()
   await frames(page)
 }
 
@@ -101,19 +104,5 @@ test.describe('no scroll-blocking listeners', () => {
     await scrollTo(page, 0)
     expect(await blockingScroll(page)).toEqual(['window:wheel', 'window:touchmove'])
     expect((await gestures(page)).map((l) => l.type).sort()).toEqual([...GESTURES].sort())
-  })
-
-  test('/works: the viewer blocks while open only', async ({ page }) => {
-    await page.goto(`${BASE}/works`)
-    await hydrated(page)
-    await page.locator('[data-works-feed] a').first().evaluate((a: HTMLElement) => a.click())
-    const dialog = page.getByRole('dialog')
-    await expect(dialog).toBeVisible()
-    expect(await blockingScroll(page)).toEqual(['window:wheel', 'window:touchmove'])
-
-    await page.keyboard.press('Escape')
-    await expect(dialog).toHaveCount(0)
-    await frames(page)
-    expect(await gestures(page)).toEqual([])
   })
 })

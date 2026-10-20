@@ -3,16 +3,16 @@
 import { useState, type ReactNode } from 'react'
 
 import { FilterChip } from '@/components/ui/FilterChip'
-import type { WorkFilter } from '@/lib/works'
+import type { WorkFeed } from '@/lib/workTypes'
 
 type Props = {
-  chips: { key: WorkFilter; label: string }[]
-  initial: WorkFilter
+  chips: { key: WorkFeed; label: string }[]
+  initial: WorkFeed
   /** Server-rendered panel per chip, in the same order. */
   panels: ReactNode[]
 }
 
-const panelId = (key: WorkFilter) => `works-${key}`
+const panelId = (key: WorkFeed) => `works-${key}`
 
 /**
  * Chips of «Наши работы» (README §6.1 п.6): toggle buttons over server-rendered panels;

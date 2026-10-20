@@ -14,10 +14,8 @@ import { IconButton } from '@/components/ui/IconButton'
 import { MediaCard } from '@/components/ui/MediaCard'
 import { SectionLabel } from '@/components/ui/SectionLabel'
 import { StatCard } from '@/components/ui/StatCard'
-import { ShareButton, ShareStatus } from '@/components/works/ViewerShare'
 import { MESSENGER_NAMES, toChrome } from '@/lib/chrome'
 import { getSettings } from '@/lib/queries'
-import { absoluteUrl } from '@/lib/site'
 import { getUiKitData } from './data'
 import { PlayerDemo, SliderDemo } from './MediaDemo'
 import { CatalogsSegmentDemo, ViewSegmentDemo, WorksSegmentDemo } from './SegmentDemo'
@@ -188,15 +186,8 @@ export default async function UiKitPage() {
                 />
               </div>
             </Row>
-            <Row note="Во всю ширину колонки: CTA просмотрщика (52, подпись — worksPage), карточка салона (48)">
+            <Row note="Во всю ширину колонки: карточка салона (48)">
               <div className="flex w-full max-w-salon-card flex-col gap-3">
-                <ContactButton
-                  caption="Хочу такой же проект"
-                  messengers={messengers}
-                  size={52}
-                  fullWidth
-                  arrow
-                />
                 <ContactButton
                   caption="Заказать персональный дизайн"
                   messengers={messengers}
@@ -248,24 +239,6 @@ export default async function UiKitPage() {
         </Row>
       </Section>
 
-      <Section title="Поделиться">
-        <Row note="Рейл просмотрщика: стекло 36, подпись под иконкой; статус — «Ссылка скопирована» (2 с) или сама ссылка, если буфер обмена недоступен">
-          <div className="flex w-full max-w-salon-card flex-col items-end gap-3 rounded-thumb-lg bg-surface-2 p-3">
-            {(
-              [
-                { kind: 'copied' },
-                { kind: 'link', url: absoluteUrl('/works/kuhnya-gostinaya-s-ostrovom') },
-              ] as const
-            ).map((value) => (
-              <div key={value.kind} className="flex w-full items-end justify-end gap-3">
-                <ShareStatus value={value} shown />
-                <ShareButton />
-              </div>
-            ))}
-          </div>
-        </Row>
-      </Section>
-
       <Section title="Chip">
         <Row note="surface — ценности">
           {['Качество', 'Инновации', 'Долговечность'].map((label) => (
@@ -276,7 +249,7 @@ export default async function UiKitPage() {
           <Chip variant="surface-media">Дизайнерам</Chip>
           <Chip variant="surface-media">Интерьерным студиям</Chip>
         </Row>
-        <Row note="glass, accent, outline, frost; bordered — шапка статьи">
+        <Row note="glass, accent, outline; bordered — шапка статьи">
           <Chip variant="glass">19.02.2026</Chip>
           <Chip variant="glass" muted strong>
             Новость
@@ -289,10 +262,23 @@ export default async function UiKitPage() {
             Новость
           </Chip>
           <Chip variant="outline">19.02.2026</Chip>
-          <Chip variant="frost">видео + фото</Chip>
           <Chip variant="glass" icon={<Play className="size-3 fill-current" />}>
             0:12
           </Chip>
+        </Row>
+        <Row note="tile, tile-light — бейджи плитки «Наших работ», 26">
+          <div className="flex gap-1.5 rounded-thumb bg-surface-3 p-3">
+            <Chip
+              variant="tile-light"
+              icon={
+                <span className="size-0 border-y-4 border-l-6 border-y-transparent border-l-bg" />
+              }
+            >
+              REELS
+            </Chip>
+            <Chip variant="tile">13 фото + 3 видео</Chip>
+            <Chip variant="tile">Кухня</Chip>
+          </div>
         </Row>
       </Section>
 
@@ -307,6 +293,19 @@ export default async function UiKitPage() {
           <FilterChip selected={false} count={newsCount?.new}>
             новинки
           </FilterChip>
+        </Row>
+        <Row note="44 — ленты «Наших работ»: неактивный surface + border, hover surface-3">
+          {(
+            [
+              ['REELS', 3],
+              ['Комплекс', 6],
+              ['Кухни', 14],
+            ] as const
+          ).map(([label, count]) => (
+            <FilterChip key={label} size={44} selected={label === 'Комплекс'} count={count}>
+              {label}
+            </FilterChip>
+          ))}
         </Row>
         <Row note="Ссылки (aria-current). Hover неактивного: обводка и текст text.">
           {['reels', 'комплекс', 'кухни', 'прихожие'].map((label) => (

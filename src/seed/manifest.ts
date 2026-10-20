@@ -19,6 +19,8 @@ export type SeedFile = {
   alt?: string
   /** Background video: must have no audio track. */
   background?: boolean
+  /** Video: manifest key of its poster image (the `poster` field of the media document). */
+  poster?: string
   /** Generated placeholder PDF: title printed on the page. */
   pdfTitle?: string
 }
@@ -391,6 +393,57 @@ export const photos: SeedFile[] = [
     'Гостиная с мягкой мебелью и большим окном',
     'проекты',
   ),
+  // «Наши работы» v2: bathrooms and bedrooms of the works package (its prototype photos)
+  unsplash(
+    'N19',
+    'bathroom-shower',
+    '1584622650111-993a426fbf0a',
+    1280,
+    'modern-bathroom-with-shower-and-vanity-g51F6-WYzyU',
+    'Lotus Design N Print',
+    'Современный санузел с душем и тумбой',
+    'изделия «Наших работ»',
+  ),
+  unsplash(
+    'N20',
+    'bathtub',
+    '1620626011761-996317b8d101',
+    1280,
+    'white-ceramic-bathtub-near-green-potted-plant-Aac7IlKnYX8',
+    'Steven Ungermann',
+    'Белая ванна и растение в кашпо',
+    'изделия «Наших работ»',
+  ),
+  unsplash(
+    'N21',
+    'bathroom-sink-plants',
+    '1552321554-5fefe8c9ef14',
+    1280,
+    'bathroom-with-pedestal-sink-and-plants-U7PitHRnTNU',
+    'Phil Hearing',
+    'Санузел с раковиной на пьедестале и растениями',
+    'изделия «Наших работ»',
+  ),
+  unsplash(
+    'N22',
+    'bedroom-white-bed',
+    '1616594039964-ae9021a400a0',
+    1280,
+    'modern-bedroom-with-white-upholstered-bed-RUvW1KGD9a4',
+    'Spacejoy',
+    'Спальня с белой мягкой кроватью',
+    'изделия «Наших работ»',
+  ),
+  unsplash(
+    'N23',
+    'bedroom-tufted-bed',
+    '1505693416388-ac5ce068fe85',
+    1280,
+    'tufted-bed-in-modern-bedroom-iAftdIcgpFc',
+    'Quilia',
+    'Кровать со стёганым изголовьем в современной спальне',
+    'изделия «Наших работ»',
+  ),
   // Posters of the home hero segments: frames of their videos, so the picture does not change
   // when the video starts.
   pexelsPhoto(
@@ -529,18 +582,41 @@ export const videos: SeedFile[] = [
     'home.hero, сегмент 02',
     true,
   ),
-  pexels('V1', 'dining-kitchen', 5823681, 'hd_720_1280_24fps', 'Charlotte May', 'видео-проекты'),
-  pexels('V2', 'home-decor', 5824191, 'hd_720_1280_24fps', 'Charlotte May', 'видео-проекты'),
-  pexels('V3', 'kitchen', 5823682, 'hd_720_1280_24fps', 'Charlotte May', 'видео-проекты'),
-  pexels('V4', 'bedroom', 7749088, 'hd_1080_1920_30fps', 'Max Vakhtbovych', 'видео-проекты'),
-  pexels(
-    'V5',
-    'kitchen-vertical',
-    5824199,
-    'hd_720_1280_24fps',
-    'Charlotte May',
-    'новость «Гардеробные системы 2026»: вертикальное видео',
-  ),
+  // Videos of «Наши работы» (REELS): each with its poster
+  {
+    ...pexels(
+      'V1',
+      'dining-kitchen',
+      5823681,
+      'hd_720_1280_24fps',
+      'Charlotte May',
+      'видео проекта',
+    ),
+    poster: 'N1',
+  },
+  {
+    ...pexels('V2', 'home-decor', 5824191, 'hd_720_1280_24fps', 'Charlotte May', 'видео изделий'),
+    poster: 'N5',
+  },
+  {
+    ...pexels('V3', 'kitchen', 5823682, 'hd_720_1280_24fps', 'Charlotte May', 'видео изделий'),
+    poster: 'N2',
+  },
+  {
+    ...pexels('V4', 'bedroom', 7749088, 'hd_1080_1920_30fps', 'Max Vakhtbovych', 'видео изделий'),
+    poster: 'N9',
+  },
+  {
+    ...pexels(
+      'V5',
+      'kitchen-vertical',
+      5824199,
+      'hd_720_1280_24fps',
+      'Charlotte May',
+      'видео изделий, новость «Гардеробные системы 2026»: вертикальное видео',
+    ),
+    poster: 'N3',
+  },
   // Salon cards: vertical 540×960, no audio track.
   pexels(
     'H11',

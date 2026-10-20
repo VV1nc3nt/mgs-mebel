@@ -4,16 +4,16 @@ import { describe, expect, it, vi } from 'vitest'
 import { NewsSection } from '@/components/sections/NewsSection'
 import { WorksSection } from '@/components/sections/WorksSection'
 import { formatDate } from '@/lib/date'
-import { projectCategoryOptions } from '@/lib/projectCategories'
 import type { NewsSlide } from '@/lib/queries'
 import { nextIndex, prevIndex, wrapIndex } from '@/lib/slider'
 import {
-  WORK_FILTERS,
+  buildFeeds,
   initialWorkFilter,
-  toWorkPreview,
   workPanels,
+  type ItemRow,
   type ProjectRow,
 } from '@/lib/works'
+import { WORK_FEEDS } from '@/lib/workTypes'
 import { photo, video } from './fixtures'
 import { env } from './setup'
 
@@ -40,62 +40,89 @@ describe('formatDate', () => {
   })
 })
 
-const project = (
-  id: number,
-  category: ProjectRow['category'],
-  kind: 'photo' | 'video' = 'photo',
-): ProjectRow => ({
+const posterVideo = { ...video, poster: photo }
+
+const project = (id: number, extra: Partial<ProjectRow> = {}): ProjectRow => ({
   id,
-  title: `Работа ${id}`,
-  slug: `rabota-${id}`,
-  category,
-  slides:
-    kind === 'video'
-      ? [
-          { type: 'video', file: video, poster: photo },
-          { type: 'photo', file: photo },
-        ]
-      : [{ type: 'photo', file: photo }],
+  title: `Проект ${id}`,
+  slug: `proekt-${id}`,
+  place: `ЖК ${id}`,
+  complex: true,
+  cover: null,
+  videos: [],
+  featured: false,
+  hidden: false,
+  ...extra,
 })
 
-describe('works chips', () => {
-  it('are reels, then the categories in the order of the select', () => {
-    expect(WORK_FILTERS.map((f) => f.key)).toEqual([
+const item = (id: number, extra: Partial<ItemRow> = {}): ItemRow => ({
+  id,
+  title: null,
+  type: 'kitchens',
+  project: null,
+  place: null,
+  photos: [photo],
+  videos: [],
+  featured: false,
+  hidden: false,
+  ...extra,
+})
+
+describe('home works chips', () => {
+  it('are the feeds of the works page in the order of the design', () => {
+    expect(WORK_FEEDS.map((f) => f.value)).toEqual([
       'reels',
-      ...projectCategoryOptions.map((o) => o.value),
+      'complex',
+      'kitchens',
+      'bedrooms',
+      'wardrobes',
+      'hallways',
+      'bathrooms',
+      'kids',
+      'livingrooms',
     ])
-    expect(WORK_FILTERS[0]!.label).toBe('reels')
   })
 
-  it('leave out chips without works and keep at most 4 previews', () => {
-    const panels = workPanels({
-      kitchens: [1, 2, 3, 4, 5].map((id) => project(id, 'kitchens')),
-      reels: [project(6, 'bedrooms', 'video')],
-      bathrooms: [],
-    })
-    expect(panels.map((p) => p.key)).toEqual(['reels', 'kitchens'])
-    expect(panels[1]!.works).toHaveLength(4)
+  it('leave out chips without works and keep at most 4 previews, «На главной» first', () => {
+    const panels = workPanels(
+      buildFeeds(
+        [],
+        [
+          ...[1, 2, 3, 4].map((id) => item(id, { title: `Кухня ${id}` })),
+          item(5, { title: 'Кухня 5', featured: true }),
+          item(6, { type: 'bedrooms', videos: [posterVideo] }),
+        ],
+      ),
+    )
+    expect(panels.map((p) => p.key)).toEqual(['reels', 'kitchens', 'bedrooms'])
+    expect(panels[1]!.works.map((w) => w.title)).toEqual([
+      'Кухня 5',
+      'Кухня 1',
+      'Кухня 2',
+      'Кухня 3',
+    ])
   })
 
   it('start on «Комплекс», else on the first chip with works', () => {
-    expect(initialWorkFilter(workPanels({ kitchens: [project(1, 'kitchens')] }))).toBe('kitchens')
-    expect(
-      initialWorkFilter(
-        workPanels({ kitchens: [project(1, 'kitchens')], complex: [project(2, 'complex')] }),
-      ),
-    ).toBe('complex')
+    expect(initialWorkFilter(workPanels(buildFeeds([], [item(1)])))).toBe('kitchens')
+    expect(initialWorkFilter(workPanels(buildFeeds([project(2)], [item(1, { project: 2 })])))).toBe(
+      'complex',
+    )
     expect(initialWorkFilter([])).toBeUndefined()
   })
 
-  it('preview the video poster or the first photo, with the project’s own category', () => {
-    const reel = toWorkPreview(project(1, 'bathrooms', 'video'))
-    expect(reel).toMatchObject({ kind: 'video', category: 'Санузлы', image: photo })
-    expect(reel.href).toBe('/works/rabota-1')
-    expect(toWorkPreview(project(2, 'hallways'))).toMatchObject({
-      kind: 'photo',
-      category: 'Прихожие',
-      image: photo,
+  it('link a project to its page, an item and a reel to their feeds', () => {
+    const panels = workPanels(
+      buildFeeds([project(2)], [item(1, { project: 2, type: 'bathrooms', videos: [posterVideo] })]),
+    )
+    const by = (key: string) => panels.find((p) => p.key === key)!.works[0]!
+    expect(by('complex')).toMatchObject({ href: '/works/proekt-2', kind: 'video', image: photo })
+    expect(by('bathrooms')).toMatchObject({
+      href: '/works?category=bathrooms',
+      category: 'Санузел',
+      title: 'Санузел',
     })
+    expect(by('reels')).toMatchObject({ href: '/works?category=reels', kind: 'video' })
   })
 })
 
@@ -207,10 +234,12 @@ describe('WorksSection', () => {
     title: 'Реальные проекты',
     buttonLabel: 'Смотреть все работы',
   }
-  const panels = workPanels({
-    reels: [project(1, 'kitchens', 'video')],
-    complex: [project(2, 'complex'), project(3, 'complex')],
-  })
+  const panels = workPanels(
+    buildFeeds(
+      [project(2), project(3)],
+      [item(1, { project: 2, videos: [posterVideo] }), item(4, { project: 3 })],
+    ),
+  )
 
   it('renders nothing without works', () => {
     expect(render(<WorksSection section={section} panels={[]} />).container.innerHTML).toBe('')
@@ -221,7 +250,7 @@ describe('WorksSection', () => {
     const chips = within(screen.getByRole('group', { name: 'Категории работ' })).getAllByRole(
       'button',
     )
-    expect(chips.map((c) => c.textContent)).toEqual(['reels', 'Комплекс'])
+    expect(chips.map((c) => c.textContent)).toEqual(['reels', 'Комплекс', 'Кухни'])
     expect(chips[1]!.getAttribute('aria-pressed')).toBe('true')
     const reels = document.getElementById('works-reels')!
     const complex = document.getElementById('works-complex')!
@@ -232,7 +261,7 @@ describe('WorksSection', () => {
     expect(chips[0]!.getAttribute('aria-controls')).toBe('works-reels')
     expect(reels.hidden).toBe(false)
     expect(complex.hidden).toBe(true)
-    expect(within(reels).getByRole('link').getAttribute('href')).toMatch(/^\/works\/rabota-\d+$/)
+    expect(within(reels).getByRole('link').getAttribute('href')).toBe('/works?category=reels')
     expect(within(reels).getByText('Видео')).toBeTruthy()
   })
 

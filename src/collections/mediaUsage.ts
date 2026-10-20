@@ -46,7 +46,8 @@ const owners = (payload: Payload): Owner[] =>
       slug: c.slug,
       label: labelOf(c.labels?.plural, c.slug),
       table: snake(c.slug),
-      useAsTitle: c.admin?.useAsTitle,
+      // A file (the poster of a video) is named by its file name
+      useAsTitle: c.upload ? 'filename' : c.admin?.useAsTitle,
     })),
     ...payload.config.globals.map<Owner>((g) => ({
       kind: 'global',

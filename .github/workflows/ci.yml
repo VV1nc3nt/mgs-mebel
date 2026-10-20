@@ -19,27 +19,25 @@ env:
   # @empty pass and the cache drop: give it less.
   # Every tests/e2e/*.spec.ts goes into exactly one list (checked by the E2E job).
   E2E_SHARD_1: >-
-    tests/e2e/viewer.e2e.spec.ts
     tests/e2e/partial-paint.e2e.spec.ts
     tests/e2e/header.e2e.spec.ts
+    tests/e2e/catalogs.e2e.spec.ts
+    tests/e2e/not-found.e2e.spec.ts
     tests/e2e/passive-listeners.e2e.spec.ts
   E2E_SHARD_2: >-
     tests/e2e/home.e2e.spec.ts
-    tests/e2e/viewer-share.e2e.spec.ts
+    tests/e2e/contact.e2e.spec.ts
     tests/e2e/designers.e2e.spec.ts
     tests/e2e/layout.e2e.spec.ts
     tests/e2e/news.e2e.spec.ts
   E2E_SHARD_3: >-
-    tests/e2e/salons.e2e.spec.ts
     tests/e2e/ui-kit.e2e.spec.ts
+    tests/e2e/salons.e2e.spec.ts
     tests/e2e/about.e2e.spec.ts
-    tests/e2e/dock.e2e.spec.ts
-    tests/e2e/not-found.e2e.spec.ts
   E2E_SHARD_4: >-
     tests/e2e/menu.e2e.spec.ts
     tests/e2e/news-slug.e2e.spec.ts
-    tests/e2e/catalogs.e2e.spec.ts
-    tests/e2e/contact.e2e.spec.ts
+    tests/e2e/dock.e2e.spec.ts
     tests/e2e/works.e2e.spec.ts
     tests/e2e/preview.e2e.spec.ts
     tests/e2e/revalidate.e2e.spec.ts
@@ -235,7 +233,7 @@ jobs:
       # Fresh database: header and footer must render from empty globals.
       - name: Layout on empty globals
         if: matrix.shard == 1
-        run: pnpm test:e2e tests/e2e/layout.e2e.spec.ts tests/e2e/dock.e2e.spec.ts tests/e2e/not-found.e2e.spec.ts tests/e2e/preview.e2e.spec.ts tests/e2e/home.e2e.spec.ts tests/e2e/about.e2e.spec.ts tests/e2e/news-slug.e2e.spec.ts tests/e2e/salons.e2e.spec.ts tests/e2e/catalogs.e2e.spec.ts tests/e2e/designers.e2e.spec.ts tests/e2e/works.e2e.spec.ts tests/e2e/viewer.e2e.spec.ts tests/e2e/viewer-share.e2e.spec.ts tests/e2e/news.e2e.spec.ts --grep @empty --reporter=list
+        run: pnpm test:e2e tests/e2e/layout.e2e.spec.ts tests/e2e/dock.e2e.spec.ts tests/e2e/not-found.e2e.spec.ts tests/e2e/preview.e2e.spec.ts tests/e2e/home.e2e.spec.ts tests/e2e/about.e2e.spec.ts tests/e2e/news-slug.e2e.spec.ts tests/e2e/salons.e2e.spec.ts tests/e2e/catalogs.e2e.spec.ts tests/e2e/designers.e2e.spec.ts tests/e2e/works.e2e.spec.ts tests/e2e/news.e2e.spec.ts --grep @empty --reporter=list
         env:
           E2E_EMPTY_DB: 1
 

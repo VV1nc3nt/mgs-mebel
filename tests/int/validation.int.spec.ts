@@ -162,48 +162,6 @@ describe('news media block', () => {
   })
 })
 
-describe('project slides', () => {
-  const createProject = (slides: { type: 'video' | 'photo'; file: number; poster?: number }[]) =>
-    payload.create({
-      collection: 'projects',
-      data: {
-        title: `${PREFIX} проект ${++counter}`,
-        slug: `${PREFIX}-project-${counter}`,
-        category: 'kitchens',
-        slides,
-      },
-    })
-
-  it('accepts a video first, photos after', async () => {
-    await expect(
-      createProject([
-        { type: 'video', file: video.id, poster: image.id },
-        { type: 'photo', file: image.id },
-      ]),
-    ).resolves.toBeTruthy()
-  })
-
-  it('rejects a video in the second slide', async () => {
-    await expect(
-      createProject([
-        { type: 'photo', file: image.id },
-        { type: 'video', file: video.id, poster: image.id },
-      ]),
-    ).rejects.toThrow()
-  })
-
-  it('rejects a file that does not match the slide type', async () => {
-    await expect(createProject([{ type: 'photo', file: video.id }])).rejects.toThrow()
-    await expect(
-      createProject([{ type: 'video', file: image.id, poster: image.id }]),
-    ).rejects.toThrow()
-  })
-
-  it('requires a poster for video slides', async () => {
-    await expect(createProject([{ type: 'video', file: video.id }])).rejects.toThrow()
-  })
-})
-
 describe('media alt', () => {
   it('is required for images only', async () => {
     await expect(

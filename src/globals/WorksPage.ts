@@ -8,14 +8,17 @@ export const WorksPage = pageGlobal(
   [
     { name: 'hero', label: 'Заголовок', fields: [labelField(), titleField(true)] },
     {
-      name: 'viewer',
-      label: 'Просмотр проекта',
+      name: 'prices',
+      label: 'Цены',
       fields: [
         {
-          name: 'ctaLabel',
+          name: 'priceDate',
           type: 'text',
-          label: 'Кнопка',
-          admin: { description: 'Например, «Хочу такой же проект»' },
+          label: 'Цена актуальна на',
+          admin: {
+            description:
+              'Подпись под ценами проектов и изделий: «Цена актуальна на октябрь 2026». Например, «октябрь 2026».',
+          },
         },
       ],
     },

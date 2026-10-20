@@ -1,157 +1,268 @@
-import type { Media, Project } from '@/payload-types'
-import { asMedia } from './media'
+import type { Item, Media, Project } from '@/payload-types'
+import { asMedia, isImage, isVideo, type MediaValue } from './media'
+import { tileRatio } from './masonry'
 import { plural } from './plural'
+import { itemTitle } from './workItems'
 import {
-  projectCategoryLabel,
-  projectCategoryOptions,
-  type ProjectCategory,
-} from './projectCategories'
+  COMPLEX,
+  REELS,
+  WORK_FEEDS,
+  workTypeLabel,
+  type WorkFeed,
+  type WorkType,
+} from './workTypes'
 
-/** «reels»: projects with a video, a filter of the feed rather than a category. */
-export const REELS = 'reels'
+/** Fields of a project the feeds read (`select` of the query), in the editor's order. */
+export type ProjectRow = Pick<
+  Project,
+  'id' | 'title' | 'slug' | 'place' | 'complex' | 'cover' | 'videos' | 'featured' | 'hidden'
+>
 
-export type WorkFilter = typeof REELS | ProjectCategory
+/** Fields of an item the feeds read, in the editor's order. */
+export type ItemRow = Pick<
+  Item,
+  'id' | 'title' | 'type' | 'project' | 'place' | 'photos' | 'videos' | 'featured' | 'hidden'
+>
 
-/** Home and works page chips in the order of the design: reels, then the categories. */
-export const WORK_FILTERS: readonly { key: WorkFilter; label: string }[] = [
-  { key: REELS, label: 'reels' },
-  ...projectCategoryOptions.map(({ value, label }) => ({ key: value, label })),
-]
+type TileBase = {
+  /** Unique within a feed: `p-1`, `i-3`, `r-i-3-12`. */
+  key: string
+  /** Cover photo or video poster; null — an empty surface. */
+  image: Media | null
+  /** Height / width of the tile (the image's own; reels 16 / 9). */
+  ratio: number
+  featured: boolean
+}
 
-/** The chip selected on the home page when it has works. */
-export const DEFAULT_WORK_FILTER: WorkFilter = 'complex'
+/** «Комплекс»: a project, a link to its page. */
+export type ProjectTile = TileBase & {
+  kind: 'project'
+  title: string
+  place: string | null
+  href: string
+  photos: number
+  videos: number
+}
+
+/** A type feed: an item. */
+export type ItemTile = TileBase & {
+  kind: 'item'
+  title: string
+  place: string | null
+  type: WorkType
+  photos: number
+  videos: number
+}
+
+/** REELS: a video of a project or of an item (its type is the zone badge). */
+export type ReelTile = TileBase & {
+  kind: 'reel'
+  /** Project or item the video belongs to (accessible name of the tile). */
+  title: string
+  type: WorkType | null
+}
+
+export type WorkTile = ProjectTile | ItemTile | ReelTile
+
+export type WorkFeeds = Record<WorkFeed, WorkTile[]>
+
+/** Tiles per feed: the chip numbers, the same whichever feed is open. */
+export type WorkCounts = Record<WorkFeed, number>
+
+/** A reel is 9:16. */
+export const REEL_RATIO = 16 / 9
+
+const images = (values: readonly MediaValue[] | null | undefined): Media[] =>
+  (values ?? []).filter(isImage)
+
+/** Videos the site can show: a populated video with a populated image poster. */
+export const showableVideos = (values: readonly MediaValue[] | null | undefined): Media[] =>
+  (values ?? []).filter(isVideo).filter((video) => isImage(video.poster))
+
+const relId = (value: ItemRow['project']): number | null =>
+  value && typeof value === 'object' ? value.id : (value ?? null)
+
+const ratioOf = (media: Media | null) => tileRatio(media?.width, media?.height)
+
+/** «13 фото + 3 видео», «13 фото», «3 видео». */
+export const mediaBadge = (photos: number, videos: number): string =>
+  [photos && `${photos} фото`, videos && `${videos} видео`].filter(Boolean).join(' + ')
+
+/** Counter at the H1: «6 проектов», «12 работ», «10 видео». */
+export const worksCount = (n: number, feed: WorkFeed): string => {
+  const forms: [string, string, string] =
+    feed === COMPLEX
+      ? ['проект', 'проекта', 'проектов']
+      : feed === REELS
+        ? ['видео', 'видео', 'видео']
+        : ['работа', 'работы', 'работ']
+  return `${n} ${plural(n, forms)}`
+}
+
+/**
+ * Feeds of the works page from the visible data, in the editor's order:
+ * «Комплекс» — projects marked so with at least one visible item; a type — its items; REELS —
+ * per project its own videos, then its items' videos, then the videos of separate works.
+ * A hidden project hides its items and videos; a video without a poster is left out.
+ */
+export function buildFeeds(projects: readonly ProjectRow[], items: readonly ItemRow[]): WorkFeeds {
+  const shown = projects.filter((p) => !p.hidden)
+  const shownIds = new Set(shown.map((p) => p.id))
+  const hiddenIds = new Set(projects.filter((p) => p.hidden).map((p) => p.id))
+  const visibleItems = items.filter((item) => {
+    if (item.hidden) return false
+    const project = relId(item.project)
+    return project === null || !hiddenIds.has(project)
+  })
+  const byProject = new Map<number, ItemRow[]>()
+  for (const item of visibleItems) {
+    const project = relId(item.project)
+    if (project !== null && shownIds.has(project)) {
+      byProject.set(project, [...(byProject.get(project) ?? []), item])
+    }
+  }
+  const projectOf = new Map(shown.map((p) => [p.id, p]))
+
+  const feeds = Object.fromEntries(
+    WORK_FEEDS.map(({ value }) => [value, []]),
+  ) as unknown as WorkFeeds
+
+  for (const project of shown) {
+    const own = byProject.get(project.id) ?? []
+    if (!project.complex || !own.length) continue
+    const image = asMedia(project.cover) ?? images(own[0]?.photos)[0] ?? null
+    feeds[COMPLEX].push({
+      kind: 'project',
+      key: `p-${project.id}`,
+      title: project.title,
+      place: project.place?.trim() || null,
+      href: `/works/${project.slug}`,
+      image,
+      ratio: ratioOf(image),
+      featured: Boolean(project.featured),
+      photos: own.reduce((n, item) => n + images(item.photos).length, 0),
+      videos:
+        showableVideos(project.videos).length +
+        own.reduce((n, item) => n + showableVideos(item.videos).length, 0),
+    })
+  }
+
+  for (const item of visibleItems) {
+    const project = projectOf.get(relId(item.project) ?? -1)
+    const image = images(item.photos)[0] ?? null
+    feeds[item.type].push({
+      kind: 'item',
+      key: `i-${item.id}`,
+      title: itemTitle(item),
+      place: (project ? project.place : item.place)?.trim() || null,
+      type: item.type,
+      image,
+      ratio: ratioOf(image),
+      featured: Boolean(item.featured),
+      photos: images(item.photos).length,
+      videos: showableVideos(item.videos).length,
+    })
+  }
+
+  const reel =
+    (owner: string, title: string, type: WorkType | null, featured: boolean) =>
+    (video: Media): ReelTile => ({
+      kind: 'reel',
+      key: `r-${owner}-${video.id}`,
+      title,
+      type,
+      image: asMedia(video.poster),
+      ratio: REEL_RATIO,
+      featured,
+    })
+  const itemReels = (item: ItemRow) =>
+    showableVideos(item.videos).map(
+      reel(`i-${item.id}`, itemTitle(item), item.type, Boolean(item.featured)),
+    )
+  for (const project of shown) {
+    feeds[REELS].push(
+      ...showableVideos(project.videos).map(
+        reel(`p-${project.id}`, project.title, null, Boolean(project.featured)),
+      ),
+      ...(byProject.get(project.id) ?? []).flatMap(itemReels),
+    )
+  }
+  feeds[REELS].push(
+    ...visibleItems.filter((item) => relId(item.project) === null).flatMap(itemReels),
+  )
+
+  return feeds
+}
+
+export const feedCounts = (feeds: WorkFeeds): WorkCounts =>
+  Object.fromEntries(WORK_FEEDS.map(({ value }) => [value, feeds[value].length])) as WorkCounts
+
+/** Chips of /works: feeds that have tiles, in the design's order. */
+export const feedChips = (counts: WorkCounts) => WORK_FEEDS.filter(({ value }) => counts[value] > 0)
 
 /** Previews per chip on the home page (README §6.1 п.6). */
 export const HOME_WORKS_LIMIT = 4
 
-/** Fields of a project the previews read (`select` of the query). */
-export type ProjectRow = Pick<Project, 'id' | 'title' | 'slug' | 'category' | 'slides'>
-
 export type WorkPreview = {
-  id: number
+  key: string
   title: string
-  /** Label of the project's own category, also in the reels panel. */
+  /** Label of the tile's type («кухня»), «комплекс» for a project. */
   category: string
   href: string
-  /** First frame: the video poster or the first photo. */
   image: Media | null
-  /** Video project (▶) or photos only (carousel icon). */
+  /** With a video (▶) or photos only (carousel icon). */
   kind: 'video' | 'photo'
 }
 
-export type WorkPanel = { key: WorkFilter; label: string; works: WorkPreview[] }
+export type WorkPanel = { key: WorkFeed; label: string; works: WorkPreview[] }
 
-/** First frame of a project: the video poster or the first photo, and whether it is a video. */
-const firstFrame = (project: ProjectRow): Pick<WorkPreview, 'image' | 'kind'> => {
-  const first = project.slides?.[0]
-  const kind = first?.type === 'video' ? 'video' : 'photo'
-  return { image: asMedia(kind === 'video' ? first?.poster : first?.file), kind }
-}
+const feedHref = (feed: WorkFeed) => (feed === COMPLEX ? '/works' : `/works?category=${feed}`)
 
-export function toWorkPreview(project: ProjectRow): WorkPreview {
-  return {
-    id: project.id,
-    title: project.title,
-    category: projectCategoryLabel(project.category) ?? '',
-    // The project page: the viewer open on it over the feed
-    href: `/works/${project.slug}`,
-    ...firstFrame(project),
+/** Home preview of a tile: a project leads to its page, an item and a reel to their feed. */
+export const toWorkPreview = (tile: WorkTile): WorkPreview => {
+  switch (tile.kind) {
+    case 'project':
+      return {
+        key: tile.key,
+        title: tile.title,
+        category: 'Комплекс',
+        href: tile.href,
+        image: tile.image,
+        kind: tile.videos ? 'video' : 'photo',
+      }
+    case 'item':
+      return {
+        key: tile.key,
+        title: tile.title,
+        category: workTypeLabel(tile.type) ?? '',
+        href: feedHref(tile.type),
+        image: tile.image,
+        kind: tile.videos ? 'video' : 'photo',
+      }
+    case 'reel':
+      return {
+        key: tile.key,
+        title: tile.title,
+        category: workTypeLabel(tile.type) ?? '',
+        href: feedHref(REELS),
+        image: tile.image,
+        kind: 'video',
+      }
   }
 }
 
-/** Panels in chip order; a chip without works is not shown. */
-export function workPanels(
-  byFilter: Partial<Record<WorkFilter, ProjectRow[]>>,
-  limit = HOME_WORKS_LIMIT,
-): WorkPanel[] {
-  return WORK_FILTERS.flatMap(({ key, label }) => {
-    const works = (byFilter[key] ?? []).slice(0, limit).map(toWorkPreview)
-    return works.length ? [{ key, label, works }] : []
+/** Home panels in chip order, up to 4 tiles each: «На главной» first, then the editor's order. */
+export function workPanels(feeds: WorkFeeds, limit = HOME_WORKS_LIMIT): WorkPanel[] {
+  return WORK_FEEDS.flatMap(({ value, label: feedLabel }) => {
+    // Home chips are lowercase (CSS); «reels» keeps its lowercase text too
+    const label = value === REELS ? 'reels' : feedLabel
+    const tiles = feeds[value]
+    const ordered = [...tiles.filter((t) => t.featured), ...tiles.filter((t) => !t.featured)]
+    const works = ordered.slice(0, limit).map(toWorkPreview)
+    return works.length ? [{ key: value, label, works }] : []
   })
 }
 
 /** «Комплекс» if it has works, else the first chip that has. */
-export const initialWorkFilter = (panels: WorkPanel[]): WorkFilter | undefined =>
-  panels.find((panel) => panel.key === DEFAULT_WORK_FILTER)?.key ?? panels[0]?.key
-
-/** «все»: the whole feed, no parameter in the URL. */
-export const ALL_WORKS = 'all'
-
-export type WorksFeedFilter = typeof ALL_WORKS | WorkFilter
-
-/** Every value the feed accepts, in chip order. */
-export const WORKS_FEED_FILTERS: readonly WorksFeedFilter[] = [
-  ALL_WORKS,
-  ...WORK_FILTERS.map(({ key }) => key),
-]
-
-/** Works per feed page: 12 fills whole rows at 3, 4 and 6 columns. */
-export const WORKS_PAGE_SIZE = 12
-
-/** Hard upper bound of a requested page (input of the Server Action). */
-export const WORKS_MAX_PAGE = 1000
-
-/** The next page starts loading this far (px) before the end of the grid (design: 300). */
-export const FEED_PRELOAD_PX = 300
-
-/** IntersectionObserver margin of the feed end: the zone below the viewport. */
-export const FEED_PRELOAD_MARGIN = `0px 0px ${FEED_PRELOAD_PX}px 0px`
-
-/** Works per filter: `all`, reels and every category. */
-export type WorksCounts = Record<WorksFeedFilter, number>
-
-/** Card of the works feed: the project page link and its first frame. */
-export type FeedWork = WorkPreview & { slug: string }
-
-export function toFeedWork(project: ProjectRow): FeedWork {
-  return {
-    id: project.id,
-    slug: project.slug,
-    title: project.title,
-    category: projectCategoryLabel(project.category) ?? '',
-    href: `/works/${project.slug}`,
-    ...firstFrame(project),
-  }
-}
-
-export type WorksFeedPage = { items: FeedWork[]; hasMore: boolean }
-
-export const EMPTY_FEED_PAGE: WorksFeedPage = { items: [], hasMore: false }
-
-/** Chips of the feed: «все», then reels and the categories that have works. */
-export const worksChips = (counts: WorksCounts): { value: WorksFeedFilter; label: string }[] =>
-  counts[ALL_WORKS] > 0
-    ? [
-        { value: ALL_WORKS, label: 'все' },
-        ...WORK_FILTERS.filter(({ key }) => counts[key] > 0).map(({ key, label }) => ({
-          value: key,
-          label,
-        })),
-      ]
-    : []
-
-/** Counter under the bar: «30 работ», «12 работ · комплекс», «20 работ · reels». */
-export const worksCount = (n: number, filter: WorksFeedFilter): string => {
-  const count = `${n} ${plural(n, ['работа', 'работы', 'работ'])}`
-  const label = WORK_FILTERS.find(({ key }) => key === filter)?.label
-  return label ? `${count} · ${label.toLowerCase()}` : count
-}
-
-/**
- * Valid page of the feed, or null: an integer from 1 to WORKS_MAX_PAGE that starts within the
- * filter's works. A page past the end costs no query and no cache entry.
- */
-export const feedPage = (page: unknown, total: number): number | null =>
-  typeof page === 'number' &&
-  Number.isInteger(page) &&
-  page >= 1 &&
-  page <= WORKS_MAX_PAGE &&
-  (page - 1) * WORKS_PAGE_SIZE < total
-    ? page
-    : null
-
-/** New cards of a page without the ones already in the feed (by id). */
-export const appendWorks = (items: readonly FeedWork[], next: readonly FeedWork[]): FeedWork[] => {
-  const ids = new Set(items.map((work) => work.id))
-  return [...items, ...next.filter((work) => !ids.has(work.id))]
-}
+export const initialWorkFilter = (panels: WorkPanel[]): WorkFeed | undefined =>
+  panels.find((panel) => panel.key === COMPLEX)?.key ?? panels[0]?.key

@@ -20,22 +20,7 @@ import {
   type NewsFilter,
   type NewsPage,
 } from './news'
-import { isProjectSlug, toViewerProject, type ProjectRecord, type ViewerProject } from './viewer'
-import {
-  ALL_WORKS,
-  HOME_WORKS_LIMIT,
-  REELS,
-  WORK_FILTERS,
-  WORKS_FEED_FILTERS,
-  WORKS_PAGE_SIZE,
-  toFeedWork,
-  workPanels,
-  type ProjectRow,
-  type WorkPanel,
-  type WorksCounts,
-  type WorksFeedFilter,
-  type WorksFeedPage,
-} from './works'
+import { buildFeeds, workPanels, type WorkFeeds, type WorkPanel } from './works'
 
 const layoutCached = unstable_cache(
   async (): Promise<LayoutInput> => {
@@ -205,7 +190,17 @@ export async function getLatestNews(limit: number): Promise<NewsSlide[]> {
 
 export type NewsArticle = Pick<
   News,
-  'id' | 'title' | 'slug' | 'type' | 'date' | 'lead' | 'cover' | 'body' | 'readingTime' | 'meta' | 'updatedAt'
+  | 'id'
+  | 'title'
+  | 'slug'
+  | 'type'
+  | 'date'
+  | 'lead'
+  | 'cover'
+  | 'body'
+  | 'readingTime'
+  | 'meta'
+  | 'updatedAt'
 >
 
 // Media of the article: the cover (page, Open Graph) and the photos of the body blocks.
@@ -390,143 +385,10 @@ export async function getNewsList(): Promise<NewsListItem[]> {
   return newsListCached()
 }
 
-// A video can only be the first slide, so «has a video» means a video project.
-const worksWhere = (filter: WorksFeedFilter): Where | undefined =>
-  filter === ALL_WORKS
-    ? undefined
-    : filter === REELS
-      ? { 'slides.type': { equals: 'video' } }
-      : { category: { equals: filter } }
-
-const homeWorksCached = unstable_cache(
-  async (): Promise<WorkPanel[]> => {
-    const payload = await getPayloadClient()
-    const find = async (where: Where | undefined): Promise<ProjectRow[]> => {
-      const { docs } = await payload.find({
-        collection: 'projects',
-        where,
-        // «На главной» first, then by the editor's order
-        sort: ['-featured', 'order', '-createdAt'],
-        limit: HOME_WORKS_LIMIT,
-        depth: 1,
-        overrideAccess: false,
-        select: { title: true, slug: true, category: true, slides: true },
-      })
-      return docs
-    }
-    const lists = await Promise.all(
-      WORK_FILTERS.map(async ({ key }) => [key, await find(worksWhere(key))] as const),
-    )
-    return workPanels(Object.fromEntries(lists))
-  },
-  ['collection:projects:home'],
-  { tags: [collectionTag('projects')] },
-)
-
-/** Home «Наши работы»: up to 4 previews per chip, chips without works left out. */
-export async function getHomeWorks(): Promise<WorkPanel[]> {
-  await connection()
-  return homeWorksCached()
-}
-
-// Media fields the feed cards and Open Graph read. `url` is computed from `filename` (and `prefix`
-// with S3), so those are selected too.
+// Media fields the work tiles read. `url` is computed from `filename` (and `prefix` with S3), so
+// those are selected too; `poster` — a video's tile in REELS (populated one level deeper).
 const WORK_MEDIA_SIZE = { url: true, filename: true, width: true, height: true } as const
-
-const worksPageCached = unstable_cache(
-  async (filter: WorksFeedFilter, page: number): Promise<WorksFeedPage> => {
-    const payload = await getPayloadClient()
-    const { docs, hasNextPage } = await payload.find({
-      collection: 'projects',
-      where: worksWhere(filter),
-      // The editor's order; the id keeps pages stable when order and date are equal
-      sort: ['order', '-createdAt', '-id'],
-      limit: WORKS_PAGE_SIZE,
-      page,
-      depth: 1,
-      overrideAccess: false,
-      select: { title: true, slug: true, category: true, slides: true },
-      populate: {
-        media: {
-          alt: true,
-          url: true,
-          filename: true,
-          prefix: true,
-          mimeType: true,
-          width: true,
-          height: true,
-          focalX: true,
-          focalY: true,
-          sizes: { thumb: WORK_MEDIA_SIZE, card: WORK_MEDIA_SIZE, og: WORK_MEDIA_SIZE },
-        },
-      },
-    })
-    return { items: docs.map(toFeedWork), hasMore: hasNextPage }
-  },
-  ['collection:projects:feed'],
-  { tags: [collectionTag('projects')] },
-)
-
-/** A page of the works feed (12 cards) for «все», reels or a category. */
-export async function getWorksPage(filter: WorksFeedFilter, page: number): Promise<WorksFeedPage> {
-  await connection()
-  return worksPageCached(filter, page)
-}
-
-const worksCountsCached = unstable_cache(
-  async (): Promise<WorksCounts> => {
-    const payload = await getPayloadClient()
-    const counts = await Promise.all(
-      WORKS_FEED_FILTERS.map(async (filter) => {
-        const { totalDocs } = await payload.count({
-          collection: 'projects',
-          where: worksWhere(filter),
-          overrideAccess: false,
-        })
-        return [filter, totalDocs] as const
-      }),
-    )
-    return Object.fromEntries(counts) as WorksCounts
-  },
-  ['collection:projects:counts'],
-  { tags: [collectionTag('projects')] },
-)
-
-/** Works per filter («все», reels, categories): the counter and the chips that have works. */
-export async function getWorksCounts(): Promise<WorksCounts> {
-  await connection()
-  return worksCountsCached()
-}
-
-export type ProjectListItem = { slug: string; title: string }
-
-// Every project in the order of the feed «все»: the slugs a project page may have, and the
-// ItemList of /works.
-const projectListCached = unstable_cache(
-  async (): Promise<ProjectListItem[]> => {
-    const payload = await getPayloadClient()
-    const { docs } = await payload.find({
-      collection: 'projects',
-      sort: ['order', '-createdAt', '-id'],
-      pagination: false,
-      depth: 0,
-      overrideAccess: false,
-      select: { slug: true, title: true },
-    })
-    return docs.map((doc) => ({ slug: doc.slug, title: doc.title }))
-  },
-  ['collection:projects:list'],
-  { tags: [collectionTag('projects')] },
-)
-
-/** All projects in the order of the feed «все»: slug and title (JSON-LD ItemList of /works). */
-export async function getProjectList(): Promise<ProjectListItem[]> {
-  await connection()
-  return projectListCached()
-}
-
-// The viewer shows frames full-screen: the `hero` size (1920) on top of the feed's ones.
-const PROJECT_MEDIA = {
+const WORK_MEDIA = {
   alt: true,
   url: true,
   filename: true,
@@ -536,98 +398,71 @@ const PROJECT_MEDIA = {
   height: true,
   focalX: true,
   focalY: true,
-  sizes: {
-    thumb: WORK_MEDIA_SIZE,
-    card: WORK_MEDIA_SIZE,
-    hero: WORK_MEDIA_SIZE,
-    og: WORK_MEDIA_SIZE,
-  },
+  poster: true,
+  sizes: { thumb: WORK_MEDIA_SIZE, card: WORK_MEDIA_SIZE },
 } as const
 
-/** A project of the viewer with its SEO fields and its place in the feed order. */
-export type ProjectPageData = {
-  project: ViewerProject
-  meta: ProjectRecord['meta']
-  sort: Pick<ProjectRecord, 'id' | 'order' | 'createdAt'>
-}
+// The editor's order (drag-and-drop in the admin), then the newest; the id breaks the last ties
+const WORK_SORT = ['_order', '-createdAt', '-id']
 
-/**
- * A project by its slug, or null (the page answers 404). An unknown slug is answered from the
- * list of slugs before the per-slug cache, so made-up URLs leave no cache entries.
- */
-export async function getProjectBySlug(slug: string): Promise<ProjectPageData | null> {
-  await connection()
-  if (!isProjectSlug(slug) || !(await projectListCached()).some((item) => item.slug === slug))
-    return null
-  return unstable_cache(
-    async (): Promise<ProjectPageData | null> => {
-      const payload = await getPayloadClient()
-      const { docs } = await payload.find({
+const worksTags = [collectionTag('projects'), collectionTag('items')]
+
+const workFeedsCached = unstable_cache(
+  async (): Promise<WorkFeeds> => {
+    const payload = await getPayloadClient()
+    const [projects, items] = await Promise.all([
+      payload.find({
         collection: 'projects',
-        where: { slug: { equals: slug } },
-        limit: 1,
-        depth: 1,
+        sort: WORK_SORT,
+        pagination: false,
+        depth: 2,
         overrideAccess: false,
         select: {
           title: true,
           slug: true,
-          category: true,
           place: true,
-          area: true,
-          duration: true,
-          description: true,
-          slides: true,
-          meta: true,
-          order: true,
-          createdAt: true,
+          complex: true,
+          cover: true,
+          videos: true,
+          featured: true,
+          hidden: true,
         },
-        populate: { media: PROJECT_MEDIA },
-      })
-      const doc = docs[0]
-      if (!doc) return null
-      return {
-        project: toViewerProject(doc),
-        meta: doc.meta,
-        sort: { id: doc.id, order: doc.order, createdAt: doc.createdAt },
-      }
-    },
-    ['collection:projects:slug', slug],
-    { tags: [collectionTag('projects')] },
-  )()
-}
-
-/**
- * Projects before this one in the order of the feed «все» (`order, -createdAt, -id`): its 0-based
- * position. An empty `order` sorts last (Postgres, ascending).
- */
-export const projectsBefore = ({ id, order, createdAt }: ProjectPageData['sort']): Where => {
-  const sameOrder: Where =
-    order == null ? { order: { exists: false } } : { order: { equals: order } }
-  return {
-    or: [
-      ...(order == null ? [{ order: { exists: true } }] : [{ order: { less_than: order } }]),
-      { and: [sameOrder, { createdAt: { greater_than: createdAt } }] },
-      { and: [sameOrder, { createdAt: { equals: createdAt } }, { id: { greater_than: id } }] },
-    ],
-  }
-}
-
-/** 0-based position of a project in the feed «все». */
-export async function getProjectPosition(sort: ProjectPageData['sort']): Promise<number> {
-  await connection()
-  return unstable_cache(
-    async (): Promise<number> => {
-      const payload = await getPayloadClient()
-      const { totalDocs } = await payload.count({
-        collection: 'projects',
-        where: projectsBefore(sort),
+        populate: { media: WORK_MEDIA },
+      }),
+      payload.find({
+        collection: 'items',
+        sort: WORK_SORT,
+        pagination: false,
+        depth: 2,
         overrideAccess: false,
-      })
-      return totalDocs
-    },
-    ['collection:projects:position', String(sort.id), String(sort.order), sort.createdAt],
-    { tags: [collectionTag('projects')] },
-  )()
+        select: {
+          title: true,
+          type: true,
+          project: true,
+          place: true,
+          photos: true,
+          videos: true,
+          featured: true,
+          hidden: true,
+        },
+        populate: { media: WORK_MEDIA, projects: { title: true } },
+      }),
+    ])
+    return buildFeeds(projects.docs, items.docs)
+  },
+  ['collection:works:feeds'],
+  { tags: worksTags },
+)
+
+/** Every feed of the works page: visible tiles in the editor's order. */
+export async function getWorkFeeds(): Promise<WorkFeeds> {
+  await connection()
+  return workFeedsCached()
+}
+
+/** Home «Наши работы»: up to 4 previews per chip, chips without works left out. */
+export async function getHomeWorks(): Promise<WorkPanel[]> {
+  return workPanels(await getWorkFeeds())
 }
 
 export type SalonPin = Pick<

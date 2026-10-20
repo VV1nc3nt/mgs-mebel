@@ -42,8 +42,8 @@ export function WorksSection({ section, panels, idPrefix = 'home' }: Props) {
         panels={panels.map((panel) => (
           <ul key={panel.key} className="page-container grid grid-cols-2 gap-2 md:grid-cols-4">
             {panel.works.map((work) => (
-              <li key={work.id}>
-                <WorkCard work={work} variant="home" />
+              <li key={work.key}>
+                <WorkCard work={work} />
               </li>
             ))}
           </ul>

@@ -5,19 +5,11 @@ import { useState } from 'react'
 import { SegmentFilter, type SegmentItem } from '@/components/ui/SegmentFilter'
 import { catalogCategoryOptions } from '@/lib/catalogCategories'
 import { catalogCount } from '@/lib/catalogs'
-import { plural } from '@/lib/plural'
+import { worksCount } from '@/lib/works'
+import { WORK_FEEDS, type WorkFeed } from '@/lib/workTypes'
 
-// Works filter labels from README §6.4; catalog categories — the same list as the CMS.
-const WORKS = [
-  { value: 'reels', label: 'reels' },
-  { value: 'complex', label: 'комплекс' },
-  { value: 'kitchens', label: 'кухни' },
-  { value: 'hallways', label: 'прихожие' },
-  { value: 'bedrooms', label: 'спальни' },
-  { value: 'bathrooms', label: 'санузел' },
-  { value: 'wardrobes', label: 'гардеробные' },
-  { value: 'livingrooms', label: 'гостиные' },
-] as const satisfies readonly SegmentItem<string>[]
+// Works feeds — the same list as the works page; catalog categories — the same list as the CMS.
+const WORKS: readonly SegmentItem<WorkFeed>[] = WORK_FEEDS
 
 const CATALOGS = [
   { value: 'all', label: 'все' },
@@ -35,9 +27,7 @@ type Props = {
 }
 
 export function WorksSegmentDemo({ workCounts }: Pick<Props, 'workCounts'>) {
-  const [value, setValue] = useState<(typeof WORKS)[number]['value']>('complex')
-  const n = workCounts[value] ?? 0
-  const label = WORKS.find((item) => item.value === value)?.label
+  const [value, setValue] = useState<WorkFeed>('complex')
   return (
     <SegmentFilter
       items={WORKS}
@@ -45,7 +35,7 @@ export function WorksSegmentDemo({ workCounts }: Pick<Props, 'workCounts'>) {
       onChange={setValue}
       label="Категории работ"
       sticky
-      count={`${n} ${plural(n, ['работа', 'работы', 'работ'])} · ${label}`}
+      count={worksCount(workCounts[value] ?? 0, value)}
     />
   )
 }

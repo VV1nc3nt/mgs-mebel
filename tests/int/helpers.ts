@@ -1,6 +1,6 @@
 import config from '@/payload.config'
 import type { User } from '@/payload-types'
-import { getPayload, type Payload } from 'payload'
+import { getPayload, type CollectionSlug, type Payload, type Where } from 'payload'
 import sharp from 'sharp'
 
 export const PREFIX = `int-${process.pid}-${Date.now()}`
@@ -48,22 +48,27 @@ export const mp4File = (name = fileName('mp4')) => {
 export const createImage = async (payload: Payload, name?: string) =>
   payload.create({ collection: 'media', data: { alt: 'test' }, file: await pngFile(name) })
 
-export const createVideo = async (payload: Payload, name?: string) =>
-  payload.create({ collection: 'media', data: {}, file: mp4File(name) })
+export const createVideo = async (payload: Payload, name?: string, poster?: number) =>
+  payload.create({ collection: 'media', data: { poster }, file: mp4File(name) })
 
 /** Deletes everything whose field starts with the test prefix. Fails loudly if something could not be deleted. */
 export const cleanup = async (payload: Payload) => {
   const like = { like: PREFIX }
-  const targets = [
+  const targets: [CollectionSlug, string, Where?][] = [
     ['news', 'title'],
+    // Items before projects: a project with items cannot be deleted
+    ['items', 'label'],
     ['projects', 'title'],
     ['salons', 'name'],
     ['catalogs', 'title'],
+    // Videos before images: a poster in use by a video cannot be deleted
+    ['media', 'filename', { mimeType: { like: 'video/' } }],
     ['media', 'filename'],
     ['users', 'email'],
-  ] as const
-  for (const [collection, field] of targets) {
-    const { errors } = await payload.delete({ collection, where: { [field]: like } })
+  ]
+  for (const [collection, field, extra] of targets) {
+    const where = extra ? { and: [{ [field]: like }, extra] } : { [field]: like }
+    const { errors } = await payload.delete({ collection, where })
     if (errors.length) throw new Error(`cleanup ${collection}: ${JSON.stringify(errors)}`)
   }
 }

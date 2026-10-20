@@ -61,25 +61,30 @@ describe('home page and news queries', () => {
       depth: 0,
     })
 
-    const project = (title: string, featured: boolean, order: number, withVideo = false) =>
+    // «Наши работы»: a complex project with items of a rare type (kids), one of them featured
+    // and one with a video. Test rows go to the end of the editor's order.
+    const reelVideo = await createVideo(payload, undefined, image.id)
+    const project = await payload.create({
+      collection: 'projects',
+      data: { title: `${PREFIX} квартира`, slug: `${PREFIX}-kvartira`, complex: true },
+      depth: 0,
+    })
+    const kidsItem = (title: string, featured: boolean, videos: number[] = []) =>
       payload.create({
-        collection: 'projects',
+        collection: 'items',
         data: {
+          type: 'kids',
           title: `${PREFIX} ${title}`,
-          slug: `${PREFIX}-${title.replaceAll(' ', '-')}`,
-          category: 'hallways',
+          project: project.id,
+          photos: [image.id],
+          videos,
           featured,
-          order,
-          slides: [
-            ...(withVideo ? [{ type: 'video' as const, file: video.id, poster: image.id }] : []),
-            { type: 'photo' as const, file: image.id },
-          ],
         },
         depth: 0,
       })
-    await project('plain first by order', false, FIRST)
-    await project('featured', true, FIRST + 1)
-    await project('reel', true, FIRST, true)
+    await kidsItem('plain first by order', false)
+    await kidsItem('featured', true)
+    await kidsItem('reel', true, [reelVideo.id])
 
     const salon = (name: string, order: number) =>
       payload.create({
@@ -121,25 +126,22 @@ describe('home page and news queries', () => {
     expect(await getNewsBySlug(`${PREFIX}-nesushchestvuet`)).toBeNull()
   })
 
-  it('home works: «На главной» first, then by order; reels are the video projects', async () => {
+  it('home works: «На главной» first, then by order; reels are the videos', async () => {
     const panels = await getHomeWorks()
-    const hallways = panels.find((p) => p.key === 'hallways')!
-    expect(hallways.label).toBe('Прихожие')
-    expect(hallways.works.slice(0, 3).map((w) => w.title)).toEqual([
-      `${PREFIX} reel`,
-      `${PREFIX} featured`,
-      `${PREFIX} plain first by order`,
-    ])
+    const kids = panels.find((p) => p.key === 'kids')!
+    expect(kids.label).toBe('Детские')
+    const ours = kids.works.filter((w) => w.title.startsWith(PREFIX)).map((w) => w.title)
+    expect(ours).toEqual([`${PREFIX} featured`, `${PREFIX} reel`, `${PREFIX} plain first by order`])
 
     const reels = panels.find((p) => p.key === 'reels')!
-    expect(reels.works[0]).toMatchObject({
-      title: `${PREFIX} reel`,
+    const reel = reels.works.find((w) => w.title === `${PREFIX} reel`)
+    expect(reel).toMatchObject({
       kind: 'video',
-      category: 'Прихожие',
-      href: expect.stringMatching(/^\/works\/[a-z0-9-]+$/),
+      category: 'Детская',
+      href: '/works?category=reels',
     })
+    expect(reel!.image?.mimeType).toMatch(/^image\//)
     expect(reels.works.map((w) => w.title)).not.toContain(`${PREFIX} featured`)
-    expect(reels.works[0]!.image?.mimeType).toMatch(/^image\//)
   })
 
   it('salons: by order, only the map and card fields', async () => {

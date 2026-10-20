@@ -1,7 +1,7 @@
 import type { DataFromGlobalSlug, GlobalSlug } from 'payload'
 
 import { seoMeta } from '../seo'
-import { projectPlan } from './projects'
+import { itemPlan } from './works'
 import type { MediaId } from './types'
 
 type Service = 'id' | 'createdAt' | 'updatedAt' | 'globalType'
@@ -196,10 +196,10 @@ export const globals = (id: MediaId): SeedGlobals => ({
     }),
   },
   worksPage: {
-    hero: { label: 'наши работы', title: 'Реальные проекты' },
-    viewer: { ctaLabel: 'Хочу такой же проект' },
+    hero: { label: 'наши работы', title: 'Портфолио' },
+    prices: { priceDate: 'октябрь 2026' },
     // No description text on the page; the image is the first photo of the first project.
-    meta: seoMeta({ title: 'Реальные проекты', image: id(projectPlan[0].photos[0]) }),
+    meta: seoMeta({ title: 'Портфолио', image: id(itemPlan[0]!.photos[0]!) }),
   },
   catalogsPage: {
     hero: {

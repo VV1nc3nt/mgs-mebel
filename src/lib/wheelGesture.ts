@@ -1,6 +1,5 @@
 /**
- * One wheel gesture — one step: shared by the home hero scene (lib/heroStep) and the project
- * viewer. Deltas add up to a step; after it, every event is swallowed for a while, and the
+ * One wheel gesture — one step: the home hero scene (lib/heroStep). Deltas add up to a step; after it, every event is swallowed for a while, and the
  * inertia tail of the same gesture (a trackpad keeps sending smaller deltas) makes no second step.
  * Pure decisions with the reference numbers of the home hero (home README §1.6).
  */

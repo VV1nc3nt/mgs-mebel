@@ -29,7 +29,7 @@ export const newsTag = (slug: string) => `news:${slug}`
 /** Every tag of the site data. A `news:<slug>` entry also carries `collection:news`. */
 export const ALL_TAGS: readonly string[] = [
   ...['layout', 'settings', 'stats', ...PAGE_GLOBALS].map(globalTag),
-  ...['news', 'projects', 'salons', 'catalogs'].map(collectionTag),
+  ...['news', 'projects', 'items', 'salons', 'catalogs'].map(collectionTag),
 ]
 
 type Decision = {

@@ -10,9 +10,9 @@ import { ensureCached, missingFiles } from '@/seed/cache'
 import { catalogs } from '@/seed/data/catalogs'
 import { globals } from '@/seed/data/globals'
 import { news } from '@/seed/data/news'
-import { projects } from '@/seed/data/projects'
 import { RETIRED_FILES, RETIRED_SALONS, salons } from '@/seed/data/salons'
 import type { MediaId } from '@/seed/data/types'
+import { RETIRED_PROJECTS, itemPlan, workItems, workProjects } from '@/seed/data/works'
 import { isSame } from '@/seed/compare'
 import { isLocalDatabaseUrl, isSeedAllowed } from '@/seed/guard'
 import { seedFiles } from '@/seed/index'
@@ -106,7 +106,14 @@ describe('seed manifest and data', () => {
   })
 
   it('references only media from the manifest', () => {
-    expect(() => [salons(id), projects(id), news(id), catalogs(id), globals(id)]).not.toThrow()
+    expect(() => [
+      salons(id),
+      workProjects(id),
+      workItems(id, new Map()),
+      news(id),
+      catalogs(id),
+      globals(id),
+    ]).not.toThrow()
   })
 
   it('keeps retired salons and files out of the current data', () => {
@@ -114,12 +121,37 @@ describe('seed manifest and data', () => {
     for (const name of RETIRED_SALONS) expect(names).not.toContain(name)
     const files = seedFiles.map((file) => file.filename)
     for (const name of RETIRED_FILES) expect(files).not.toContain(name)
+    const slugs = workProjects(id).map((doc) => doc.slug)
+    for (const slug of RETIRED_PROJECTS) expect(slugs).not.toContain(slug)
+  })
+
+  it('«Наши работы» from the reference: 6 projects with 34 items, 27 separate works', () => {
+    expect(workProjects(id)).toHaveLength(6)
+    expect(itemPlan.filter((i) => i.project)).toHaveLength(34)
+    expect(itemPlan.filter((i) => !i.project)).toHaveLength(27)
+    // No photo twice within an item; every item has one at least
+    for (const { photos } of itemPlan) {
+      expect(photos.length).toBeGreaterThan(0)
+      expect(new Set(photos).size).toBe(photos.length)
+    }
+    // Every video of the works has a poster in the manifest
+    const keys = new Set(seedFiles.map((file) => file.key))
+    for (const key of [...itemPlan.flatMap((i) => i.videos), 'V1']) {
+      const file = seedFiles.find((f) => f.key === key)!
+      expect(file.poster && keys.has(file.poster)).toBe(true)
+    }
+    // «О проекте» and the price only where the reference has them
+    expect(
+      workProjects(id)
+        .filter((p) => p.about)
+        .map((p) => p.title),
+    ).toEqual(['Квартира в белом и дубе'])
   })
 
   it('has unique document keys', () => {
-    const slugs = projects(id).map((doc) => doc.slug)
+    const slugs = workProjects(id).map((doc) => doc.slug)
     expect(new Set(slugs).size).toBe(slugs.length)
-    const titles = projects(id).map((doc) => doc.meta?.title)
+    const titles = workProjects(id).map((doc) => doc.meta?.title)
     expect(new Set(titles).size).toBe(titles.length)
     const newsSlugs = news(id).map((doc) => doc.slug)
     expect(new Set(newsSlugs).size).toBe(newsSlugs.length)
@@ -127,11 +159,11 @@ describe('seed manifest and data', () => {
 
   it('keeps SEO titles within 60 and descriptions within 160 characters', () => {
     const metas = [
-      ...projects(id).map((doc) => doc.meta),
+      ...workProjects(id).map((doc) => doc.meta),
       ...news(id).map((doc) => doc.meta),
       ...Object.values(globals(id)).map((data) => (data as { meta?: unknown }).meta),
     ].filter(Boolean) as { title?: string; description?: string }[]
-    expect(metas.length).toBe(30 + 7 + 7)
+    expect(metas.length).toBe(6 + 7 + 7)
     for (const meta of metas) {
       expect(meta.title?.length).toBeLessThanOrEqual(60)
       expect(meta.description?.length ?? 0).toBeLessThanOrEqual(160)
