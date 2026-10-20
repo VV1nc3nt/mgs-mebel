@@ -109,10 +109,9 @@ test.describe('home', () => {
       await expect(hero.getByRole('heading', { level: 2, includeHidden: true })).toHaveText(
         SEGMENTS[1]!.title,
       )
-      await expect(hero.getByRole('group', { name: '2 из 2', includeHidden: true })).toHaveAttribute(
-        'aria-hidden',
-        'true',
-      )
+      await expect(
+        hero.getByRole('group', { name: '2 из 2', includeHidden: true }),
+      ).toHaveAttribute('aria-hidden', 'true')
 
       // Long words are never cut: the text of H1 and H2 (both segments) fits every ancestor that
       // clips horizontally. scrollWidth does not show it: the heading box itself does not overflow.
@@ -129,7 +128,8 @@ test.describe('home', () => {
               cuts.push(`${heading.textContent} cut by ${el.tagName}.${el.className}`)
             }
           }
-          if (text.right > document.documentElement.clientWidth) cuts.push(`${heading.textContent} off screen`)
+          if (text.right > document.documentElement.clientWidth)
+            cuts.push(`${heading.textContent} off screen`)
           return cuts
         }),
       )
@@ -283,10 +283,9 @@ test.describe('home', () => {
       expect(footer.width).toBeCloseTo(viewport, 1)
 
       const header = page.locator('header')
-      expect((await box(header.getByRole('link', { name: 'MGS MEBEL — на главную' }))).x).toBeCloseTo(
-        left,
-        1,
-      )
+      expect(
+        (await box(header.getByRole('link', { name: 'MGS MEBEL — на главную' }))).x,
+      ).toBeCloseTo(left, 1)
       const cta = await box(
         header.getByRole('button', { name: `${CTA_LABEL} — выбрать мессенджер` }),
       )
@@ -517,14 +516,20 @@ test.describe('home', () => {
     await expect(works.locator('#works-complex')).toBeHidden()
     const panel = works.locator('#works-reels')
     await expect(panel).toBeVisible()
-    // Video projects: ▶ marker, the link to the project page (the viewer open on it)
+    // Videos: ▶ marker, the link to the REELS feed of the works page
     const first = panel.getByRole('link').first()
     await expect(first).toContainText('Видео')
-    await expect(first).toHaveAttribute('href', /^\/works\/[a-z0-9-]+$/)
+    await expect(first).toHaveAttribute('href', '/works?category=reels')
 
+    // An item leads to the feed of its type; a project of «Комплекс» — to its page
     await works.getByRole('button', { name: 'Кухни' }).click()
     await expect(works.locator('#works-kitchens')).toBeVisible()
     await expect(works.locator('#works-kitchens').getByRole('link').first()).toHaveAttribute(
+      'href',
+      '/works?category=kitchens',
+    )
+    await works.getByRole('button', { name: 'Комплекс' }).click()
+    await expect(works.locator('#works-complex').getByRole('link').first()).toHaveAttribute(
       'href',
       /^\/works\/[a-z0-9-]+$/,
     )
@@ -854,9 +859,9 @@ test.describe('home', () => {
           data: { ...draft, hero, _status: 'draft' },
         })
       try {
-        expect(
-          (await save({ ...draft.hero, slides: draft.hero.slides.slice(0, 1) })).ok(),
-        ).toBe(true)
+        expect((await save({ ...draft.hero, slides: draft.hero.slides.slice(0, 1) })).ok()).toBe(
+          true,
+        )
         await page.goto(`${BASE}/preview?path=/`)
         await hydrated(page)
         const hero = heroSection(page)

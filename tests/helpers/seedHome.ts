@@ -12,7 +12,6 @@ import sharp from 'sharp'
 
 import { globals } from '../../src/seed/data/globals'
 import { news } from '../../src/seed/data/news'
-import { projects } from '../../src/seed/data/projects'
 import { salons } from '../../src/seed/data/salons'
 import { isLocalDatabaseUrl } from '../../src/seed/guard'
 import { placeholderPdf } from '../../src/seed/pdf'
@@ -20,6 +19,7 @@ import { catalogPdfFile, E2E_CATALOGS } from './e2eCatalogs'
 import { E2E_MANAGER, E2E_PROJECTS } from './e2eDesigners'
 import { articleBody, E2E_ARTICLE } from './e2eArticle'
 import { E2E_EXTRA_NEWS } from './e2eNews'
+import { E2E_SEPARATE_ITEMS, E2E_WORK_PROJECTS, type E2EItem, type E2EPhoto } from './e2eWorks'
 import {
   ABOUT_CTA,
   E2E_NEWS_COUNT,
@@ -47,6 +47,13 @@ const IMAGES = {
 const PHOTOS = ['#6f5b4a', '#4a5f6f', '#7a6a3c', '#3c5a4a', '#5a3c4a', '#8a8070'].map(
   (color, i) => ({ file: `e2e-photo-${i + 1}.png`, width: 1200, height: 1600, color }),
 )
+
+// Photos of «Наши работы»: three proportions, so the masonry columns differ in height.
+const WORK_PHOTOS: Record<E2EPhoto, ImageSpec> = {
+  tall: { file: 'e2e-work-tall.png', width: 1200, height: 1600, color: '#6a5e50' },
+  wide: { file: 'e2e-work-wide.png', width: 1600, height: 1200, color: '#50606a' },
+  square: { file: 'e2e-work-square.png', width: 1200, height: 1200, color: '#5e6a50' },
+}
 
 type ImageSpec = { file: string; width: number; height: number; color: string }
 
@@ -135,19 +142,22 @@ const renderPng = () =>
     .png()
     .toBuffer()
 
+/** Creates the document unless one with this slug exists; returns its id. */
 const upsertBySlug = async (
   payload: Payload,
   collection: 'news' | 'projects',
   slug: string,
-  create: () => Promise<unknown>,
-) => {
-  const { totalDocs } = await payload.count({
+  create: () => Promise<{ id: number }>,
+): Promise<number> => {
+  const { docs } = await payload.find({
     collection,
     where: { slug: { equals: slug } },
+    limit: 1,
+    depth: 0,
     // Drafts count as existing too
     ...(collection === 'news' ? { draft: true } : {}),
   })
-  if (!totalDocs) await create()
+  return docs[0]?.id ?? (await create()).id
 }
 
 const payload = await getPayload({ config })
@@ -292,13 +302,70 @@ try {
     }),
   )
 
-  // Projects of every category; without the video the video slides are dropped.
-  for (const project of projects(media)) {
-    const slides = videoId ? project.slides : project.slides.filter((s) => s.type !== 'video')
-    await upsertBySlug(payload, 'projects', project.slug!, () =>
-      payload.create({ collection: 'projects', data: { ...project, slides }, depth: 0 }),
-    )
+  // «Наши работы»: projects with their items, separate works, hidden ones. The fixture video
+  // gets a poster first (a video of the works needs one); without the video there are no reels.
+  const workPhoto = Object.fromEntries(
+    await Promise.all(
+      Object.entries(WORK_PHOTOS).map(async ([key, spec]) => [
+        key,
+        await upsertImage(payload, spec),
+      ]),
+    ),
+  ) as Record<E2EPhoto, number>
+  if (videoId) {
+    await payload.update({
+      collection: 'media',
+      id: videoId,
+      data: { poster: workPhoto.tall },
+      depth: 0,
+    })
   }
+  const videos = (n = 0) => (videoId ? Array.from({ length: n }, () => videoId) : [])
+  const upsertItem = async (item: E2EItem, project: number | null) => {
+    const { totalDocs } = await payload.count({
+      collection: 'items',
+      where: {
+        and: [
+          { type: { equals: item.type } },
+          item.title ? { title: { equals: item.title } } : { title: { exists: false } },
+          project ? { project: { equals: project } } : { project: { exists: false } },
+        ],
+      },
+    })
+    if (totalDocs) return
+    await payload.create({
+      collection: 'items',
+      data: {
+        type: item.type,
+        title: item.title ?? null,
+        project,
+        photos: item.photos.map((photo) => workPhoto[photo]),
+        videos: videos(item.videos),
+        hidden: Boolean(item.hidden),
+        featured: Boolean(item.featured),
+      },
+      depth: 0,
+    })
+  }
+  for (const project of E2E_WORK_PROJECTS) {
+    const id = await upsertBySlug(payload, 'projects', project.slug, () =>
+      payload.create({
+        collection: 'projects',
+        data: {
+          title: project.title,
+          slug: project.slug,
+          generateSlug: false,
+          place: project.place,
+          complex: project.complex,
+          hidden: Boolean(project.hidden),
+          videos: videos(project.videos),
+        },
+        depth: 0,
+      }),
+    )
+    for (const item of project.items) await upsertItem(item, id)
+  }
+  for (const item of E2E_SEPARATE_ITEMS) await upsertItem(item, null)
   // Salons: the order, the missing phone and the videos come from E2E_SALONS; card photos are
   // the generated 3:4 photos.
   const seedSalons = salons(media)

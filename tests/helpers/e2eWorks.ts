@@ -1,60 +1,148 @@
-import type { Page, Route } from '@playwright/test'
+import type { WorkType } from '../../src/lib/workTypes'
 
-import { projectPlan, projectSlug } from '../../src/seed/data/projects'
+/**
+ * «Наши работы» of the e2e fixture: complex projects with items, separate works, hidden ones and
+ * a project with no items. Photos — the generated ones by `ratio` (seedHome): `tall` 3:4, `wide`
+ * 4:3, `square` 1:1, so the masonry has columns of different heights.
+ */
+export type E2EPhoto = 'tall' | 'wide' | 'square'
+
+export type E2EItem = {
+  type: WorkType
+  title?: string
+  photos: E2EPhoto[]
+  /** Videos (the fixture mp4 with a poster). */
+  videos?: number
+  hidden?: boolean
+  featured?: boolean
+}
+
+export type E2EProject = {
+  title: string
+  slug: string
+  place: string
+  complex: boolean
+  hidden?: boolean
+  /** Videos of the whole flat. */
+  videos?: number
+  items: E2EItem[]
+}
+
+export const E2E_WORK_PROJECTS: E2EProject[] = [
+  {
+    title: 'Квартира в тёплых тонах',
+    slug: 'kvartira-v-teplykh-tonakh',
+    place: 'ЖК Уно',
+    complex: true,
+    videos: 1,
+    items: [
+      { type: 'kitchens', photos: ['tall', 'wide', 'square'] },
+      { type: 'hallways', photos: ['tall', 'tall'] },
+      { type: 'wardrobes', photos: ['wide', 'tall'], videos: 1 },
+      { type: 'bathrooms', photos: ['square', 'tall'], videos: 1 },
+    ],
+  },
+  {
+    title: 'Квартира в светлом беже',
+    slug: 'kvartira-v-svetlom-bezhe',
+    place: 'ЖК Символ',
+    complex: true,
+    items: [
+      { type: 'kitchens', photos: ['wide', 'tall'] },
+      { type: 'bedrooms', photos: ['tall', 'square'] },
+    ],
+  },
+  {
+    title: 'Квартира в белом и дубе',
+    slug: 'kvartira-v-belom-i-dube',
+    place: 'ЖК Домашний',
+    complex: true,
+    items: [
+      { type: 'kids', photos: ['square', 'wide'] },
+      { type: 'livingrooms', title: 'Кабинет', photos: ['tall'] },
+    ],
+  },
+  {
+    title: 'Квартира с перегородками',
+    slug: 'kvartira-s-peregorodkami',
+    place: 'ЖК Люблинский Парк',
+    complex: true,
+    items: [
+      { type: 'livingrooms', photos: ['wide', 'wide'] },
+      { type: 'bedrooms', photos: ['tall'] },
+    ],
+  },
+  {
+    // Hidden: neither the project nor its items are on the site
+    title: 'Скрытая квартира',
+    slug: 'skrytaya-kvartira',
+    place: 'ЖК Тайный',
+    complex: true,
+    hidden: true,
+    items: [{ type: 'kitchens', title: 'Кухня скрытого проекта', photos: ['tall'] }],
+  },
+  {
+    // A complex project with no items: not in «Комплекс»
+    title: 'Пустой комплекс',
+    slug: 'pustoy-kompleks',
+    place: 'ЖК Пустой',
+    complex: true,
+    items: [],
+  },
+]
+
+/** Works without a project. */
+export const E2E_SEPARATE_ITEMS: E2EItem[] = [
+  { type: 'kitchens', title: 'Кухня в загородный дом', photos: ['wide', 'tall', 'square'] },
+  { type: 'kitchens', title: 'Угловая кухня под потолок', photos: ['tall', 'wide'] },
+  { type: 'kitchens', title: 'Скрытая кухня', photos: ['tall'], hidden: true },
+  { type: 'bathrooms', title: 'Санузел в терраццо', photos: ['square', 'square'] },
+]
+
+/** Expected tiles of a type feed: titles in the editor's order. */
+export const e2eFeedTitles = (type: WorkType): string[] => [
+  ...E2E_WORK_PROJECTS.filter((p) => !p.hidden).flatMap((p) =>
+    p.items.filter((i) => i.type === type && !i.hidden).map((i) => i.title ?? typeLabel(type)),
+  ),
+  ...E2E_SEPARATE_ITEMS.filter((i) => i.type === type && !i.hidden).map((i) => i.title!),
+]
+
+const TYPE_LABELS: Record<WorkType, string> = {
+  kitchens: 'Кухня',
+  livingrooms: 'Гостиная',
+  bathrooms: 'Санузел',
+  hallways: 'Прихожая',
+  wardrobes: 'Гардеробная',
+  bedrooms: 'Спальня',
+  kids: 'Детская',
+}
+const typeLabel = (type: WorkType) => TYPE_LABELS[type]
+
+/** «Комплекс»: visible complex projects with visible items, in order. */
+export const E2E_COMPLEX = E2E_WORK_PROJECTS.filter(
+  (p) => p.complex && !p.hidden && p.items.some((i) => !i.hidden),
+)
+
+/** REELS: per project its videos, then its items' videos; then separate works. */
+export const E2E_REELS_COUNT =
+  E2E_WORK_PROJECTS.filter((p) => !p.hidden).reduce(
+    (n, p) =>
+      n + (p.videos ?? 0) + p.items.reduce((m, i) => m + (i.hidden ? 0 : (i.videos ?? 0)), 0),
+    0,
+  ) + E2E_SEPARATE_ITEMS.reduce((n, i) => n + (i.hidden ? 0 : (i.videos ?? 0)), 0)
+
+/** Chip numbers by feed. */
+export const E2E_WORK_COUNTS = {
+  reels: E2E_REELS_COUNT,
+  complex: E2E_COMPLEX.length,
+  kitchens: e2eFeedTitles('kitchens').length,
+  bedrooms: e2eFeedTitles('bedrooms').length,
+  wardrobes: e2eFeedTitles('wardrobes').length,
+  hallways: e2eFeedTitles('hallways').length,
+  bathrooms: e2eFeedTitles('bathrooms').length,
+  kids: e2eFeedTitles('kids').length,
+  livingrooms: e2eFeedTitles('livingrooms').length,
+} as const
 
 /** Title of the `worksPage` heading draft in the draft-mode check. */
 export const WORKS_DRAFT_TITLE = 'Черновик наших работ'
-
-/**
- * The fixture's projects in feed order (`order` = the seed number): title, slug, category, video,
- * frames (a video project: the video, then its photos).
- */
-export const E2E_WORKS = [...projectPlan]
-  .sort((a, b) => a.n - b.n)
-  .map((p) => ({
-    title: p.title,
-    slug: projectSlug(p),
-    category: p.category,
-    video: Boolean(p.video),
-    frames: p.photos.length + (p.video ? 1 : 0),
-  }))
-
-type Held = { route: Route; body: string }
-
-/**
- * Holds the `loadProjects` Server Action requests (POST with a `Next-Action` header) of the page
- * until released: `hold()` starts holding, `release(match?)` lets the held ones through — all or
- * those whose body contains `match` (e.g. `"kitchens"`), `free()` stops holding.
- * The feed asks for the next page by itself while its end is in the preload zone, so a test that
- * counts cards holds the requests and lets through exactly the pages it expects.
- * `count()` — Server Action requests seen so far, held or not.
- */
-export async function actionGate(page: Page) {
-  let holding = false
-  let seen = 0
-  const held: Held[] = []
-  await page.route('**/works**', async (route) => {
-    const request = route.request()
-    if (request.method() !== 'POST' || !request.headers()['next-action']) return route.fallback()
-    seen++
-    if (!holding) return route.fallback()
-    held.push({ route, body: request.postData() ?? '' })
-  })
-  return {
-    hold: () => {
-      holding = true
-    },
-    free: async () => {
-      holding = false
-      await Promise.all(held.splice(0).map(({ route }) => route.fallback()))
-    },
-    release: async (match?: string) => {
-      const out = held.filter(({ body }) => !match || body.includes(match))
-      for (const item of out) held.splice(held.indexOf(item), 1)
-      await Promise.all(out.map(({ route }) => route.fallback()))
-    },
-    /** Held requests: all or those whose body contains `match`. */
-    held: (match?: string) => held.filter(({ body }) => !match || body.includes(match)).length,
-    count: () => seen,
-  }
-}
