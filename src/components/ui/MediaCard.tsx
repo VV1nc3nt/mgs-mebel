@@ -41,7 +41,7 @@ const OVERLAY = {
   hero: 'bg-overlay-hero',
   card: 'bg-overlay-card',
   work: 'bg-overlay-work',
-  viewer: 'bg-overlay-viewer',
+  'work-tile': 'bg-overlay-work-tile',
 } as const
 
 // Slot offsets from the design: 16 top / 20 bottom on cards, 8 on work previews,
@@ -50,6 +50,8 @@ const INSET = {
   md: { top: 'inset-x-4 top-4', bottom: 'inset-x-5 bottom-5' },
   sm: { top: 'inset-x-2 top-2', bottom: 'inset-x-2 bottom-2' },
   work: { top: 'right-2.5 top-2.5', bottom: 'inset-x-3 bottom-3' },
+  // Works page tiles (works v2 §2.3): badges 12 from the top left, text 16 from the edges
+  tile: { top: 'inset-x-3 top-3', bottom: 'inset-x-4 bottom-4' },
 } as const
 
 export type MediaCardProps = {

@@ -1,22 +1,34 @@
+import type { ReactNode } from 'react'
+
 import { SectionLabel } from '@/components/ui/SectionLabel'
 
 type Props = {
   label?: string | null
   title?: string | null
   lead?: string | null
-  /** H2 where the page has another H1 (a project page: the project title in the viewer). */
-  as?: 'h1' | 'h2'
+  /** Next to the H1 on the right, under it on mobile (the works counter). */
+  aside?: ReactNode
 }
 
 /**
- * Heading of an inner page without a hero (salons, catalogs; works and news next): section
- * label, H1 (or H2) and lead. Empty parts are left out.
+ * Heading of an inner page without a hero (salons, catalogs, works, news): section label, H1 and
+ * lead. Empty parts are left out.
  */
-export function PageHeading({ label, title, lead, as: Heading = 'h1' }: Props) {
+export function PageHeading({ label, title, lead, aside }: Props) {
+  const heading = title && <h1 className="text-h1 md:text-h1-md xl:text-h1-xl">{title}</h1>
+
   return (
     <div className="page-container flex flex-col gap-2.5 pt-7 xl:pt-18">
       {label && <SectionLabel>{label}</SectionLabel>}
-      {title && <Heading className="text-h1 md:text-h1-md xl:text-h1-xl">{title}</Heading>}
+      {aside ? (
+        // Design (works): wraps under the H1 on mobile, bottom-aligned with it otherwise
+        <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
+          {heading}
+          {aside}
+        </div>
+      ) : (
+        heading
+      )}
       {lead && <p className="text-body text-text-3">{lead}</p>}
     </div>
   )

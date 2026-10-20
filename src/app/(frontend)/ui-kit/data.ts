@@ -1,6 +1,8 @@
-import type { About, Catalog, News, Project, Stat } from '@/payload-types'
+import type { About, Catalog, News, Stat } from '@/payload-types'
 
 import { getPayloadClient } from '@/lib/payload'
+import { getWorkFeeds } from '@/lib/queries'
+import { feedCounts, type WorkCounts } from '@/lib/works'
 
 export type UiKitData = {
   news: News[]
@@ -12,8 +14,8 @@ export type UiKitData = {
   hardware: About['hardware'] | null
   exhibitions: About['exhibitions'] | null
   stats: NonNullable<Stat['items']>
-  /** Works per category; `reels` — projects that start with a video. */
-  workCounts: Partial<Record<Project['category'] | 'reels', number>>
+  /** Tiles per feed of «Наши работы». */
+  workCounts: Partial<WorkCounts>
   catalogCounts: Partial<Record<Catalog['category'] | 'all', number>>
 }
 
@@ -44,7 +46,7 @@ export async function getUiKitData(): Promise<UiKitData> {
   try {
     const payload = await getPayloadClient()
     const published = { _status: { equals: 'published' } } as const
-    const [news, newsTotal, onlyNews, about, stats, projects, catalogs] = await Promise.all([
+    const [news, newsTotal, onlyNews, about, stats, feeds, catalogs] = await Promise.all([
       payload.find({ collection: 'news', where: published, sort: '-date', limit: 3, depth: 1 }),
       payload.count({ collection: 'news', where: published }),
       payload.count({
@@ -53,12 +55,7 @@ export async function getUiKitData(): Promise<UiKitData> {
       }),
       payload.findGlobal({ slug: 'about', depth: 1 }),
       payload.findGlobal({ slug: 'stats', depth: 0 }),
-      payload.find({
-        collection: 'projects',
-        depth: 0,
-        pagination: false,
-        select: { category: true, slides: true },
-      }),
+      getWorkFeeds(),
       payload.find({
         collection: 'catalogs',
         depth: 0,
@@ -79,10 +76,7 @@ export async function getUiKitData(): Promise<UiKitData> {
       hardware: about.hardware,
       exhibitions: about.exhibitions,
       stats: stats.items ?? [],
-      workCounts: {
-        ...countBy(projects.docs.map((p) => p.category)),
-        reels: projects.docs.filter((p) => p.slides?.[0]?.type === 'video').length,
-      },
+      workCounts: feedCounts(feeds),
       catalogCounts: {
         ...countBy(catalogs.docs.map((c) => c.category)),
         all: catalogs.docs.length,

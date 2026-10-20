@@ -8,6 +8,11 @@ type Common = {
   selected: boolean
   /** Result count after the label, e.g. on the news tabs. */
   count?: ReactNode
+  /**
+   * 40 — outline when off (news tabs, home chips); 44 — surface when off and no hit-area
+   * extension (works page feeds, design: works v2 §2.2).
+   */
+  size?: 40 | 44
   children: ReactNode
   className?: string
 }
@@ -23,7 +28,14 @@ export type FilterChipProps = Common &
  * Selectable pill 40 (README §5.7 news tabs; home «Наши работы» chips).
  * Presentational: no handlers of its own, no 'use client'.
  */
-export function FilterChip({ selected, count, children, className, ...props }: FilterChipProps) {
+export function FilterChip({
+  selected,
+  count,
+  size = 40,
+  children,
+  className,
+  ...props
+}: FilterChipProps) {
   const state =
     props.href === undefined
       ? { 'aria-pressed': selected }
@@ -34,12 +46,16 @@ export function FilterChip({ selected, count, children, className, ...props }: F
       {...props}
       {...state}
       className={cn(
+        size === 40
+          ? 'relative inline-flex h-10 shrink-0 items-center gap-2 rounded-pill px-4.5 text-button-s whitespace-nowrap transition-colors'
+          : 'relative inline-flex h-11 shrink-0 items-center gap-1.5 rounded-pill px-4.5 text-button-s whitespace-nowrap transition-colors',
         // 40 < 44: ::before extends the hit area vertically
-        'relative inline-flex h-10 shrink-0 items-center gap-2 rounded-pill px-4.5 text-button-s whitespace-nowrap transition-colors',
-        HIT_AREA_Y,
+        size === 40 && HIT_AREA_Y,
         selected
           ? 'bg-accent text-on-accent'
-          : 'border border-border-strong font-semibold text-text-2 hover:border-text hover:text-text',
+          : size === 40
+            ? 'border border-border-strong font-semibold text-text-2 hover:border-text hover:text-text'
+            : 'border border-border bg-surface font-semibold text-text hover:bg-surface-3',
         className,
       )}
     >

@@ -10,8 +10,6 @@
   --color-*: initial;
   --color-black: #000000;
   --color-bg: #141413;
-  /* Backdrop of the project viewer only; the page background is bg everywhere */
-  --color-bg-outer: #0b0b0a;
   --color-surface: #1d1d1c;
   --color-surface-2: #1a1a19;
   --color-surface-3: #262624;
@@ -137,11 +135,19 @@
   --text-caption-s: 0.6875rem;
   --text-caption-s--line-height: 1.3;
   --text-caption-s--font-weight: 600;
-  /* Category on a works feed card (README §6.4) */
-  --text-work-category: 0.5625rem;
-  --text-work-category--line-height: 1.3;
-  --text-work-category--letter-spacing: 0.06em;
-  --text-work-category--font-weight: 600;
+  /* Title of a works tile: 17 / 24 / 28 (design: works v2 §2.3) */
+  --text-work-title: 1.0625rem;
+  --text-work-title--line-height: 1.1;
+  --text-work-title--letter-spacing: -0.025em;
+  --text-work-title--font-weight: 700;
+  --text-work-title-md: 1.5rem;
+  --text-work-title-md--line-height: 1.1;
+  --text-work-title-md--letter-spacing: -0.025em;
+  --text-work-title-md--font-weight: 700;
+  --text-work-title-xl: 1.75rem;
+  --text-work-title-xl--line-height: 1.1;
+  --text-work-title-xl--letter-spacing: -0.025em;
+  --text-work-title-xl--font-weight: 700;
 
   --text-logo: 1.75rem;
   --text-logo--line-height: 1;
@@ -201,15 +207,6 @@
   --text-card-title--letter-spacing: -0.015em;
   --text-card-title--font-weight: 700;
   /* Capability card «Дизайнерам» (design: designers v2 §2.2) */
-  /* Project viewer: project title, «MGS» in the avatar (README §6.4) */
-  --text-viewer-title: 1.5rem;
-  --text-viewer-title--line-height: 1.1;
-  --text-viewer-title--letter-spacing: -0.025em;
-  --text-viewer-title--font-weight: 700;
-  --text-viewer-mark: 0.625rem;
-  --text-viewer-mark--line-height: 1;
-  --text-viewer-mark--letter-spacing: -0.02em;
-  --text-viewer-mark--font-weight: 800;
   --text-capability-title: 1.1875rem;
   --text-capability-title--line-height: 1.2;
   --text-capability-title--letter-spacing: -0.015em;
@@ -314,8 +311,6 @@
   /* «Дизайнерам»: capability card in the mobile strip; the manager photo (designers v2 §2.2, §2.4) */
   --spacing-capability-card: 300px;
   --spacing-avatar: 88px;
-  /* Project viewer window from tablet: 92% of the screen height, 9:16 (README §6.4) */
-  --spacing-viewer: 92dvh;
   /* Article cover: 300 mobile, 460 tablet, 640 desktop (README §6.8) */
   --spacing-article-cover: 300px;
   --spacing-article-cover-md: 460px;
@@ -379,6 +374,8 @@
   /* Backdrop blur: soft — buttons over media, glass — badges, sticky — sticky bar and dock */
   --blur-soft: 8px;
   --blur-glass: 10px;
+  /* «REELS» badge of a works tile (design: works v2 §2.3) */
+  --tracking-badge: 0.04em;
   --blur-sticky: 20px;
 
   /* Easing */
@@ -419,62 +416,23 @@
   --motion-hero-text-move: 600ms;
   --motion-hero-tab: 500ms;
   --motion-hero-progress: 8s;
-  /* Skeleton cards while the works feed loads (README §6.4) */
+  /* Skeleton cards while the news feed loads */
   --motion-skeleton-pulse: 1.2s;
-  /* Project viewer: appears with fade + scale .94 → 1 (README §6.4), closes with a fade */
-  --motion-viewer-in: 320ms;
-  --motion-viewer-out: 200ms;
-  /* «Поделиться» of the viewer: «Ссылка скопирована» shows for 2 s (README §6.8), fades 200ms */
+  /*
+   * Works feeds (design: works v2): the old tiles fade out, then the new ones in the viewport rise
+   * one by one, each when its image is ready, at most 600ms after its turn
+   */
+  --motion-works-out: 200ms;
+  --motion-works-in: 450ms;
+  --motion-works-stagger: 60ms;
+  --motion-works-wait: 600ms;
+  /* «Поделиться» of the article: «Ссылка скопирована» shows for 2 s (README §6.8), fades 200ms */
   --share-status-time: 2s;
   --motion-status-fade: 200ms;
 
   /* Color and border transitions: 150–200ms ease-out (README §9); 200ms is duration-200 */
   --default-transition-duration: 150ms;
   --default-transition-timing-function: ease-out;
-}
-
-/*
- * Project viewer (README §6.4): `data-state` enter → open → leave. Opening fades the backdrop
- * and scales the window .94 → 1; closing only fades. will-change only while it moves.
- */
-@utility viewer-dialog {
-  opacity: 0;
-  transition: opacity var(--motion-viewer-out) ease-out;
-  &[data-state='open'] {
-    opacity: 1;
-    transition-duration: var(--motion-viewer-in);
-    transition-timing-function: var(--ease-soft);
-  }
-  &[data-animating] {
-    will-change: opacity;
-  }
-}
-
-@utility viewer-window {
-  [data-state='enter'] > & {
-    scale: 0.94;
-  }
-  [data-state='open'] > & {
-    transition: scale var(--motion-viewer-in) var(--ease-soft);
-  }
-  [data-animating] > & {
-    will-change: scale;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    [data-state] > & {
-      scale: none;
-      transition: none;
-    }
-  }
-}
-
-/*
- * Fill of a viewer segment (README §6.4): --viewer-progress 0…1 — 1 for a passed frame or a photo,
- * the share of the file for the current video (written each frame while it plays, no transition).
- */
-@utility viewer-progress-fill {
-  transform-origin: left;
-  transform: scaleX(var(--viewer-progress, 1));
 }
 
 /*
@@ -500,12 +458,7 @@
   }
 }
 
-/* Bottom block of the viewer: 20 above the bottom edge and the home indicator */
-@utility viewer-bottom {
-  padding-bottom: calc(var(--spacing) * 5 + env(safe-area-inset-bottom));
-}
-
-/* Skeleton card while a list loads (works feed): pulsing opacity; still with reduced motion */
+/* Skeleton card while a list loads (news feed): pulsing opacity; still with reduced motion */
 @utility skeleton-pulse {
   animation: skeleton-pulse var(--motion-skeleton-pulse) ease-in-out infinite;
   @media (prefers-reduced-motion: reduce) {
@@ -719,14 +672,9 @@
   );
 }
 
-@utility bg-overlay-viewer {
-  background-image: linear-gradient(
-    180deg,
-    rgb(0 0 0 / 0.55) 0%,
-    rgb(0 0 0 / 0) 18%,
-    rgb(0 0 0 / 0) 50%,
-    rgb(0 0 0 / 0.85) 100%
-  );
+/* Works tile (design: works v2 §2.3) */
+@utility bg-overlay-work-tile {
+  background-image: linear-gradient(180deg, rgb(20 20 19 / 0) 35%, rgb(20 20 19 / 0.88) 100%);
 }
 
 /* Poster player before it starts (design: about v2 §2.5) */
@@ -1405,5 +1353,75 @@
   :focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
+  }
+}
+
+/*
+ * Masonry of the works page (lib/masonry): 2 / 3 / 4 columns, one DOM list. The server writes per
+ * tile its column, the ratios above it and the gaps above it for each layout (`--c2 --t2 --k2 …`)
+ * and its own height / width (`--r`); the list gets its height per layout (`--h2 --h3 --h4`).
+ * Widths come from the container (`@container` on the parent): no JS, no shift.
+ * Gaps (design): 8 / 12 / 16 between columns, 12 between rows.
+ */
+@utility works-grid {
+  --n: 2;
+  --gx: calc(var(--spacing) * 2);
+  --gy: calc(var(--spacing) * 3);
+  --cw: calc((100cqw - (var(--n) - 1) * var(--gx)) / var(--n));
+  position: relative;
+  height: var(--h2);
+  & > * {
+    position: absolute;
+    width: var(--cw);
+    height: calc(var(--r) * var(--cw));
+    left: calc(var(--c2) * (var(--cw) + var(--gx)));
+    top: calc(var(--t2) * var(--cw) + var(--k2) * var(--gy));
+  }
+  @variant md {
+    --n: 3;
+    --gx: calc(var(--spacing) * 3);
+    height: var(--h3);
+    & > * {
+      left: calc(var(--c3) * (var(--cw) + var(--gx)));
+      top: calc(var(--t3) * var(--cw) + var(--k3) * var(--gy));
+    }
+  }
+  @variant xl {
+    --n: 4;
+    --gx: calc(var(--spacing) * 4);
+    height: var(--h4);
+    & > * {
+      left: calc(var(--c4) * (var(--cw) + var(--gx)));
+      top: calc(var(--t4) * var(--cw) + var(--k4) * var(--gy));
+    }
+  }
+}
+
+/*
+ * Change of the works feed (design: works v2): `data-wave="out"` on the list fades the old tiles;
+ * a new tile in the viewport waits with `data-wave="wait"` and rises when set to `in` (its image
+ * is ready or its time ran out). Reduced motion: none of it.
+ */
+@utility works-wave {
+  &[data-wave='out'] > * {
+    opacity: 0;
+    transition: opacity var(--motion-works-out) ease-out;
+  }
+  & > [data-wave='wait'] {
+    opacity: 0;
+    translate: 0 calc(var(--spacing) * 4);
+  }
+  & > [data-wave='in'] {
+    transition:
+      opacity var(--motion-works-in) var(--ease-soft),
+      translate var(--motion-works-in) var(--ease-soft);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &[data-wave='out'] > *,
+    & > [data-wave] {
+      opacity: 1;
+      translate: none;
+      transition: none;
+    }
   }
 }

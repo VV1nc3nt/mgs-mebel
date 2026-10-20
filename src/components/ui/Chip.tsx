@@ -2,7 +2,8 @@ import type { ReactNode } from 'react'
 
 import { cn } from '@/lib/cn'
 
-export type ChipVariant = 'surface' | 'surface-media' | 'glass' | 'accent' | 'outline' | 'frost'
+export type ChipVariant =
+  'surface' | 'surface-media' | 'glass' | 'accent' | 'outline' | 'tile' | 'tile-light'
 
 // No single spec in README: values from the design references (see each line).
 // Color and weight are set separately below so that `muted` / `strong` never conflict.
@@ -18,8 +19,10 @@ const VARIANT: Record<ChipVariant, string> = {
   accent: 'rounded-thumb bg-accent px-3 py-1.5 text-caption',
   // Article meta: date, reading time
   outline: 'rounded-thumb border border-border-strong px-3 py-1.5 text-caption',
-  // Project facts in the viewer
-  frost: 'rounded-xl bg-text/12 px-2.5 py-1.25 text-caption backdrop-blur-glass',
+  // Badges of a works tile, 26 (design: works v2 §2.3): «13 фото + 3 видео», zone of a reel
+  tile: 'h-6.5 rounded-pill glass px-2.5 text-caption-s',
+  // «▶ REELS» of a works tile
+  'tile-light': 'h-6.5 gap-1.5 rounded-pill bg-text px-2.5 text-caption-s tracking-badge',
 }
 
 const COLOR: Record<ChipVariant, string> = {
@@ -28,7 +31,8 @@ const COLOR: Record<ChipVariant, string> = {
   glass: 'text-text',
   accent: 'text-on-accent',
   outline: 'text-text-2',
-  frost: 'text-text',
+  tile: 'text-text-2',
+  'tile-light': 'text-bg',
 }
 
 const BORDER: Partial<Record<ChipVariant, string>> = {
@@ -66,7 +70,7 @@ export function Chip({
         'inline-flex items-center gap-2 whitespace-nowrap',
         VARIANT[variant],
         muted ? 'text-text-2' : COLOR[variant],
-        strong || variant === 'accent' ? 'font-bold' : 'font-semibold',
+        strong || variant === 'accent' || variant === 'tile-light' ? 'font-bold' : 'font-semibold',
         bordered && BORDER[variant],
         className,
       )}
