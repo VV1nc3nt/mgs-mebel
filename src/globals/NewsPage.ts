@@ -1,4 +1,5 @@
 import { labelField, titleField } from '@/fields/section'
+import { checkMaxTemplate } from '@/lib/shareLinks'
 
 import { pageGlobal } from './shared'
 
@@ -7,6 +8,24 @@ export const NewsPage = pageGlobal(
   'Новости',
   [
     { name: 'hero', label: 'Заголовок', fields: [labelField(), titleField(true)] },
+    {
+      name: 'articleShare',
+      label: 'Статья: поделиться',
+      description:
+        'Кнопки «Поделиться» под текстом новости: Telegram, WhatsApp и «Скопировать ссылку» — всегда, MAX — по шаблону.',
+      fields: [
+        {
+          name: 'maxTemplate',
+          type: 'text',
+          label: 'Шаблон ссылки MAX',
+          admin: {
+            description:
+              'https://…, {url} — адрес статьи (обязательно), {text} — заголовок. Пусто — кнопки MAX нет.',
+          },
+          validate: (value: string | null | undefined) => checkMaxTemplate(value),
+        },
+      ],
+    },
     {
       name: 'articleCta',
       label: 'Статья: CTA',
