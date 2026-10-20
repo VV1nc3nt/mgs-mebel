@@ -1329,6 +1329,12 @@ export interface NewsPage {
     label?: string | null;
     title: string;
   };
+  articleShare?: {
+    /**
+     * https://…, {url} — адрес статьи (обязательно), {text} — заголовок. Пусто — кнопки MAX нет.
+     */
+    maxTemplate?: string | null;
+  };
   articleCta?: {
     title?: string | null;
     text?: string | null;
@@ -1804,6 +1810,11 @@ export interface NewsPageSelect<T extends boolean = true> {
     | {
         label?: T;
         title?: T;
+      };
+  articleShare?:
+    | T
+    | {
+        maxTemplate?: T;
       };
   articleCta?:
     | T

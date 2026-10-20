@@ -1,5 +1,4 @@
-import { ArrowRight } from 'lucide-react'
-
+import { ArrowLabel } from '@/components/ui/ArrowLabel'
 import { Chip } from '@/components/ui/Chip'
 import { MediaCard } from '@/components/ui/MediaCard'
 import type { NewsCardData } from '@/lib/news'
@@ -8,6 +7,8 @@ type Props = {
   item: NewsCardData
   /** LCP image: the first card of the server-rendered list. */
   priority?: boolean
+  /** Level of the title: H2 in the list (/news), H3 under an article («Ещё новости»). */
+  heading?: 'h2' | 'h3'
 }
 
 /**
@@ -15,7 +16,7 @@ type Props = {
  * top, title, lead and «Читать →» below. The whole card links to the article, named by its title.
  * The cover video is not shown in the list.
  */
-export function NewsCard({ item, priority = false }: Props) {
+export function NewsCard({ item, priority = false, heading: Heading = 'h2' }: Props) {
   const titleId = `news-card-${item.id}`
   return (
     <MediaCard
@@ -44,19 +45,11 @@ export function NewsCard({ item, priority = false }: Props) {
         </>
       }
     >
-      <h2 id={titleId} className="text-h3 text-balance">
+      <Heading id={titleId} className="text-h3 text-balance">
         {item.title}
-      </h2>
+      </Heading>
       {item.lead && <p className="line-clamp-3 text-body-s text-pretty text-text-2">{item.lead}</p>}
-      <span className="flex items-center gap-2 pt-1 text-button-s">
-        Читать
-        <span
-          aria-hidden="true"
-          className="flex size-7 items-center justify-center rounded-full bg-text/15 backdrop-blur-glass"
-        >
-          <ArrowRight className="size-3.5" />
-        </span>
-      </span>
+      <ArrowLabel className="pt-1 text-button-s">Читать</ArrowLabel>
     </MediaCard>
   )
 }

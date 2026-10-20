@@ -21,8 +21,25 @@ export const NEWS_FEED_FILTERS: readonly NewsFilter[] = [
   ...newsTypeOptions.map(({ value }) => value),
 ]
 
-/** News per page: 6 fills whole rows at 1, 2 and 3 columns. */
+/**
+ * News per page: 6 fills whole rows at 1, 2 and 3 columns. «Ещё новости» are taken from the first
+ * page — keep it ≥ RELATED_NEWS_LIMIT + 1.
+ */
 export const NEWS_PAGE_SIZE = 6
+
+/**
+ * «Ещё новости» under an article (README §6.8): the latest published, without the article itself.
+ * Taken from the first page of the list («все») — keep NEWS_PAGE_SIZE ≥ RELATED_NEWS_LIMIT + 1, so
+ * one excluded article still leaves the full row.
+ */
+export const RELATED_NEWS_LIMIT = 3
+
+/** The latest news without the current one, at most `limit`. */
+export const relatedNews = (
+  items: readonly NewsCardData[],
+  currentId: number,
+  limit = RELATED_NEWS_LIMIT,
+): NewsCardData[] => items.filter((item) => item.id !== currentId).slice(0, limit)
 
 /** Hard upper bound of a requested page (input of the Server Action). */
 export const NEWS_MAX_PAGE = 1000
