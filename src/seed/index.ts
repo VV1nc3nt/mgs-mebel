@@ -3,9 +3,9 @@ import { ValidationError, type GlobalSlug, type Payload } from 'payload'
 import { catalogs } from './data/catalogs'
 import { globals } from './data/globals'
 import { news } from './data/news'
-import { projects } from './data/projects'
 import { RETIRED_FILES, RETIRED_SALONS, salons } from './data/salons'
 import type { MediaId } from './data/types'
+import { RETIRED_PROJECTS, itemPlan, itemWhere, workItems, workProjects } from './data/works'
 import { seedFiles } from './files'
 import { upsertMedia } from './media'
 import { SeedStats } from './stats'
@@ -23,7 +23,7 @@ export { seedFiles }
 const seedKeys = () => {
   const noMedia: MediaId = () => 0
   return {
-    projects: projects(noMedia).map((doc) => doc.slug),
+    projects: workProjects(noMedia).map((doc) => doc.slug as string),
     news: news(noMedia).map((doc) => doc.slug as string),
     catalogs: catalogs(noMedia).map((doc) => doc.title),
     salons: salons(noMedia).map((doc) => doc.name),
@@ -31,7 +31,7 @@ const seedKeys = () => {
 }
 
 /**
- * Demo content: stock media, salons, projects, news, catalogs and all page globals.
+ * Demo content: stock media, salons, projects and their items, news, catalogs and all page globals.
  * Idempotent: documents are matched by slug / name / title, files by file name,
  * and nothing is written when the stored data already matches.
  */
@@ -50,12 +50,26 @@ export const seed = async (
     if (value === undefined) throw new Error(`Seed: нет файла ${key} в манифесте`)
     return value
   }
+  // Posters of the videos: the files exist now
+  for (const file of seedFiles) {
+    if (!file.poster) continue
+    await upsertDoc(payload, stats, 'media', { id: { equals: id(file.key) } }, {
+      poster: id(file.poster),
+    } as never)
+  }
 
   for (const doc of salons(id)) {
     await upsertDoc(payload, stats, 'salons', { name: { equals: doc.name } }, doc)
   }
-  for (const doc of projects(id)) {
-    await upsertDoc(payload, stats, 'projects', { slug: { equals: doc.slug } }, doc)
+  const projectIds = new Map<string, number>()
+  for (const doc of workProjects(id)) {
+    projectIds.set(
+      doc.title,
+      await upsertDoc(payload, stats, 'projects', { slug: { equals: doc.slug } }, doc),
+    )
+  }
+  for (const doc of workItems(id, projectIds)) {
+    await upsertDoc(payload, stats, 'items', itemWhere(doc), doc)
   }
   for (const doc of news(id)) {
     await upsertDoc(payload, stats, 'news', { slug: { equals: doc.slug } }, doc)
@@ -77,6 +91,13 @@ export const seed = async (
  * files by file name. A file still in use (e.g. picked by an editor) is kept and logged.
  */
 const removeRetired = async (payload: Payload, log: (line: string) => void) => {
+  const { docs: oldProjects } = await payload.delete({
+    collection: 'projects',
+    where: { slug: { in: RETIRED_PROJECTS } },
+    ...seedOptions,
+  })
+  for (const doc of oldProjects) log(`Удалён проект прошлых seed: ${doc.title}`)
+
   const { docs } = await payload.delete({
     collection: 'salons',
     where: { name: { in: RETIRED_SALONS } },
@@ -111,6 +132,28 @@ const removeRetired = async (payload: Payload, log: (line: string) => void) => {
  */
 const resetSeed = async (payload: Payload, log: (line: string) => void) => {
   const keys = seedKeys()
+  // Items first: a project with items cannot be deleted
+  const { docs: seedProjects } = await payload.find({
+    collection: 'projects',
+    where: { slug: { in: keys.projects } },
+    pagination: false,
+    depth: 0,
+    select: { title: true },
+    ...seedOptions,
+  })
+  const projectIds = new Map(seedProjects.map((p) => [p.title, p.id]))
+  let items = 0
+  for (const { plan, project } of itemPlan) {
+    const projectId = project ? projectIds.get(project) : null
+    if (project && !projectId) continue
+    const { docs } = await payload.delete({
+      collection: 'items',
+      where: itemWhere({ type: plan.type, title: plan.title, project: projectId ?? null }),
+      ...seedOptions,
+    })
+    items += docs.length
+  }
+  log(`items     удалено ${items}`)
   const targets = [
     ['projects', 'slug', keys.projects],
     ['news', 'slug', keys.news],
@@ -129,7 +172,8 @@ const resetSeed = async (payload: Payload, log: (line: string) => void) => {
 
   const kept: string[] = []
   let deleted = 0
-  for (const file of seedFiles) {
+  // Videos before images: a poster in use by a video cannot be deleted
+  for (const file of [...seedFiles].reverse()) {
     const { docs } = await payload.find({
       collection: 'media',
       where: { filename: { equals: file.filename } },
