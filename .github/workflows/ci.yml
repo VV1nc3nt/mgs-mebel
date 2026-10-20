@@ -14,31 +14,35 @@ concurrency:
 
 env:
   NEXT_TELEMETRY_DISABLED: 1
-  # E2E specs per shard, balanced by run time; shard 1 also runs the 404 check and the @empty pass.
+  # E2E specs per shard. Balance by file time from the log of the last green CI run on main
+  # (list reporter: sum the test times of each spec file). Shard 1 also runs the 404 check, the
+  # @empty pass and the cache drop: give it less.
   # Every tests/e2e/*.spec.ts goes into exactly one list (checked by the E2E job).
   E2E_SHARD_1: >-
-    tests/e2e/menu.e2e.spec.ts
-    tests/e2e/ui-kit.e2e.spec.ts
-    tests/e2e/about.e2e.spec.ts
-    tests/e2e/header.e2e.spec.ts
-    tests/e2e/revalidate.e2e.spec.ts
-    tests/e2e/partial-paint.e2e.spec.ts
-    tests/e2e/works.e2e.spec.ts
     tests/e2e/viewer.e2e.spec.ts
+    tests/e2e/partial-paint.e2e.spec.ts
+    tests/e2e/header.e2e.spec.ts
     tests/e2e/passive-listeners.e2e.spec.ts
   E2E_SHARD_2: >-
-    tests/e2e/layout.e2e.spec.ts
-    tests/e2e/dock.e2e.spec.ts
-    tests/e2e/contact.e2e.spec.ts
     tests/e2e/home.e2e.spec.ts
-    tests/e2e/preview.e2e.spec.ts
-    tests/e2e/news-slug.e2e.spec.ts
-    tests/e2e/salons.e2e.spec.ts
-    tests/e2e/not-found.e2e.spec.ts
-    tests/e2e/catalogs.e2e.spec.ts
-    tests/e2e/designers.e2e.spec.ts
     tests/e2e/viewer-share.e2e.spec.ts
+    tests/e2e/designers.e2e.spec.ts
+    tests/e2e/layout.e2e.spec.ts
     tests/e2e/news.e2e.spec.ts
+  E2E_SHARD_3: >-
+    tests/e2e/salons.e2e.spec.ts
+    tests/e2e/ui-kit.e2e.spec.ts
+    tests/e2e/about.e2e.spec.ts
+    tests/e2e/dock.e2e.spec.ts
+    tests/e2e/not-found.e2e.spec.ts
+  E2E_SHARD_4: >-
+    tests/e2e/menu.e2e.spec.ts
+    tests/e2e/news-slug.e2e.spec.ts
+    tests/e2e/catalogs.e2e.spec.ts
+    tests/e2e/contact.e2e.spec.ts
+    tests/e2e/works.e2e.spec.ts
+    tests/e2e/preview.e2e.spec.ts
+    tests/e2e/revalidate.e2e.spec.ts
   # Scaffold specs, not run in CI.
   E2E_NOT_IN_CI: >-
     tests/e2e/admin.e2e.spec.ts
@@ -136,15 +140,15 @@ jobs:
       - run: pnpm test:int
 
   e2e-shard:
-    name: E2E ${{ matrix.shard }}/2 (Playwright on the standalone build)
+    name: E2E ${{ matrix.shard }}/4 (Playwright on the standalone build)
     needs: build
     runs-on: ubuntu-latest
-    # About 4 minutes, plus up to 22 for the install-deps attempts and lock cleanup below
+    # About 4 minutes per shard, plus up to 22 for the install-deps attempts and lock cleanup below
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]
+        shard: [1, 2, 3, 4]
     services:
       postgres:
         image: postgres:17-alpine
@@ -266,7 +270,7 @@ jobs:
           path: test-results/
           retention-days: 7
 
-  # One status for all shards; also fails when a spec is in no shard list or in both.
+  # One status for all shards; also fails when a spec is in no shard list or in more than one.
   e2e:
     name: E2E
     needs: e2e-shard
@@ -279,13 +283,14 @@ jobs:
           sparse-checkout: tests/e2e
       - name: Every spec in exactly one shard
         run: |
-          listed=$(printf '%s\n' $E2E_SHARD_1 $E2E_SHARD_2 $E2E_NOT_IN_CI | sort)
+          lists="E2E_SHARD_1 E2E_SHARD_2 E2E_SHARD_3 E2E_SHARD_4 E2E_NOT_IN_CI"
+          listed=$(for v in $lists; do printf '%s\n' ${!v}; done | sort)
           dupes=$(printf '%s\n' "$listed" | uniq -d)
           missing=$(comm -23 <(ls tests/e2e/*.spec.ts | sort) <(printf '%s\n' "$listed" | sort -u))
           unknown=$(comm -13 <(ls tests/e2e/*.spec.ts | sort) <(printf '%s\n' "$listed" | sort -u))
           fail=0
-          for f in $missing; do echo "::error file=$f::$f is in no E2E shard: add it to E2E_SHARD_1 or E2E_SHARD_2 in .github/workflows/ci.yml"; fail=1; done
-          for f in $dupes; do echo "::error file=$f::$f is listed more than once in E2E_SHARD_1 / E2E_SHARD_2 / E2E_NOT_IN_CI"; fail=1; done
+          for f in $missing; do echo "::error file=$f::$f is in no E2E shard: add it to one of E2E_SHARD_1…E2E_SHARD_4 in .github/workflows/ci.yml"; fail=1; done
+          for f in $dupes; do echo "::error file=$f::$f is listed more than once in E2E_SHARD_1…E2E_SHARD_4 / E2E_NOT_IN_CI"; fail=1; done
           for f in $unknown; do echo "::error::$f is listed in .github/workflows/ci.yml but does not exist"; fail=1; done
           exit $fail
       - name: All shards passed
