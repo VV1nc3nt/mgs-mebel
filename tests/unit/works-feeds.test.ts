@@ -15,6 +15,7 @@ import {
   feedChips,
   feedCounts,
   mediaBadge,
+  visibleItemTypes,
   REEL_RATIO,
   worksCount,
   type ItemRow,
@@ -133,6 +134,13 @@ describe('buildFeeds', () => {
     // A hidden project hides its items; a non-complex project still has its items in the feeds
     expect(feeds.kitchens.map((t) => t.key)).toEqual(['i-10', 'i-13'])
     expect(feeds.bathrooms.map((t) => t.key)).toEqual(['i-11'])
+    // An item tile leads to its view
+    expect(feeds.bathrooms[0]).toMatchObject({ id: 11, href: '/works?category=bathrooms&item=11' })
+    expect([...visibleItemTypes(feeds)]).toEqual([
+      [10, 'kitchens'],
+      [13, 'kitchens'],
+      [11, 'bathrooms'],
+    ])
   })
 
   it('a project cover wins over the first photo of its first item', () => {

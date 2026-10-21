@@ -111,14 +111,14 @@ describe('home works chips', () => {
     expect(initialWorkFilter([])).toBeUndefined()
   })
 
-  it('link a project to its page, an item and a reel to their feeds', () => {
+  it('link a project to its page, an item to its view, a reel to REELS', () => {
     const panels = workPanels(
       buildFeeds([project(2)], [item(1, { project: 2, type: 'bathrooms', videos: [posterVideo] })]),
     )
     const by = (key: string) => panels.find((p) => p.key === key)!.works[0]!
     expect(by('complex')).toMatchObject({ href: '/works/proekt-2', kind: 'video', image: photo })
     expect(by('bathrooms')).toMatchObject({
-      href: '/works?category=bathrooms',
+      href: '/works?category=bathrooms&item=1',
       category: 'Санузел',
       title: 'Санузел',
     })

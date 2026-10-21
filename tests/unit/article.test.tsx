@@ -18,6 +18,7 @@ import {
   gallerySizes,
   hasText,
   linkHref,
+  linkedItemIds,
   newsCrumbName,
   readingLabel,
 } from '@/lib/article'
@@ -236,6 +237,84 @@ describe('linkHref', () => {
     expect(
       linkHref({ linkType: 'internal', doc: { relationTo: 'media', value: { slug: 'x' } } }),
     ).toBeNull()
+  })
+
+  it('internal item: its view while visible (id and type from the works feeds), else no link', () => {
+    const items = new Map([[7, 'bathrooms']])
+    const link = (value: unknown) =>
+      linkHref({ linkType: 'internal', doc: { relationTo: 'items', value } }, items)
+    expect(link(7)).toEqual({ kind: 'internal', href: '/works?category=bathrooms&item=7' })
+    expect(link({ id: 7, type: 'kitchens' })).toEqual({
+      kind: 'internal',
+      href: '/works?category=bathrooms&item=7',
+    })
+    // Hidden, of a hidden project, deleted: not among the visible ones
+    expect(link(8)).toBeNull()
+    expect(link(null)).toBeNull()
+    expect(linkHref({ linkType: 'internal', doc: { relationTo: 'items', value: 7 } })).toBeNull()
+  })
+
+  it('collects the items linked from the paragraphs', () => {
+    const paragraph = (children: unknown[]) => ({
+      blockType: 'paragraph' as const,
+      text: { root: { type: 'root', children: [{ type: 'paragraph', children }] } },
+    })
+    const itemLink = (value: unknown) => ({
+      type: 'link',
+      fields: { linkType: 'internal', doc: { relationTo: 'items', value } },
+      children: [{ type: 'text', text: 'кухня' }],
+    })
+    expect(
+      linkedItemIds([
+        paragraph([itemLink(3), { type: 'text', text: ' и ' }, itemLink({ id: 5 })]),
+        paragraph([itemLink(3)]),
+        paragraph([
+          { type: 'link', fields: { linkType: 'internal', doc: { relationTo: 'news', value: 1 } } },
+        ]),
+      ] as never),
+    ).toEqual([3, 5])
+  })
+
+  it('renders a link to a visible item and the text alone for another', () => {
+    const block = {
+      blockType: 'paragraph' as const,
+      id: 'p1',
+      text: {
+        root: {
+          type: 'root',
+          children: [
+            {
+              type: 'paragraph',
+              children: [
+                {
+                  type: 'link',
+                  fields: { linkType: 'internal', doc: { relationTo: 'items', value: 7 } },
+                  children: [{ type: 'text', text: 'Санузел', version: 1 }],
+                  version: 1,
+                },
+                { type: 'text', text: ' и ', version: 1 },
+                {
+                  type: 'link',
+                  fields: { linkType: 'internal', doc: { relationTo: 'items', value: 8 } },
+                  children: [{ type: 'text', text: 'скрытая кухня', version: 1 }],
+                  version: 1,
+                },
+              ],
+              version: 1,
+            },
+          ],
+          version: 1,
+        },
+      },
+    }
+    const { container } = render(
+      <ArticleBlocks blocks={[block as never]} items={new Map([[7, 'bathrooms']])} />,
+    )
+    expect(screen.getByRole('link', { name: 'Санузел' }).getAttribute('href')).toBe(
+      '/works?category=bathrooms&item=7',
+    )
+    expect(screen.queryByRole('link', { name: 'скрытая кухня' })).toBeNull()
+    expect(container.querySelector('p')?.textContent).toBe('Санузел и скрытая кухня')
   })
 
   it('custom: other sites in a new tab, own pages and mail in the same tab', () => {
