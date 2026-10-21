@@ -40,6 +40,8 @@
   /* Catalog booklet mockup: back sheet and cover face (design: catalogs) */
   --color-booklet-back: #2c2c2a;
   --color-booklet-face: #191918;
+  /* Backdrop of the view of an item (design: works v2 §3.4) */
+  --color-bg-viewer: #0f0f0e;
 
   /* Font */
   --font-sans: var(--font-manrope), system-ui, sans-serif;
@@ -148,6 +150,19 @@
   --text-work-title-xl--line-height: 1.1;
   --text-work-title-xl--letter-spacing: -0.025em;
   --text-work-title-xl--font-weight: 700;
+  /* View of an item (works v2 §3.4): its title (36 / 48 from 1280) and price */
+  --text-viewer-title: 2.25rem;
+  --text-viewer-title--line-height: 1;
+  --text-viewer-title--letter-spacing: -0.035em;
+  --text-viewer-title--font-weight: 700;
+  --text-viewer-title-xl: 3rem;
+  --text-viewer-title-xl--line-height: 1;
+  --text-viewer-title-xl--letter-spacing: -0.035em;
+  --text-viewer-title-xl--font-weight: 700;
+  --text-price: 2.125rem;
+  --text-price--line-height: 1.1;
+  --text-price--letter-spacing: -0.03em;
+  --text-price--font-weight: 700;
 
   --text-logo: 1.75rem;
   --text-logo--line-height: 1;
@@ -321,6 +336,8 @@
   --spacing-gallery-2: calc((100% - var(--spacing) * 3) / 2);
   --spacing-gallery-3: calc((100% - var(--spacing) * 6) / 3);
   --spacing-gallery-4: calc((100% - var(--spacing) * 9) / 4);
+  /* Panel of the view of an item from 1280 (works v2 §3.4) */
+  --spacing-viewer-panel: 440px;
 
   /* Containers */
   --container-page: 1600px;
@@ -426,6 +443,9 @@
   --motion-works-in: 450ms;
   --motion-works-stagger: 60ms;
   --motion-works-wait: 600ms;
+  /* View of an item (works v2 §3.4): fade in; the strip of frames moves (as REELS, §3.5) */
+  --motion-viewer-in: 200ms;
+  --motion-viewer-slide: 450ms;
   /* «Поделиться» of the article: «Ссылка скопирована» shows for 2 s (README §6.8), fades 200ms */
   --share-status-time: 2s;
   --motion-status-fade: 200ms;
@@ -1424,4 +1444,78 @@
       transition: none;
     }
   }
+}
+
+/*
+ * View of an item (works v2 §3.4): a full-screen dialog over the works page. Below 1280 it scrolls
+ * as a whole (frames one under another, then the panel); from 1280 — the strip of frames and the
+ * panel of 440 side by side, each in its own box. Fades in on mount; reduced motion — at once.
+ */
+@keyframes work-view-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@utility work-view {
+  animation: work-view-in var(--motion-viewer-in) ease-out;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+  @variant xl {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--spacing-viewer-panel);
+  }
+}
+
+/*
+ * Strip of frames from 1280: a size container. Each frame is as high as the strip and as wide as
+ * its own ratio (--r, width / height), at most --viewer-slide-max; it stands --x from the centre
+ * (lib/workView: `slideOffset`, a calc() of the neighbours' widths — no measuring, no shift).
+ * A step changes --x of every frame: the strip moves; frames are keyed by their place in an endless
+ * row, so going round has no seam. Reduced motion — no transition.
+ */
+@utility work-view-strip {
+  container-type: size;
+  --viewer-gap: calc(var(--spacing) * 4);
+  --viewer-slide-max: 62cqw;
+}
+
+@utility work-view-slide {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  height: 100%;
+  width: min(calc(100cqh * var(--r)), var(--viewer-slide-max));
+  translate: var(--x) 0;
+  transition:
+    translate var(--motion-viewer-slide) var(--ease-soft),
+    opacity var(--motion-viewer-slide) var(--ease-soft);
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+/*
+ * The feed under an open view: invisible once the view has faded in (instantly when rendered
+ * open). An opaque fixed layer does not stop layout-shift tracking of what it covers, and a page
+ * painted from part of its HTML would count the covered tiles moving.
+ */
+@utility work-view-under {
+  &[data-covered] {
+    visibility: hidden;
+    transition: visibility 0s linear var(--motion-viewer-in);
+  }
+}
+
+/* A frame below 1280: the full width at its own ratio, never taller than the screen */
+@utility work-view-frame {
+  aspect-ratio: var(--r);
+  max-height: 100svh;
+}
+
+/* Played share of a video of the view (--p, 0…1): written each frame, no re-render */
+@utility work-view-progress {
+  transform-origin: left;
+  transform: scaleX(var(--p, 0));
 }

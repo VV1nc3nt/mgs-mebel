@@ -3,6 +3,7 @@ import { asMedia, isImage, isVideo, type MediaValue } from './media'
 import { tileRatio } from './masonry'
 import { plural } from './plural'
 import { itemTitle } from './workItems'
+import { itemViewHref } from './workView'
 import {
   COMPLEX,
   REELS,
@@ -44,9 +45,11 @@ export type ProjectTile = TileBase & {
   videos: number
 }
 
-/** A type feed: an item. */
+/** A type feed: an item, a link to its view (`itemViewHref`). */
 export type ItemTile = TileBase & {
   kind: 'item'
+  id: number
+  href: string
   title: string
   place: string | null
   type: WorkType
@@ -153,6 +156,8 @@ export function buildFeeds(projects: readonly ProjectRow[], items: readonly Item
     feeds[item.type].push({
       kind: 'item',
       key: `i-${item.id}`,
+      id: item.id,
+      href: itemViewHref({ type: item.type, id: item.id }),
       title: itemTitle(item),
       place: (project ? project.place : item.place)?.trim() || null,
       type: item.type,
@@ -194,6 +199,14 @@ export function buildFeeds(projects: readonly ProjectRow[], items: readonly Item
   return feeds
 }
 
+/** Visible items by id: their type (links to their views from news texts). */
+export const visibleItemTypes = (feeds: WorkFeeds): Map<number, WorkType> =>
+  new Map(
+    Object.values(feeds)
+      .flat()
+      .flatMap((tile) => (tile.kind === 'item' ? [[tile.id, tile.type] as const] : [])),
+  )
+
 export const feedCounts = (feeds: WorkFeeds): WorkCounts =>
   Object.fromEntries(WORK_FEEDS.map(({ value }) => [value, feeds[value].length])) as WorkCounts
 
@@ -218,7 +231,7 @@ export type WorkPanel = { key: WorkFeed; label: string; works: WorkPreview[] }
 
 const feedHref = (feed: WorkFeed) => (feed === COMPLEX ? '/works' : `/works?category=${feed}`)
 
-/** Home preview of a tile: a project leads to its page, an item and a reel to their feed. */
+/** Home preview of a tile: a project leads to its page, an item to its view, a reel to REELS. */
 export const toWorkPreview = (tile: WorkTile): WorkPreview => {
   switch (tile.kind) {
     case 'project':
@@ -235,7 +248,7 @@ export const toWorkPreview = (tile: WorkTile): WorkPreview => {
         key: tile.key,
         title: tile.title,
         category: workTypeLabel(tile.type) ?? '',
-        href: feedHref(tile.type),
+        href: tile.href,
         image: tile.image,
         kind: tile.videos ? 'video' : 'photo',
       }

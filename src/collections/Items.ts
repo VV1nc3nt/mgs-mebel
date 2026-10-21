@@ -6,6 +6,7 @@ import { checkVideoPosters, imageField, videoField } from '@/fields/media'
 import { itemLabel } from '@/lib/workItems'
 import { revalidateCollection } from '@/lib/revalidate'
 import { workTypeOptions } from '@/lib/workTypes'
+import { itemViewHref, typeFeedHref } from '@/lib/workView'
 
 type ItemData = { title?: string | null; type?: string | null; project?: unknown }
 
@@ -39,7 +40,15 @@ export const Items: CollectionConfig = {
     description:
       'Изделие само попадает в ленту своего типа на странице «Наши работы». Порядок — перетаскиванием в списке.',
     livePreview: {
-      url: ({ data }) => previewUrl(data?.type ? `/works?category=${data.type}` : '/works'),
+      // The view of this item; a new one (no id yet) — the feed of its type
+      url: ({ data }) =>
+        previewUrl(
+          data?.type && data.id
+            ? itemViewHref({ type: data.type, id: data.id })
+            : data?.type
+              ? typeFeedHref(data.type)
+              : '/works',
+        ),
       breakpoints: PREVIEW_BREAKPOINTS,
     },
   },

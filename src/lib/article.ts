@@ -9,6 +9,7 @@ import type {
 } from '@/payload-types'
 
 import { classifyHref, type HrefKind } from './href'
+import { itemViewHref } from './workView'
 import {
   asMedia,
   isImage,
@@ -235,13 +236,32 @@ export type LinkFields = {
   doc?: { relationTo?: string; value?: unknown } | null
 }
 
+/** Visible items of «Наши работы» by id: their type (the feed of the view). */
+export type VisibleItems = ReadonlyMap<number, string>
+
+const docId = (value: unknown): number | null =>
+  typeof value === 'number'
+    ? value
+    : value && typeof value === 'object' && typeof (value as { id?: unknown }).id === 'number'
+      ? (value as { id: number }).id
+      : null
+
 /**
- * Address of a link in the text. Internal — the page of the linked news or project; a document
- * not readable as published (no slug) gives null: the text stays, without a link. Custom — own
+ * Address of a link in the text. Internal — the page of the linked news or project, the view of
+ * an item (`itemViewHref`, its visibility and type from `items`); a document not readable as
+ * published (no slug) or a hidden item gives null: the text stays, without a link. Custom — own
  * pages in the same tab, other sites in a new tab.
  */
-export const linkHref = (fields: LinkFields | null | undefined): HrefKind | null => {
+export const linkHref = (
+  fields: LinkFields | null | undefined,
+  items: VisibleItems = new Map(),
+): HrefKind | null => {
   if (!fields) return null
+  if (fields.linkType === 'internal' && fields.doc?.relationTo === 'items') {
+    const id = docId(fields.doc.value)
+    const type = id === null ? undefined : items.get(id)
+    return id !== null && type ? { kind: 'internal', href: itemViewHref({ type, id }) } : null
+  }
   if (fields.linkType === 'internal') {
     const base = DOC_PATHS[fields.doc?.relationTo ?? '']
     const value = fields.doc?.value
@@ -252,4 +272,23 @@ export const linkHref = (fields: LinkFields | null | undefined): HrefKind | null
   }
   const url = fields.url?.trim()
   return url ? classifyHref(url) : null
+}
+
+type LinkNode = { type?: string; fields?: LinkFields; children?: LinkNode[] }
+
+/** Ids of the items linked from the paragraphs (their visibility is read only when there are). */
+export function linkedItemIds(blocks: readonly ArticleBlock[]): number[] {
+  const ids = new Set<number>()
+  const walk = (node: LinkNode | null | undefined) => {
+    if (!node || typeof node !== 'object') return
+    if (node.type === 'link' && node.fields?.doc?.relationTo === 'items') {
+      const id = docId(node.fields.doc.value)
+      if (id !== null) ids.add(id)
+    }
+    node.children?.forEach(walk)
+  }
+  for (const block of blocks) {
+    if (block.blockType === 'paragraph') walk(block.text?.root as LinkNode | undefined)
+  }
+  return [...ids]
 }

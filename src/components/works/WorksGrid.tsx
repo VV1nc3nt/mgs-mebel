@@ -1,4 +1,4 @@
-import type { CSSProperties, Ref } from 'react'
+import { memo, type CSSProperties, type Ref } from 'react'
 
 import { gridVars, masonryLayouts, tileVars } from '@/lib/masonry'
 import type { WorkTile as Tile } from '@/lib/works'
@@ -15,9 +15,10 @@ type Props = {
 
 /**
  * Masonry of the works page: laid out on the server for 2 / 3 / 4 columns (lib/masonry), one list
- * for every breakpoint — the order of the list is the reading order by rows.
+ * for every breakpoint — the order of the list is the reading order by rows. Memoized: the
+ * address of the view of an item changes on every step, the feed under it stays as it is.
  */
-export function WorksGrid({ tiles, leaving, priority = 0, listRef }: Props) {
+export const WorksGrid = memo(function WorksGrid({ tiles, leaving, priority = 0, listRef }: Props) {
   const layouts = masonryLayouts(tiles.map((tile) => tile.ratio))
   return (
     <div className="page-container">
@@ -38,4 +39,4 @@ export function WorksGrid({ tiles, leaving, priority = 0, listRef }: Props) {
       </div>
     </div>
   )
-}
+})

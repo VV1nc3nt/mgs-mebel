@@ -9,11 +9,19 @@ import { ArticleHeader } from '@/components/news/ArticleHeader'
 import { ArticleShare } from '@/components/news/ArticleShare'
 import { RelatedNews } from '@/components/news/RelatedNews'
 import { JsonLd } from '@/components/seo/JsonLd'
-import { articleBlocks, newsCrumbName } from '@/lib/article'
+import { articleBlocks, linkedItemIds, newsCrumbName } from '@/lib/article'
 import { toChrome } from '@/lib/chrome'
 import { breadcrumbJsonLd, newsArticleJsonLd } from '@/lib/jsonld'
 import { ALL_NEWS, relatedNews } from '@/lib/news'
-import { getLayout, getNewsBySlug, getNewsPage, getPageGlobal, getSettings } from '@/lib/queries'
+import {
+  getLayout,
+  getNewsBySlug,
+  getNewsPage,
+  getPageGlobal,
+  getSettings,
+  getWorkFeeds,
+} from '@/lib/queries'
+import { visibleItemTypes } from '@/lib/works'
 import { readingTime } from '@/lib/readingTime'
 import { buildMetadata } from '@/lib/seo'
 import { articleShareLinks } from '@/lib/shareLinks'
@@ -64,6 +72,9 @@ export default async function NewsArticlePage({ params }: Props) {
   const newsName = navItem?.label || newsCrumb
   const path = `${NEWS_PATH}/${news.slug}`
   const url = absoluteUrl(path)
+  const blocks = articleBlocks(news.body)
+  // Links to items: their views, only for the visible ones (the works feeds' cache and tags)
+  const items = linkedItemIds(blocks).length ? visibleItemTypes(await getWorkFeeds()) : undefined
 
   return (
     <>
@@ -97,7 +108,7 @@ export default async function NewsArticlePage({ params }: Props) {
           />
           {/* The cover ends the first screen; the body grows below it and moves nothing above */}
           <FirstScreenEnd />
-          <ArticleBlocks blocks={articleBlocks(news.body)} />
+          <ArticleBlocks blocks={blocks} items={items} />
           <ArticleShare
             url={url}
             links={articleShareLinks(
