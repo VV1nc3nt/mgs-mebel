@@ -276,6 +276,33 @@ describe('view of an item', () => {
       find.mockRestore()
     }
   })
+
+  it('the cached query of an item runs for visible items only', async () => {
+    const visible = await createItem({})
+    const hidden = await createItem({ hidden: true })
+    const hiddenProject = await createProject('Скрытый кэш', { complex: true, hidden: true })
+    const ofHidden = await createItem({ project: hiddenProject.id })
+    const find = vi.spyOn(payload, 'find')
+    // The query of one item (`where.id`), not the one of the works feeds
+    const itemQueries = () =>
+      find.mock.calls.filter(
+        ([args]) => args.collection === 'items' && (args.where as { id?: unknown } | undefined)?.id,
+      ).length
+    try {
+      for (const id of [999_999_999, hidden.id, ofHidden.id]) {
+        expect(await getWorkItem(id)).toBeNull()
+        expect((await route(String(id))).status).toBe(404)
+      }
+      expect(itemQueries()).toBe(0)
+
+      expect((await getWorkItem(visible.id))?.id).toBe(visible.id)
+      expect(itemQueries()).toBe(1)
+      expect((await route(String(visible.id))).status).toBe(200)
+      expect(itemQueries()).toBe(2)
+    } finally {
+      find.mockRestore()
+    }
+  })
 })
 
 describe('works cache tags', () => {

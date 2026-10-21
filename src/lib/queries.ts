@@ -20,7 +20,7 @@ import {
   type NewsFilter,
   type NewsPage,
 } from './news'
-import { buildFeeds, workPanels, type WorkFeeds, type WorkPanel } from './works'
+import { buildFeeds, visibleItemTypes, workPanels, type WorkFeeds, type WorkPanel } from './works'
 import { parseItemId, toViewerItem, type ViewerItem, type ViewerItemRow } from './workView'
 
 const layoutCached = unstable_cache(
@@ -505,13 +505,16 @@ const workItemCached = unstable_cache(
 
 /**
  * An item for its view (works v2 §3.4): panel and frames, or null — not an id, no such item, a
- * hidden item or one of a hidden project. React `cache`: the page and its metadata read it once.
+ * hidden item or one of a hidden project. Cache entries of items are made for visible items only:
+ * an id is first looked up among the items of the works feeds (their own cache, the same tags;
+ * every visible item is in the feed of its type), so trying ids grows no cache. React `cache`:
+ * the page and its metadata read it once.
  */
 export const getWorkItem = cache(async (id: unknown): Promise<ViewerItem | null> => {
   await connection()
   const itemId = parseItemId(id)
-  // A made-up address leaves no cache entry
   if (itemId === null) return null
+  if (!visibleItemTypes(await getWorkFeeds()).has(itemId)) return null
   return workItemCached(itemId)
 })
 
