@@ -92,8 +92,10 @@ test.describe('works: view of an item', () => {
       const before = await page.evaluate(() => ({ y: window.scrollY, length: history.length }))
       await grid(page).evaluate((el) => ((el as HTMLElement & { e2e?: number }).e2e = 1))
       const rsc: string[] = []
+      // Navigation requests of the router (background prefetches of the header links aside)
       page.on('request', (r) => {
-        if (r.headers()['rsc'] || r.url().includes('_rsc=')) rsc.push(r.url())
+        const headers = r.headers()
+        if (headers['rsc'] && !headers['next-router-prefetch']) rsc.push(r.url())
       })
 
       await tileLink(page, 'Кухня').click()
@@ -502,6 +504,10 @@ test.describe('works: view of an item', () => {
       },
     ]
     const patch = async (path: string, data: Record<string, unknown>) => {
+      // The page's background prefetches (header links: «/», /works) read the works feeds; one in
+      // flight across the write would store the old feeds after their tag expired (a race of the
+      // data cache, not of this page) — the write comes when the page is quiet
+      await page.waitForLoadState('networkidle')
       const response = await page.request.patch(`${BASE}/api/${path}?depth=0`, { data })
       expect(response.ok(), await response.text()).toBe(true)
     }
