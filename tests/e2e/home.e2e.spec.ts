@@ -521,12 +521,12 @@ test.describe('home', () => {
     await expect(first).toContainText('Видео')
     await expect(first).toHaveAttribute('href', '/works?category=reels')
 
-    // An item leads to the feed of its type; a project of «Комплекс» — to its page
+    // An item leads to its view; a project of «Комплекс» — to its page
     await works.getByRole('button', { name: 'Кухни' }).click()
     await expect(works.locator('#works-kitchens')).toBeVisible()
     await expect(works.locator('#works-kitchens').getByRole('link').first()).toHaveAttribute(
       'href',
-      '/works?category=kitchens',
+      /^\/works\?category=kitchens&item=\d+$/,
     )
     await works.getByRole('button', { name: 'Комплекс' }).click()
     await expect(works.locator('#works-complex').getByRole('link').first()).toHaveAttribute(

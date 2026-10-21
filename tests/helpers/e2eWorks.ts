@@ -15,6 +15,12 @@ export type E2EItem = {
   videos?: number
   hidden?: boolean
   featured?: boolean
+  /** Panel of the view: description, specs (korpus and furn — the defaults), price, CTA. */
+  description?: string
+  fasady?: string
+  extraSpecs?: { label: string; value: string }[]
+  price?: number
+  ctaLabel?: string
 }
 
 export type E2EProject = {
@@ -36,10 +42,17 @@ export const E2E_WORK_PROJECTS: E2EProject[] = [
     complex: true,
     videos: 1,
     items: [
-      { type: 'kitchens', photos: ['tall', 'wide', 'square'] },
+      {
+        type: 'kitchens',
+        photos: ['tall', 'wide', 'square'],
+        description: 'Угловая кухня до потолка: верхний ярус в дубе.\n\nРабочая зона с подсветкой.',
+        fasady: 'Матовые светлые + дуб',
+        extraSpecs: [{ label: 'Столешница', value: 'Кварц' }],
+        price: 950000,
+      },
       { type: 'hallways', photos: ['tall', 'tall'] },
       { type: 'wardrobes', photos: ['wide', 'tall'], videos: 1 },
-      { type: 'bathrooms', photos: ['square', 'tall'], videos: 1 },
+      { type: 'bathrooms', photos: ['square', 'tall'], videos: 1, price: 320000 },
     ],
   },
   {
@@ -93,7 +106,13 @@ export const E2E_WORK_PROJECTS: E2EProject[] = [
 
 /** Works without a project. */
 export const E2E_SEPARATE_ITEMS: E2EItem[] = [
-  { type: 'kitchens', title: 'Кухня в загородный дом', photos: ['wide', 'tall', 'square'] },
+  {
+    type: 'kitchens',
+    title: 'Кухня в загородный дом',
+    photos: ['wide', 'tall', 'square'],
+    price: 1250000,
+    ctaLabel: 'Рассчитать такую кухню',
+  },
   { type: 'kitchens', title: 'Угловая кухня под потолок', photos: ['tall', 'wide'] },
   { type: 'kitchens', title: 'Скрытая кухня', photos: ['tall'], hidden: true },
   { type: 'bathrooms', title: 'Санузел в терраццо', photos: ['square', 'square'] },
@@ -143,6 +162,12 @@ export const E2E_WORK_COUNTS = {
   kids: e2eFeedTitles('kids').length,
   livingrooms: e2eFeedTitles('livingrooms').length,
 } as const
+
+/** Item of the fixture by its type and title (no title — the first one of the type). */
+export const e2eItem = (type: WorkType, title?: string): E2EItem =>
+  [...E2E_WORK_PROJECTS.flatMap((p) => p.items), ...E2E_SEPARATE_ITEMS].find(
+    (i) => i.type === type && i.title === title,
+  )!
 
 /** Title of the `worksPage` heading draft in the draft-mode check. */
 export const WORKS_DRAFT_TITLE = 'Черновик наших работ'

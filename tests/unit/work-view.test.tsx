@@ -114,7 +114,7 @@ describe('view of an item', () => {
   })
 
   it('specs, price and CTA', () => {
-    expect(specRows({ specs: null, extraSpecs: null })).toEqual([])
+    expect(specRows({ specs: undefined, extraSpecs: null })).toEqual([])
     expect(formatPrice(950000)).toBe('950 000 ₽')
     expect(formatPrice(0)).toBe('0 ₽')
     expect(formatPrice(null)).toBeNull()

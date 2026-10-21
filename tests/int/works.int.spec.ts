@@ -254,6 +254,16 @@ describe('view of an item', () => {
     }
   })
 
+  it('Live Preview of an item opens its view; a new one — the feed of its type', async () => {
+    const { Items } = await import('@/collections/Items')
+    const url = Items.admin!.livePreview!.url as (args: { data: Record<string, unknown> }) => string
+    const path = (data: Record<string, unknown>) =>
+      decodeURIComponent(new URL(url({ data })).searchParams.get('path')!)
+    expect(path({ id: 5, type: 'kitchens' })).toBe('/works?category=kitchens&item=5')
+    expect(path({ type: 'bathrooms' })).toBe('/works?category=bathrooms')
+    expect(path({})).toBe('/works')
+  })
+
   it('a made-up id answers 404 before the database', async () => {
     const find = vi.spyOn(payload, 'find')
     try {
