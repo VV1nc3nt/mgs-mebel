@@ -15,7 +15,8 @@ vi.mock('next/cache', () => ({
   unstable_cache: <T extends (...args: never[]) => unknown>(fn: T) => fn,
 }))
 
-const { getWorkFeeds } = await import('@/lib/queries')
+const { getWorkFeeds, getWorkItem } = await import('@/lib/queries')
+const { GET: getItemRoute } = await import('@/app/work-items/[id]/route')
 
 let payload: Payload
 let image: Media
@@ -184,6 +185,123 @@ describe('works feeds', () => {
     expect(feeds.reels.some((t) => t.title === `${PREFIX} без постера`)).toBe(false)
     const tile = feeds.kids.find((t) => t.title === `${PREFIX} без постера`)!
     expect(tile).toMatchObject({ kind: 'item', photos: 1, videos: 0 })
+  })
+})
+
+describe('view of an item', () => {
+  const route = (id: string) =>
+    getItemRoute(new Request(`http://localhost/work-items/${id}`), {
+      params: Promise.resolve({ id }),
+    })
+
+  it('reads the panel and the frames of a visible item; its project gives «Весь проект»', async () => {
+    const project = await createProject('Комплекс', { complex: true })
+    const kitchen = await createItem({
+      project: project.id,
+      title: null,
+      type: 'bathrooms',
+      photos: [image.id],
+      videos: [video.id],
+      description: 'Первый.\n\nВторой.',
+      specs: { korpus: 'ЛДСП', fasady: '', furn: 'Blum' },
+      extraSpecs: [{ label: 'Столешница', value: 'Кварц' }],
+      price: 125000,
+      ctaLabel: null,
+    })
+    const item = await getWorkItem(kitchen.id)
+    expect(item).toMatchObject({
+      id: kitchen.id,
+      type: 'bathrooms',
+      title: 'Санузел',
+      text: ['Первый.', 'Второй.'],
+      specs: [
+        { label: 'Корпус', value: 'ЛДСП' },
+        { label: 'Фурнитура', value: 'Blum' },
+        { label: 'Столешница', value: 'Кварц' },
+      ],
+      price: '125\u00a0000\u00a0₽',
+      cta: 'Хочу такой же',
+      project: { slug: project.slug, title: project.title },
+    })
+    expect(item!.frames.map((f) => [f.kind, f.image.id])).toEqual([
+      ['photo', image.id],
+      ['video', image.id],
+    ])
+    // Sizes for the full screen; only the selected fields of the media and the project
+    expect(item!.frames[0]!.image.sizes?.hero).toBeDefined()
+    expect(item!.frames[1]!.video).toEqual({ src: video.url, type: 'video/mp4' })
+    expect(Object.keys(item!).sort()).toEqual(
+      ['cta', 'frames', 'id', 'price', 'project', 'specs', 'text', 'title', 'type'].sort(),
+    )
+
+    const response = await route(String(kitchen.id))
+    expect(response.status).toBe(200)
+    expect(response.headers.get('cache-control')).toBe('no-store')
+    expect(await response.json()).toMatchObject({ id: kitchen.id, title: 'Санузел' })
+  })
+
+  it('not complex — no «Весь проект»; hidden item, hidden project, no such item — nothing', async () => {
+    const plain = await createProject('Не комплекс', { complex: false })
+    const own = await createItem({ project: plain.id })
+    expect((await getWorkItem(own.id))!.project).toBeNull()
+
+    const hiddenItem = await createItem({ hidden: true })
+    const hiddenProject = await createProject('Скрытый', { complex: true, hidden: true })
+    const ofHidden = await createItem({ project: hiddenProject.id })
+    for (const id of [hiddenItem.id, ofHidden.id, 999_999_999]) {
+      expect(await getWorkItem(id)).toBeNull()
+      expect((await route(String(id))).status).toBe(404)
+    }
+  })
+
+  it('Live Preview of an item opens its view; a new one — the feed of its type', async () => {
+    const { Items } = await import('@/collections/Items')
+    const url = Items.admin!.livePreview!.url as (args: { data: Record<string, unknown> }) => string
+    const path = (data: Record<string, unknown>) =>
+      decodeURIComponent(new URL(url({ data })).searchParams.get('path')!)
+    expect(path({ id: 5, type: 'kitchens' })).toBe('/works?category=kitchens&item=5')
+    expect(path({ type: 'bathrooms' })).toBe('/works?category=bathrooms')
+    expect(path({})).toBe('/works')
+  })
+
+  it('a made-up id answers 404 before the database', async () => {
+    const find = vi.spyOn(payload, 'find')
+    try {
+      for (const id of ['abc', '-1', '1.5', '0', '01', '9'.repeat(20)]) {
+        expect(await getWorkItem(id)).toBeNull()
+        expect((await route(id)).status).toBe(404)
+      }
+      expect(find).not.toHaveBeenCalled()
+    } finally {
+      find.mockRestore()
+    }
+  })
+
+  it('the cached query of an item runs for visible items only', async () => {
+    const visible = await createItem({})
+    const hidden = await createItem({ hidden: true })
+    const hiddenProject = await createProject('Скрытый кэш', { complex: true, hidden: true })
+    const ofHidden = await createItem({ project: hiddenProject.id })
+    const find = vi.spyOn(payload, 'find')
+    // The query of one item (`where.id`), not the one of the works feeds
+    const itemQueries = () =>
+      find.mock.calls.filter(
+        ([args]) => args.collection === 'items' && (args.where as { id?: unknown } | undefined)?.id,
+      ).length
+    try {
+      for (const id of [999_999_999, hidden.id, ofHidden.id]) {
+        expect(await getWorkItem(id)).toBeNull()
+        expect((await route(String(id))).status).toBe(404)
+      }
+      expect(itemQueries()).toBe(0)
+
+      expect((await getWorkItem(visible.id))?.id).toBe(visible.id)
+      expect(itemQueries()).toBe(1)
+      expect((await route(String(visible.id))).status).toBe(200)
+      expect(itemQueries()).toBe(2)
+    } finally {
+      find.mockRestore()
+    }
   })
 })
 

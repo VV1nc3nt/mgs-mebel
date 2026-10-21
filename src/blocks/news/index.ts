@@ -41,7 +41,7 @@ const paragraphEditor = lexicalEditor({
     StrikethroughFeature(),
     InlineToolbarFeature(),
     LinkFeature({
-      enabledCollections: ['news', 'projects'],
+      enabledCollections: ['news', 'projects', 'items'],
       fields: ({ defaultFields }) => defaultFields.map(newTabByLinkType),
     }),
   ],

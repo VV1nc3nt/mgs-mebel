@@ -5,6 +5,7 @@ import { MediaCard } from '@/components/ui/MediaCard'
 import type { SizesPreset } from '@/lib/media'
 import { mediaBadge, type WorkTile as Tile } from '@/lib/works'
 import { workTypeLabel } from '@/lib/workTypes'
+import { WorkViewLink } from './WorkViewContext'
 
 type Props = {
   tile: Tile
@@ -31,7 +32,7 @@ function ReelsBadge() {
 
 /**
  * Tile of the works masonry (design: works v2 §2.3): a project of «Комплекс» (link to its page),
- * an item of a type feed or a video of REELS. All text lies on the image, over the gradient: the
+ * an item of a type feed (link to its view) or a video of REELS. All text lies on the image, over the gradient: the
  * height is the image's own ratio (the masonry places it by that alone).
  */
 export function WorkTile({ tile, heading: Heading = 'h2', priority }: Props) {
@@ -66,10 +67,12 @@ export function WorkTile({ tile, heading: Heading = 'h2', priority }: Props) {
       radius="media"
       overlay="work-tile"
       inset="tile"
-      href={tile.kind === 'project' ? tile.href : undefined}
-      labelledBy={tile.kind === 'project' ? titleId : undefined}
-      // The project page renders on the click only
-      prefetch={tile.kind === 'project' ? false : undefined}
+      // A project — its page; an item — its view (opened in place by WorkViewLink)
+      href={tile.href}
+      labelledBy={titleId}
+      // The project page renders on the click only; the view is the same page
+      prefetch={false}
+      linkAs={tile.kind === 'item' ? WorkViewLink : undefined}
       priority={priority}
       className="size-full"
       top={

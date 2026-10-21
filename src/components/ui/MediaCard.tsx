@@ -1,5 +1,5 @@
 import Image from 'next/image'
-import type { ReactNode } from 'react'
+import type { ComponentType, ReactNode } from 'react'
 
 import { cn } from '@/lib/cn'
 import {
@@ -12,7 +12,7 @@ import {
   type MediaValue,
   type SizesPreset,
 } from '@/lib/media'
-import { Action } from './Action'
+import { Action, type ActionLinkProps } from './Action'
 import { BgVideo } from './BgVideo'
 
 const RATIO = {
@@ -87,6 +87,8 @@ export type MediaCardProps = {
   labelledBy?: string
   /** No prefetch of the linked page (it does not exist yet, or is too heavy for a grid). */
   prefetch?: false
+  /** Element of the link (a client wrapper with its own handlers); Action by default. */
+  linkAs?: ComponentType<ActionLinkProps>
   /** LCP image: preloaded, not lazy. */
   priority?: boolean
   as?: 'div' | 'article' | 'figure'
@@ -112,6 +114,7 @@ export function MediaCard({
   href,
   labelledBy,
   prefetch,
+  linkAs: Link = Action,
   priority = false,
   as: Tag = 'div',
   className,
@@ -165,14 +168,14 @@ export function MediaCard({
   // (e.g. no seed yet) render a plain block instead of a nameless link.
   if (href && (image || children)) {
     return (
-      <Action
+      <Link
         href={href}
         aria-labelledby={labelledBy}
         prefetch={prefetch}
         className={cn(classes, 'transition-opacity hover:opacity-88')}
       >
         {content}
-      </Action>
+      </Link>
     )
   }
   return <Tag className={classes}>{content}</Tag>

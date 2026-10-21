@@ -343,6 +343,12 @@ try {
         videos: videos(item.videos),
         hidden: Boolean(item.hidden),
         featured: Boolean(item.featured),
+        description: item.description ?? null,
+        // Korpus and furniture keep their defaults
+        ...(item.fasady && { specs: { fasady: item.fasady } }),
+        extraSpecs: item.extraSpecs ?? [],
+        price: item.price ?? null,
+        ctaLabel: item.ctaLabel ?? null,
       },
       depth: 0,
     })

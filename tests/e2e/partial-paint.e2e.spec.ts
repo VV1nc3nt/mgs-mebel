@@ -71,6 +71,26 @@ test.describe('partial paint', () => {
       }
     }
 
+    // The view of an item rendered open over its feed (`?item=`): the id comes from the fixture
+    for (const [width, height] of VIEWPORTS) {
+      test(`/works?item= ${width}: the view does not shift while the page arrives`, async ({
+        page,
+      }) => {
+        const { docs } = await (
+          await page.request.get(
+            `${BASE}/api/items?where[type][equals]=kitchens&where[title][exists]=false&depth=0&limit=1`,
+          )
+        ).json()
+        await page.setViewportSize({ width, height })
+        await stubMedia(page)
+        await page.goto(`${proxy.origin}/works?category=kitchens&item=${docs[0].id}&photo=2`, {
+          waitUntil: 'domcontentloaded',
+        })
+        await expect(page.getByRole('dialog')).toBeVisible()
+        expect(await layoutShifts(page)).toEqual([])
+      })
+    }
+
     // «Показать ещё» comes after the grid: on a tall screen it is on the first screen too
     test('/news 1440×1600: «Показать ещё» does not shift while the page arrives', async ({
       page,

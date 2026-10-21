@@ -153,8 +153,13 @@ test.describe('works', () => {
     for (const [label, feed] of CHIPS) {
       await expect(chip(page, label)).toHaveAccessibleName(`${label} ${E2E_WORK_COUNTS[feed]}`)
     }
-    // Item tiles: no link yet (the item viewer comes later), «N фото» badge, the place
-    await expect(grid(page).getByRole('link')).toHaveCount(0)
+    // Item tiles: links to their views named by the title, «N фото» badge, the place
+    await expect(grid(page).getByRole('link')).toHaveCount(kitchens.length)
+    await expect(grid(page).getByRole('link').first()).toHaveAccessibleName(kitchens[0]!)
+    await expect(grid(page).getByRole('link').first()).toHaveAttribute(
+      'href',
+      /^\/works\?category=kitchens&item=\d+$/,
+    )
     await expect(tiles(page).first()).toContainText('ЖК Уно')
     await expect(tiles(page).first()).toContainText('3 фото')
     // Hidden items and the items of a hidden project are not shown

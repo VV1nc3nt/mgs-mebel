@@ -1,4 +1,4 @@
-import type { ArticleBlock } from '@/lib/article'
+import type { ArticleBlock, VisibleItems } from '@/lib/article'
 
 import { ArticleFigure } from './ArticleFigure'
 import { ArticleGallery } from './ArticleGallery'
@@ -7,10 +7,10 @@ import { ARTICLE_COLUMN } from './articleStyles'
 import { ArticleVideo } from './ArticleVideo'
 import { NewsQuote } from './NewsQuote'
 
-const Block = ({ block }: { block: ArticleBlock }) => {
+const Block = ({ block, items }: { block: ArticleBlock; items?: VisibleItems }) => {
   switch (block.blockType) {
     case 'paragraph':
-      return <ArticleParagraph block={block} />
+      return <ArticleParagraph block={block} items={items} />
     case 'heading':
       return <h2 className={`${ARTICLE_COLUMN} mt-4 text-article-h2 text-balance`}>{block.text}</h2>
     case 'list':
@@ -44,14 +44,14 @@ const Block = ({ block }: { block: ArticleBlock }) => {
 /**
  * Body of a news article (README §6.8): the blocks in the editor's order, a 760 column with wide
  * photos and videos and the photo sliders across the container. Empty and unknown blocks are
- * already left out (articleBlocks).
+ * already left out (articleBlocks). `items` — the visible items the text links to (their views).
  */
-export function ArticleBlocks({ blocks }: { blocks: ArticleBlock[] }) {
+export function ArticleBlocks({ blocks, items }: { blocks: ArticleBlock[]; items?: VisibleItems }) {
   if (!blocks.length) return null
   return (
     <div className="page-container flex flex-col gap-6 pt-12 xl:pt-section-xl">
       {blocks.map((block, i) => (
-        <Block key={block.id ?? i} block={block} />
+        <Block key={block.id ?? i} block={block} items={items} />
       ))}
     </div>
   )

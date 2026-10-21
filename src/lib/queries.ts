@@ -20,7 +20,8 @@ import {
   type NewsFilter,
   type NewsPage,
 } from './news'
-import { buildFeeds, workPanels, type WorkFeeds, type WorkPanel } from './works'
+import { buildFeeds, visibleItemTypes, workPanels, type WorkFeeds, type WorkPanel } from './works'
+import { parseItemId, toViewerItem, type ViewerItem, type ViewerItemRow } from './workView'
 
 const layoutCached = unstable_cache(
   async (): Promise<LayoutInput> => {
@@ -240,9 +241,11 @@ const ARTICLE_QUERY = {
         og: ARTICLE_MEDIA_SIZE,
       },
     },
-    // Links of the text: the address needs the slug only
+    // Links of the text: the address needs the slug only; an item — its id (its visibility and
+    // type come from the works feeds, their own cache: an edit of the works expires no article)
     news: { slug: true },
     projects: { slug: true },
+    items: { type: true },
   },
 } as const
 
@@ -459,6 +462,61 @@ export async function getWorkFeeds(): Promise<WorkFeeds> {
   await connection()
   return workFeedsCached()
 }
+
+// Photos of the view are shown full screen: the optimizer's source is `hero` (1920), `card` (960)
+// for the frames at the sides and the narrow screens.
+const VIEW_MEDIA = {
+  ...WORK_MEDIA,
+  sizes: { ...WORK_MEDIA.sizes, hero: WORK_MEDIA_SIZE },
+} as const
+
+const workItemCached = unstable_cache(
+  async (id: number): Promise<ViewerItem | null> => {
+    const payload = await getPayloadClient()
+    const { docs } = await payload.find({
+      collection: 'items',
+      where: { id: { equals: id } },
+      limit: 1,
+      depth: 2,
+      overrideAccess: false,
+      select: {
+        title: true,
+        type: true,
+        project: true,
+        photos: true,
+        videos: true,
+        description: true,
+        specs: true,
+        extraSpecs: true,
+        price: true,
+        ctaLabel: true,
+        hidden: true,
+      },
+      populate: {
+        media: VIEW_MEDIA,
+        projects: { title: true, slug: true, complex: true, hidden: true },
+      },
+    })
+    return toViewerItem(docs[0] as ViewerItemRow | undefined)
+  },
+  ['collection:works:item'],
+  { tags: worksTags },
+)
+
+/**
+ * An item for its view (works v2 §3.4): panel and frames, or null — not an id, no such item, a
+ * hidden item or one of a hidden project. Cache entries of items are made for visible items only:
+ * an id is first looked up among the items of the works feeds (their own cache, the same tags;
+ * every visible item is in the feed of its type), so trying ids grows no cache. React `cache`:
+ * the page and its metadata read it once.
+ */
+export const getWorkItem = cache(async (id: unknown): Promise<ViewerItem | null> => {
+  await connection()
+  const itemId = parseItemId(id)
+  if (itemId === null) return null
+  if (!visibleItemTypes(await getWorkFeeds()).has(itemId)) return null
+  return workItemCached(itemId)
+})
 
 /** Home «Наши работы»: up to 4 previews per chip, chips without works left out. */
 export async function getHomeWorks(): Promise<WorkPanel[]> {

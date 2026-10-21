@@ -1,13 +1,16 @@
 /**
- * Whether a full-screen overlay covers the page (the menu). A module store, not React state:
- * background videos pause under an overlay without re-rendering anything.
+ * Whether a full-screen overlay covers the page (the menu, the view of an item on /works). A module store,
+ * not React state: background videos pause under an overlay without re-rendering anything.
  */
-export type OverlayKey = 'menu'
+export type OverlayKey = 'menu' | 'viewer'
 
 const open = new Set<OverlayKey>()
 const listeners = new Set<() => void>()
 
 export const isOverlayOpen = (): boolean => open.size > 0
+
+/** This overlay is open. */
+export const isOverlay = (key: OverlayKey): boolean => open.has(key)
 
 export function setOverlay(key: OverlayKey, value: boolean): void {
   const before = isOverlayOpen()
