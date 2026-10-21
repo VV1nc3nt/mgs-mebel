@@ -34,9 +34,11 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     getWorkFeeds(),
     id === null ? null : getWorkItem(id),
   ])
+  const shared = item?.frames[0]?.image
   return buildMetadata({
-    meta,
-    fallback: { title: hero?.title, image: item?.frames[0]?.image ?? feeds[COMPLEX][0]?.image },
+    // The view shares its item's photo over the page's own SEO image
+    meta: shared ? { ...meta, image: shared } : meta,
+    fallback: { title: hero?.title, image: feeds[COMPLEX][0]?.image },
     path: PATH,
   })
 }

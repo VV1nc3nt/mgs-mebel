@@ -36,7 +36,7 @@ const subscribeDesktop = (onChange: () => void) => {
   return () => query.removeEventListener('change', onChange)
 }
 
-/** Marks the controls of a video: their keys are their own, not the view's. */
+/** Marks the bar of a video: its arrow keys seek, they do not step the view. */
 export const VIDEO_CONTROL_ATTR = 'data-view-control'
 
 /**
@@ -227,14 +227,12 @@ export function WorkViewVideo({ layout, source, active, muted, onMuted }: Props)
       <button
         type="button"
         aria-label={paused ? 'Воспроизвести' : 'Пауза'}
-        {...{ [VIDEO_CONTROL_ATTR]: '' }}
         onClick={() => setPaused((p) => !p)}
         className="absolute inset-0 cursor-pointer focus-visible:-outline-offset-2"
       />
       <button
         type="button"
         aria-pressed={!muted}
-        {...{ [VIDEO_CONTROL_ATTR]: '' }}
         onClick={() => onMuted(!muted)}
         className={cn(
           'absolute right-3 bottom-10 inline-flex h-9 items-center gap-1.5 rounded-pill glass px-3.5 text-caption',
