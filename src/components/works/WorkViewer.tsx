@@ -329,8 +329,20 @@ export function WorkViewer({
               '--r': f.ratio,
               '--x': slideOffset((s) => frames[wrapIndex(place + s, count)]?.ratio ?? 1, d),
             } as CSSProperties
-            const media = (
-              <>
+            // One element for a frame at any place (keyed by the place): a step keeps the node, so
+            // it slides (translate) and lights up or dims (opacity); its image is not recreated.
+            // A neighbour steps on a click — a backing button over it, out of the tab order.
+            return (
+              <div
+                key={at}
+                aria-hidden={isCurrent ? undefined : true}
+                data-slide={isCurrent ? 'current' : d}
+                className={cn(
+                  'work-view-slide overflow-hidden rounded-media bg-surface-2',
+                  !isCurrent && 'opacity-35',
+                )}
+                style={style}
+              >
                 <FrameImage
                   frame={f}
                   eager={Math.abs(d) <= 1}
@@ -346,30 +358,15 @@ export function WorkViewer({
                     onMuted={setMuted}
                   />
                 )}
-              </>
-            )
-            return isCurrent ? (
-              <div
-                key={at}
-                data-slide="current"
-                className="work-view-slide overflow-hidden rounded-media bg-surface-2"
-                style={style}
-              >
-                {media}
+                {!isCurrent && (
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={() => step(d > 0 ? 1 : -1)}
+                    className="absolute inset-0 cursor-pointer"
+                  />
+                )}
               </div>
-            ) : (
-              <button
-                key={at}
-                type="button"
-                tabIndex={-1}
-                aria-hidden="true"
-                data-slide={d}
-                onClick={() => step(d > 0 ? 1 : -1)}
-                className="work-view-slide cursor-pointer overflow-hidden rounded-media bg-surface-2 opacity-35"
-                style={style}
-              >
-                {media}
-              </button>
             )
           })}
         </div>

@@ -74,6 +74,35 @@ const listTo = async (page: Page, n: number) => {
   }, n - 1)
 }
 
+/**
+ * A step on the strip (1440) keeps the node of the frame at `at` (a neighbour): it becomes the
+ * current one, slides (translate) and lights up (opacity) — or, under reduced motion, no transition.
+ */
+const stepKeepsNode = async (
+  page: Page,
+  at: '1' | '-1',
+  go: () => Promise<unknown>,
+  moving = true,
+) => {
+  const handle = (await dialog(page).locator(`[data-slide="${at}"]`).elementHandle())!
+  await handle.evaluate((el) => {
+    const node = el as HTMLElement & { e2eRuns?: string[] }
+    node.e2eRuns = []
+    node.addEventListener('transitionrun', (e) => {
+      if (e.target === node) node.e2eRuns!.push((e as TransitionEvent).propertyName)
+    })
+  })
+  await go()
+  expect(await handle.evaluate((el) => el.isConnected)).toBe(true)
+  await expect.poll(() => handle.getAttribute('data-slide')).toBe('current')
+  await expect.poll(() => handle.evaluate((el) => getComputedStyle(el).opacity)).toBe('1')
+  const runs = await handle.evaluate((el) => (el as HTMLElement & { e2eRuns?: string[] }).e2eRuns)
+  if (moving) expect(runs).toEqual(expect.arrayContaining(['translate', 'opacity']))
+  else expect(runs).toEqual([])
+  // The transition over and the wheel's lock off before the next step
+  await page.waitForTimeout(700)
+}
+
 test.describe('works: view of an item', () => {
   test.skip(EMPTY_DB, 'needs the works fixture')
 
@@ -392,6 +421,37 @@ test.describe('works: view of an item', () => {
     })
   })
 
+  test('1440: a step slides the same frame nodes — arrows, the wheel, keys', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.goto(`${BASE}/works?category=kitchens`)
+    await hydrated(page)
+    await tileLink(page, 'Кухня').click()
+    await expect(dialog(page)).toBeVisible()
+    await page.waitForTimeout(700)
+    const next = dialog(page).getByRole('button', { name: 'Следующее фото' })
+    const prev = dialog(page).getByRole('button', { name: 'Предыдущее фото' })
+    // The frame entering from the edge mounts at its place beyond it: no transition, out of view
+    const strip = dialog(page).locator('[data-view-strip]')
+    const edge = await strip.evaluate((el) => el.getBoundingClientRect().right)
+    const entering = dialog(page).locator('[data-slide="2"]')
+    await entering.evaluate((el) => el.setAttribute('data-e2e', 'old'))
+    await stepKeepsNode(page, '1', () => next.click())
+    expect(await entering.getAttribute('data-e2e')).toBeNull()
+    expect(await entering.evaluate((el) => el.getAnimations().length)).toBe(0)
+    expect(await entering.evaluate((el) => el.getBoundingClientRect().left)).toBeGreaterThanOrEqual(
+      edge,
+    )
+    await stepKeepsNode(page, '-1', () => prev.click())
+    const box = (await strip.boundingBox())!
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+    await stepKeepsNode(page, '1', () => page.mouse.wheel(0, 120))
+    await stepKeepsNode(page, '1', () => page.keyboard.press('ArrowRight'))
+    // Round the end: the frame entering from the edge stood beyond it — the step is one place
+    await expect(counter(page)).toHaveText('3 / 3')
+    await stepKeepsNode(page, '1', () => next.click())
+    await expect(counter(page)).toHaveText('1 / 3')
+  })
+
   test('reduced motion: no fade, no moving strip', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.setViewportSize({ width: 1440, height: 900 })
@@ -400,7 +460,7 @@ test.describe('works: view of an item', () => {
     await tileLink(page, 'Кухня').click()
     await expect(dialog(page)).toBeVisible()
     expect(await dialog(page).evaluate((el) => getComputedStyle(el).animationName)).toBe('none')
-    await page.keyboard.press('ArrowRight')
+    await stepKeepsNode(page, '1', () => page.keyboard.press('ArrowRight'), false)
     await expect(counter(page)).toHaveText('2 / 3')
     expect(
       await dialog(page)

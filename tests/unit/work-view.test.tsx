@@ -335,6 +335,24 @@ describe('WorkViewer', () => {
       fireEvent.keyDown(window, { key: 'ArrowLeft' })
       expect(counter()).toBe('3 / 3')
       expect(p.onIndex.mock.calls.map(([i]) => i)).toEqual([1, 2, 0, 2])
+
+      // A step keeps the frames' nodes: the neighbour becomes the current one, its image the same
+      const slide = (at: string) => container.querySelector<HTMLElement>(`[data-slide="${at}"]`)!
+      const right = slide('1')
+      const image = right.querySelector('img')
+      expect(right.getAttribute('aria-hidden')).toBe('true')
+      expect(right.className).toContain('opacity-35')
+      act(() => next.click())
+      expect(slide('current')).toBe(right)
+      expect(right.querySelector('img')).toBe(image)
+      expect(right.hasAttribute('aria-hidden')).toBe(false)
+      expect(right.className).not.toContain('opacity-35')
+      // A neighbour steps on a click of its backing button, out of the tab order
+      const left = slide('-1')
+      const back = left.querySelector('button')!
+      expect(back.tabIndex).toBe(-1)
+      act(() => back.click())
+      expect(slide('current')).toBe(left)
       unmount()
 
       render(<WorkViewer {...props(viewItem({ photos: [photo], videos: [] }))} />)
