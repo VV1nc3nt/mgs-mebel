@@ -19,6 +19,7 @@ import {
   hasText,
   linkHref,
   linkedItemIds,
+  linkedProjectIds,
   newsCrumbName,
   readingLabel,
 } from '@/lib/article'
@@ -218,16 +219,34 @@ describe('hasText', () => {
 })
 
 describe('linkHref', () => {
-  it('internal: the page of the linked news or project', () => {
+  it('internal: the page of the linked news', () => {
     expect(
       linkHref({ linkType: 'internal', doc: { relationTo: 'news', value: { slug: 'alvic' } } }),
     ).toEqual({ kind: 'internal', href: '/news/alvic' })
+  })
+
+  it('internal project: where it leads while visible (from the index), else no link', () => {
+    const projects = new Map([
+      [3, '/works/kvartira'],
+      [4, '/works?category=kitchens&item=12'],
+    ])
+    const link = (value: unknown) =>
+      linkHref(
+        { linkType: 'internal', doc: { relationTo: 'projects', value } },
+        undefined,
+        projects,
+      )
+    // Complex — its page; not complex — the view of its first item, without the 308
+    expect(link({ id: 3, slug: 'kvartira' })).toEqual({ kind: 'internal', href: '/works/kvartira' })
+    expect(link(4)).toEqual({ kind: 'internal', href: '/works?category=kitchens&item=12' })
+    // Hidden, without visible items, deleted, or no index read: the text alone
+    expect(link({ id: 5, slug: 'skryt' })).toBeNull()
     expect(
       linkHref({
         linkType: 'internal',
-        doc: { relationTo: 'projects', value: { slug: 'kuhnya' } },
+        doc: { relationTo: 'projects', value: { id: 3, slug: 'x' } },
       }),
-    ).toEqual({ kind: 'internal', href: '/works/kuhnya' })
+    ).toBeNull()
   })
 
   it('internal without a slug (not published, deleted, not populated): no link', () => {
@@ -273,6 +292,12 @@ describe('linkHref', () => {
         ]),
       ] as never),
     ).toEqual([3, 5])
+    const projectLink = {
+      type: 'link',
+      fields: { linkType: 'internal', doc: { relationTo: 'projects', value: { id: 9 } } },
+    }
+    expect(linkedProjectIds([paragraph([itemLink(3), projectLink])] as never)).toEqual([9])
+    expect(linkedProjectIds([paragraph([itemLink(3)])] as never)).toEqual([])
   })
 
   it('renders a link to a visible item and the text alone for another', () => {
@@ -308,7 +333,7 @@ describe('linkHref', () => {
       },
     }
     const { container } = render(
-      <ArticleBlocks blocks={[block as never]} items={new Map([[7, 'bathrooms']])} />,
+      <ArticleBlocks blocks={[block as never]} links={{ items: new Map([[7, 'bathrooms']]) }} />,
     )
     expect(screen.getByRole('link', { name: 'Санузел' }).getAttribute('href')).toBe(
       '/works?category=bathrooms&item=7',
