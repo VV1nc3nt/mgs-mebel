@@ -20,8 +20,18 @@ import {
   type NewsFilter,
   type NewsPage,
 } from './news'
-import { buildFeeds, visibleItemTypes, workPanels, type WorkFeeds, type WorkPanel } from './works'
+import {
+  buildWorks,
+  projectHref,
+  visibleItemTypes,
+  workPanels,
+  type ProjectIndexEntry,
+  type WorkFeeds,
+  type WorkPanel,
+  type WorksData,
+} from './works'
 import { parseItemId, toViewerItem, type ViewerItem, type ViewerItemRow } from './workView'
+import { toWorkProject, type WorkProject, type WorkProjectRow } from './workProject'
 
 const layoutCached = unstable_cache(
   async (): Promise<LayoutInput> => {
@@ -410,8 +420,8 @@ const WORK_SORT = ['_order', '-createdAt', '-id']
 
 const worksTags = [collectionTag('projects'), collectionTag('items')]
 
-const workFeedsCached = unstable_cache(
-  async (): Promise<WorkFeeds> => {
+const worksDataCached = unstable_cache(
+  async (): Promise<WorksData> => {
     const payload = await getPayloadClient()
     const [projects, items] = await Promise.all([
       payload.find({
@@ -451,16 +461,26 @@ const workFeedsCached = unstable_cache(
         populate: { media: WORK_MEDIA, projects: { title: true } },
       }),
     ])
-    return buildFeeds(projects.docs, items.docs)
+    return buildWorks(projects.docs, items.docs)
   },
-  ['collection:works:feeds'],
+  // v2: the entry carries the index of projects next to the feeds
+  ['collection:works:feeds:v2'],
   { tags: worksTags },
 )
 
 /** Every feed of the works page: visible tiles in the editor's order. */
 export async function getWorkFeeds(): Promise<WorkFeeds> {
   await connection()
-  return workFeedsCached()
+  return (await worksDataCached()).feeds
+}
+
+/**
+ * Visible projects with visible items (the same cache entry as the feeds): what a project
+ * address answers is known before any cache of the project is made.
+ */
+export async function getProjectIndex(): Promise<ProjectIndexEntry[]> {
+  await connection()
+  return (await worksDataCached()).projects
 }
 
 // Photos of the view are shown full screen: the optimizer's source is `hero` (1920), `card` (960)
@@ -468,6 +488,20 @@ export async function getWorkFeeds(): Promise<WorkFeeds> {
 const VIEW_MEDIA = {
   ...WORK_MEDIA,
   sizes: { ...WORK_MEDIA.sizes, hero: WORK_MEDIA_SIZE },
+} as const
+
+// Fields of an item its panel and frames read (the view of an item, the page of a project)
+const VIEW_ITEM_SELECT = {
+  title: true,
+  type: true,
+  photos: true,
+  videos: true,
+  description: true,
+  specs: true,
+  extraSpecs: true,
+  price: true,
+  ctaLabel: true,
+  hidden: true,
 } as const
 
 const workItemCached = unstable_cache(
@@ -479,19 +513,7 @@ const workItemCached = unstable_cache(
       limit: 1,
       depth: 2,
       overrideAccess: false,
-      select: {
-        title: true,
-        type: true,
-        project: true,
-        photos: true,
-        videos: true,
-        description: true,
-        specs: true,
-        extraSpecs: true,
-        price: true,
-        ctaLabel: true,
-        hidden: true,
-      },
+      select: { ...VIEW_ITEM_SELECT, project: true },
       populate: {
         media: VIEW_MEDIA,
         projects: { title: true, slug: true, complex: true, hidden: true },
@@ -516,6 +538,71 @@ export const getWorkItem = cache(async (id: unknown): Promise<ViewerItem | null>
   if (itemId === null) return null
   if (!visibleItemTypes(await getWorkFeeds()).has(itemId)) return null
   return workItemCached(itemId)
+})
+
+const workProjectCached = unstable_cache(
+  async (id: number): Promise<WorkProject | null> => {
+    const payload = await getPayloadClient()
+    const [{ docs: projects }, { docs: items }] = await Promise.all([
+      payload.find({
+        collection: 'projects',
+        where: { id: { equals: id } },
+        limit: 1,
+        depth: 2,
+        overrideAccess: false,
+        select: {
+          title: true,
+          slug: true,
+          place: true,
+          city: true,
+          year: true,
+          complex: true,
+          cover: true,
+          about: true,
+          price: true,
+          designer: true,
+          videos: true,
+          hidden: true,
+          meta: true,
+        },
+        populate: { media: VIEW_MEDIA },
+      }),
+      payload.find({
+        collection: 'items',
+        where: { project: { equals: id } },
+        sort: WORK_SORT,
+        pagination: false,
+        depth: 2,
+        overrideAccess: false,
+        // The project is set on each item by toWorkProject: not read here
+        select: VIEW_ITEM_SELECT,
+        populate: { media: VIEW_MEDIA },
+      }),
+    ])
+    return toWorkProject(projects[0] as WorkProjectRow | undefined, items as ViewerItemRow[])
+  },
+  ['collection:works:project'],
+  { tags: worksTags },
+)
+
+/** What a project address answers: its page, a redirect to its first item, or nothing (404). */
+export type ProjectAnswer = { page: WorkProject } | { redirect: string } | null
+
+/**
+ * A project by its slug (works v2 §3): a visible complex one — its page; a visible one that is not
+ * complex — the view of its first visible item (308); else null. The slug is looked up first in
+ * the index of the works feeds (their own cache, the same tags): a cache entry of a project page
+ * is made for visible complex projects only, so trying slugs grows no cache. React `cache`: the
+ * page and its metadata read it once.
+ */
+export const getWorkProject = cache(async (slug: unknown): Promise<ProjectAnswer> => {
+  await connection()
+  if (!isSlug(slug)) return null
+  const entry = (await getProjectIndex()).find((p) => p.slug === slug)
+  if (!entry) return null
+  if (!entry.complex) return { redirect: projectHref(entry) }
+  const page = await workProjectCached(entry.id)
+  return page ? { page } : null
 })
 
 /** Home «Наши работы»: up to 4 previews per chip, chips without works left out. */

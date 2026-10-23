@@ -6,7 +6,7 @@ import { PreviewRefresh } from '@/components/app/PreviewRefresh'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { WorksFeeds } from '@/components/works/WorksFeeds'
 import { toChrome } from '@/lib/chrome'
-import { breadcrumbJsonLd } from '@/lib/jsonld'
+import { breadcrumbJsonLd, itemListJsonLd } from '@/lib/jsonld'
 import { getLayout, getPageGlobal, getSettings, getWorkFeeds, getWorkItem } from '@/lib/queries'
 import { parseFilter } from '@/lib/segmentFilter'
 import { buildMetadata } from '@/lib/seo'
@@ -63,6 +63,12 @@ export default async function WorksPage({ searchParams }: Props) {
   const title = page.hero?.title?.trim() || navLabel
   const pageName = navLabel ?? title
   const counts = feedCounts(feeds)
+  // Pages of the complex projects: the same list whatever the feed or the view
+  const itemList = itemListJsonLd(
+    feeds[COMPLEX].flatMap((tile) =>
+      tile.kind === 'project' ? [{ name: tile.title, path: tile.href }] : [],
+    ),
+  )
   const chips = feedChips(counts)
   // The same values as the chips on the client: an empty or unknown feed is «Комплекс»
   const fallback = chips.some((chip) => chip.value === COMPLEX) ? COMPLEX : chips[0]?.value
@@ -88,6 +94,7 @@ export default async function WorksPage({ searchParams }: Props) {
           ])}
         />
       )}
+      {itemList && <JsonLd data={itemList} />}
       {fallback && feed ? (
         <WorksFeeds
           label={page.hero?.label}

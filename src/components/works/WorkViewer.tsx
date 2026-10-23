@@ -53,6 +53,8 @@ type Props = {
   onClosed: () => void
   priceDate: string | null
   messengers: Messenger[]
+  /** The page of the project: «Весь проект →» closes the view. */
+  onProject?: () => void
 }
 
 // The same sizes for every frame of both layouts: the browser picks one file for a photo, the
@@ -115,6 +117,7 @@ export function WorkViewer({
   onClosed,
   priceDate,
   messengers,
+  onProject,
 }: Props) {
   const count = frames.length
   const multi = count > 1
@@ -434,7 +437,14 @@ export function WorkViewer({
         className={cn('xl:h-dvh xl:overflow-y-auto xl:overscroll-contain')}
         data-view-panel=""
       >
-        {owner && <WorkViewPanel item={owner} priceDate={priceDate} messengers={messengers} />}
+        {owner && (
+          <WorkViewPanel
+            item={owner}
+            priceDate={priceDate}
+            messengers={messengers}
+            onProject={onProject}
+          />
+        )}
       </div>
     </div>
   )

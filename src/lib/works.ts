@@ -102,13 +102,8 @@ export const worksCount = (n: number, feed: WorkFeed): string => {
   return `${n} ${plural(n, forms)}`
 }
 
-/**
- * Feeds of the works page from the visible data, in the editor's order:
- * «Комплекс» — projects marked so with at least one visible item; a type — its items; REELS —
- * per project its own videos, then its items' videos, then the videos of separate works.
- * A hidden project hides its items and videos; a video without a poster is left out.
- */
-export function buildFeeds(projects: readonly ProjectRow[], items: readonly ItemRow[]): WorkFeeds {
+/** The visible part of the data: shown projects, visible items, the items of each shown project. */
+function visibleWorks(projects: readonly ProjectRow[], items: readonly ItemRow[]) {
   const shown = projects.filter((p) => !p.hidden)
   const shownIds = new Set(shown.map((p) => p.id))
   const hiddenIds = new Set(projects.filter((p) => p.hidden).map((p) => p.id))
@@ -124,6 +119,17 @@ export function buildFeeds(projects: readonly ProjectRow[], items: readonly Item
       byProject.set(project, [...(byProject.get(project) ?? []), item])
     }
   }
+  return { shown, visibleItems, byProject }
+}
+
+/**
+ * Feeds of the works page from the visible data, in the editor's order:
+ * «Комплекс» — projects marked so with at least one visible item; a type — its items; REELS —
+ * per project its own videos, then its items' videos, then the videos of separate works.
+ * A hidden project hides its items and videos; a video without a poster is left out.
+ */
+export function buildFeeds(projects: readonly ProjectRow[], items: readonly ItemRow[]): WorkFeeds {
+  const { shown, visibleItems, byProject } = visibleWorks(projects, items)
   const projectOf = new Map(shown.map((p) => [p.id, p]))
 
   const feeds = Object.fromEntries(
@@ -199,6 +205,62 @@ export function buildFeeds(projects: readonly ProjectRow[], items: readonly Item
   return feeds
 }
 
+/**
+ * A visible project with at least one visible item: what its address answers without reading
+ * the project — its page (complex) or the view of its first item (308).
+ */
+export type ProjectIndexEntry = {
+  id: number
+  slug: string
+  title: string
+  complex: boolean
+  /** Its first visible item in the editor's order. */
+  first: { id: number; type: WorkType }
+}
+
+/** Visible projects that have visible items, in the editor's order (works v2 §3). */
+export function buildProjectIndex(
+  projects: readonly ProjectRow[],
+  items: readonly ItemRow[],
+): ProjectIndexEntry[] {
+  const { shown, byProject } = visibleWorks(projects, items)
+  return shown.flatMap((project) => {
+    const first = byProject.get(project.id)?.[0]
+    return first && project.slug
+      ? [
+          {
+            id: project.id,
+            slug: project.slug,
+            title: project.title,
+            complex: Boolean(project.complex),
+            first: { id: first.id, type: first.type },
+          },
+        ]
+      : []
+  })
+}
+
+/** Where a visible project leads: its page (complex), else the view of its first item. */
+export const projectHref = (entry: ProjectIndexEntry): string =>
+  entry.complex
+    ? `/works/${entry.slug}`
+    : itemViewHref({ type: entry.first.type, id: entry.first.id })
+
+/** Feeds and the index of projects: one cache entry, one read of the data. */
+export type WorksData = { feeds: WorkFeeds; projects: ProjectIndexEntry[] }
+
+export const buildWorks = (
+  projects: readonly ProjectRow[],
+  items: readonly ItemRow[],
+): WorksData => ({
+  feeds: buildFeeds(projects, items),
+  projects: buildProjectIndex(projects, items),
+})
+
+/** Visible projects by id: where links to them from news texts lead. */
+export const visibleProjectHrefs = (projects: readonly ProjectIndexEntry[]): Map<number, string> =>
+  new Map(projects.map((entry) => [entry.id, projectHref(entry)]))
+
 /** Visible items by id: their type (links to their views from news texts). */
 export const visibleItemTypes = (feeds: WorkFeeds): Map<number, WorkType> =>
   new Map(
@@ -225,6 +287,8 @@ export type WorkPreview = {
   image: Media | null
   /** With a video (▶) or photos only (carousel icon). */
   kind: 'video' | 'photo'
+  /** Leads to a project page (fetched ahead on an intent). */
+  project?: true
 }
 
 export type WorkPanel = { key: WorkFeed; label: string; works: WorkPreview[] }
@@ -242,6 +306,7 @@ export const toWorkPreview = (tile: WorkTile): WorkPreview => {
         href: tile.href,
         image: tile.image,
         kind: tile.videos ? 'video' : 'photo',
+        project: true,
       }
     case 'item':
       return {

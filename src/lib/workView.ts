@@ -33,6 +33,39 @@ export const itemViewHref = ({
   return `${WORKS_PATH}?${params}`
 }
 
+/** A project page: `/works/<slug>`. */
+export const projectHrefOf = (slug: string): string => `${WORKS_PATH}/${slug}`
+
+/**
+ * Address of the view on a project page (works v2 §3.4): the item and its frame (from 1; the
+ * first is not written) over the page of the project.
+ */
+export const projectViewHref = ({
+  slug,
+  id,
+  photo = 1,
+}: {
+  slug: string
+  id: number | string
+  photo?: number
+}): string => {
+  const params = new URLSearchParams({ [ITEM_PARAM]: String(id) })
+  if (photo > 1) params.set(PHOTO_PARAM, String(photo))
+  return `${projectHrefOf(slug)}?${params}`
+}
+
+/**
+ * Live Preview of a project: a visible complex one with visible items — its page; another visible
+ * one — the view of its first visible item; new, hidden or without visible items — /works.
+ */
+export const projectPreviewPath = (
+  project: { slug?: string | null; complex?: boolean | null; hidden?: boolean | null } | null,
+  first: { id: number; type: string } | null,
+): string => {
+  if (!project?.slug || project.hidden || !first) return WORKS_PATH
+  return project.complex ? projectHrefOf(project.slug) : itemViewHref(first)
+}
+
 /** The feed of an item type (where × of its view leads without script). */
 export const typeFeedHref = (type: string): string =>
   `${WORKS_PATH}?${new URLSearchParams({ category: type })}`
@@ -213,6 +246,27 @@ export const frameCounter = (frames: readonly ViewerFrame[], index: number): str
   if (!frame) return ''
   const own = frames.filter((f) => f.owner === frame.owner)
   return `${own.indexOf(frame) + 1} / ${own.length}`
+}
+
+/** Index in the frames of a view of the item's frame `photo` (0-based); -1 — not there. */
+export const frameAt = (frames: readonly ViewerFrame[], owner: number, photo = 0): number => {
+  const first = frames.findIndex((f) => f.owner === owner)
+  if (first < 0) return -1
+  const own = frames.filter((f) => f.owner === owner).length
+  return first + Math.min(Math.max(photo, 0), own - 1)
+}
+
+/** The item of a frame of a view and the frame's place among the item's frames (0-based). */
+export const framePlace = (
+  frames: readonly ViewerFrame[],
+  index: number,
+): { owner: number; photo: number } | null => {
+  const frame = frames[index]
+  if (!frame) return null
+  return {
+    owner: frame.owner,
+    photo: frames.slice(0, index).filter((f) => f.owner === frame.owner).length,
+  }
 }
 
 /**

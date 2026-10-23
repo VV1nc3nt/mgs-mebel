@@ -9,7 +9,7 @@ import { ArticleHeader } from '@/components/news/ArticleHeader'
 import { ArticleShare } from '@/components/news/ArticleShare'
 import { RelatedNews } from '@/components/news/RelatedNews'
 import { JsonLd } from '@/components/seo/JsonLd'
-import { articleBlocks, linkedItemIds, newsCrumbName } from '@/lib/article'
+import { articleBlocks, linkedItemIds, linkedProjectIds, newsCrumbName } from '@/lib/article'
 import { toChrome } from '@/lib/chrome'
 import { breadcrumbJsonLd, newsArticleJsonLd } from '@/lib/jsonld'
 import { ALL_NEWS, relatedNews } from '@/lib/news'
@@ -18,10 +18,11 @@ import {
   getNewsBySlug,
   getNewsPage,
   getPageGlobal,
+  getProjectIndex,
   getSettings,
   getWorkFeeds,
 } from '@/lib/queries'
-import { visibleItemTypes } from '@/lib/works'
+import { visibleItemTypes, visibleProjectHrefs } from '@/lib/works'
 import { readingTime } from '@/lib/readingTime'
 import { buildMetadata } from '@/lib/seo'
 import { articleShareLinks } from '@/lib/shareLinks'
@@ -73,8 +74,11 @@ export default async function NewsArticlePage({ params }: Props) {
   const path = `${NEWS_PATH}/${news.slug}`
   const url = absoluteUrl(path)
   const blocks = articleBlocks(news.body)
-  // Links to items: their views, only for the visible ones (the works feeds' cache and tags)
-  const items = linkedItemIds(blocks).length ? visibleItemTypes(await getWorkFeeds()) : undefined
+  // Links to items and projects: only to the visible ones (the works feeds' cache and tags)
+  const [items, projects] = await Promise.all([
+    linkedItemIds(blocks).length ? getWorkFeeds().then(visibleItemTypes) : undefined,
+    linkedProjectIds(blocks).length ? getProjectIndex().then(visibleProjectHrefs) : undefined,
+  ])
 
   return (
     <>
@@ -108,7 +112,7 @@ export default async function NewsArticlePage({ params }: Props) {
           />
           {/* The cover ends the first screen; the body grows below it and moves nothing above */}
           <FirstScreenEnd />
-          <ArticleBlocks blocks={blocks} items={items} />
+          <ArticleBlocks blocks={blocks} links={{ items, projects }} />
           <ArticleShare
             url={url}
             links={articleShareLinks(

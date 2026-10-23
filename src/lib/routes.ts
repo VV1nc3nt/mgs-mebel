@@ -35,5 +35,7 @@ export const parentOf = (pathname: string): { href: string; label: string } | nu
   const path = trimSlash(pathname)
   if (path === '/') return null
   if (path.startsWith('/news/')) return { href: '/news', label: 'Назад к новостям' }
+  // A project page (works v2 §3.1): «← Все работы»
+  if (path.startsWith('/works/')) return { href: '/works', label: 'Все работы' }
   return { href: '/', label: 'На главную' }
 }
