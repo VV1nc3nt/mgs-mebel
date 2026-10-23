@@ -1191,6 +1191,55 @@
 }
 
 /*
+ * The choice of the narrow CTA tile of a project page, where no capsule fits: opening, the lime
+ * label leaves first (--motion-chooser-fade-out), then the logos come out one by one from its
+ * corner, left to right (--i from the first, --n of them on a parent); closing is the reverse —
+ * the logos from the right, then the label. Reduced motion: opacity only, as chooser-motion.
+ */
+@utility chooser-reveal-label {
+  transition: opacity var(--motion-chooser-fade-in) ease;
+  transition-delay: calc(
+    var(--motion-chooser-fade-out) + var(--motion-chooser-stagger) * (var(--n) - 1)
+  );
+  [data-open] & {
+    transition-duration: var(--motion-chooser-fade-out);
+    transition-delay: 0ms;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &,
+    [data-open] & {
+      transition: opacity var(--motion-fade-reduced) ease-out;
+    }
+  }
+}
+
+@utility chooser-reveal {
+  --chooser-delay: calc(var(--motion-chooser-stagger) * (var(--n) - 1 - var(--i)));
+  transition-property: scale, opacity, border-color;
+  transition-duration:
+    var(--motion-chooser-out), var(--motion-chooser-fade-out), var(--default-transition-duration);
+  transition-timing-function: var(--ease-soft), ease, ease-out;
+  transition-delay: var(--chooser-delay), var(--chooser-delay), 0ms;
+  [data-open] & {
+    --chooser-delay: calc(
+      var(--motion-chooser-fade-out) + var(--motion-chooser-stagger) * var(--i)
+    );
+    transition-duration:
+      var(--motion-dock), var(--motion-chooser-fade-in), var(--default-transition-duration);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &,
+    [data-open] & {
+      scale: none !important;
+      transition-property: opacity, border-color;
+      transition-duration: var(--motion-fade-reduced), var(--default-transition-duration);
+      transition-timing-function: ease-out;
+      transition-delay: 0ms;
+    }
+  }
+}
+
+/*
  * The button label folds from its own width (any label from the CMS): --label-w is measured by
  * the component, unitless; before that max-width is none.
  */

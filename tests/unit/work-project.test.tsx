@@ -448,11 +448,21 @@ describe('project blocks', () => {
     expect(button.getAttribute('aria-describedby')).toBe('project-cta-title project-cta-text')
     // The capsule is a picture of the button, not a control of its own
     expect(container.querySelectorAll('button')).toHaveLength(1)
-    expect(screen.getByRole('group', { hidden: true }).hasAttribute('inert')).toBe(true)
+    // A layout per width (the other one is `display: none`): the row of the narrow tile and the
+    // capsule of the contact buttons on a wide one, whose button is only drawn
+    const groups = () => screen.getAllByRole('group', { hidden: true })
+    expect(groups()).toHaveLength(2)
+    expect(groups().every((g) => g.hasAttribute('inert'))).toBe(true)
+    const capsule = container.querySelector('.group\\/chooser')!
+    expect(capsule.querySelector('span.chooser-motion[aria-hidden="true"]')).toBeTruthy()
+    // The narrow row comes out from the left: --i counts from the first logo
+    const narrow = groups()[0]!.querySelectorAll('a')
+    expect([...narrow].map((a) => a.style.getPropertyValue('--i'))).toEqual(['0', '1'])
+    expect([...narrow].every((a) => a.classList.contains('chooser-reveal'))).toBe(true)
     act(() => button.click())
     expect(button.getAttribute('aria-expanded')).toBe('true')
     expect(button.getAttribute('aria-label')).toBe('Закрыть выбор мессенджера')
-    expect(screen.getByRole('group').hasAttribute('inert')).toBe(false)
+    expect(groups().some((g) => g.hasAttribute('inert'))).toBe(false)
   })
 
   it('CTA tile with one messenger is a link to it in a new tab', () => {
