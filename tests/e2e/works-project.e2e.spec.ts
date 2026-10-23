@@ -4,11 +4,12 @@ import { expect, test, type APIRequestContext, type Locator, type Page } from '@
 import { plural } from '../../src/lib/plural'
 import { e2eEditor } from '../helpers/e2eEditor'
 import { E2E_NEWS } from '../helpers/e2eNews'
-import { e2eProject, type E2EProject } from '../helpers/e2eWorks'
+import { E2E_CTA, e2eProject, type E2EProject } from '../helpers/e2eWorks'
+import { motionEnded } from '../helpers/motion'
 import { layoutShifts, settle } from '../helpers/scroll'
 
-// The page of a project of «Наши работы» (works v2 §3): heading, zones, gallery, «О проекте»,
-// CTA, the view of the whole project, the answers of its address.
+// The page of a project of «Наши работы» (works v2 §3): heading, zones, gallery with the CTA tile,
+// «О проекте», the view of the whole project, the answers of its address.
 const BASE = 'http://localhost:3000'
 const EMPTY_DB = !!process.env.E2E_EMPTY_DB
 const HEIGHTS = { 390: 844, 834: 1194, 1440: 900 } as const
@@ -81,7 +82,16 @@ const tile = (page: Page, n: number) => grid(page).locator(':scope > li').nth(n)
 const zoneChips = (page: Page) =>
   page.locator('main ul:has(> li > a[href*="item="]):not([data-works-grid])')
 const about = (page: Page) => page.getByRole('region', { name: 'О проекте' })
-const cta = (page: Page) => page.getByRole('region', { name: 'Хотите так же?' })
+/** The CTA tile: the item of the masonry with the title of the CTA. */
+const cta = (page: Page) =>
+  grid(page).locator(':scope > li').filter({ has: page.getByRole('heading', { level: 2 }) })
+/** The tile's button (its name changes to «Закрыть выбор мессенджера» while open). */
+const ctaButton = (page: Page) => cta(page).getByRole('button')
+/** Index of the CTA among the tiles of the masonry. */
+const ctaIndex = (page: Page) =>
+  grid(page)
+    .locator(':scope > li')
+    .evaluateAll((els) => els.findIndex((el) => el.querySelector('h2')))
 const counter = (page: Page) => dialog(page).locator('[data-view-counter]:visible')
 const panelTitle = (page: Page) => dialog(page).locator('[data-view-panel] h2')
 /** «← Все работы» over the H1 (the header «←» of mobile has the same name). */
@@ -93,7 +103,7 @@ test.describe('works: project page', () => {
   test.skip(EMPTY_DB, 'needs the works fixture')
 
   for (const width of [390, 834, 1440] as const) {
-    test(`${width}: heading, zones, gallery, «О проекте» and the CTA in place`, async ({
+    test(`${width}: heading, zones, gallery with the CTA tile, «О проекте»`, async ({
       page,
     }) => {
       await page.setViewportSize({ width, height: HEIGHTS[width] })
@@ -121,26 +131,95 @@ test.describe('works: project page', () => {
         await expect(chips.nth(i)).toHaveAccessibleName(`${zone.title} ${zone.count}`)
       }
 
-      // Gallery: the project video first, then the frames item after item, each with its zone
+      // Gallery: the project video first, then the frames item after item, each with its zone;
+      // the CTA before the middle frame (11 frames → before the 6th, after the video — tile 6)
       const frames = zones.flatMap((zone) => Array.from({ length: zone.count }, () => zone.title))
-      await expect(grid(page).locator(':scope > li')).toHaveCount(frames.length + 1)
+      const middle = Math.floor(frames.length / 2)
+      await expect(grid(page).locator(':scope > li')).toHaveCount(frames.length + 2)
       await expect(tile(page, 0)).toContainText('REELS')
       await expect(tile(page, 0).getByRole('link')).toHaveCount(0)
-      for (const [i, zone] of frames.entries()) await expect(tile(page, i + 1)).toContainText(zone)
+      expect(await ctaIndex(page)).toBe(middle + 1)
+      for (const [i, zone] of frames.entries()) {
+        await expect(tile(page, i + (i < middle ? 1 : 2))).toContainText(zone)
+      }
       // A frame tile is named by its photo's alt (the badges are hidden from it)
       await expect(tile(page, 1).getByRole('link')).toHaveAccessibleName('Тестовое изображение')
 
-      // «О проекте»: over the gallery from 768, under it below; the CTA under both, no overlap
+      // «О проекте»: over the gallery from 768, under it below
       await expect(about(page)).toContainText('Стоимость проекта')
       await expect(about(page)).toContainText('Цена актуальна на')
       await expect(about(page)).toContainText(WARM.designer!)
-      const [a, g, c] = [await box(about(page)), await box(grid(page)), await box(cta(page))]
+      const [a, g] = [await box(about(page)), await box(grid(page))]
       if (width < 768) expect(a.y).toBeGreaterThanOrEqual(g.y + g.height)
       else expect(a.y + a.height).toBeLessThanOrEqual(g.y)
-      expect(c.y).toBeGreaterThanOrEqual(Math.max(a.y + a.height, g.y + g.height))
-      await expect(cta(page).getByRole('heading', { level: 2 })).toHaveText('Хотите так же?')
-      await expect(cta(page)).toContainText('Рассчитаем под ваши размеры и пришлём смету.')
-      await expect(cta(page).getByRole('button', { name: /Оставить заявку/ })).toBeVisible()
+      // No strip under the gallery any more
+      await expect(page.getByRole('region', { name: E2E_CTA.ctaTitle })).toHaveCount(0)
+
+      // The CTA tile: 3:4, one button named by its visible label, described by title and text
+      await expect(cta(page).getByRole('heading', { level: 2 })).toHaveText(E2E_CTA.ctaTitle)
+      const button = ctaButton(page)
+      await expect(button).toHaveAttribute('aria-expanded', 'false')
+      await expect(button).toHaveAccessibleName(/^Оставить заявку/)
+      await expect(button).toHaveAccessibleDescription(
+        `${E2E_CTA.ctaTitle} ${E2E_CTA.ctaText}`,
+      )
+      await expect(button).toHaveCount(1)
+      const c = await box(cta(page))
+      expect(c.height / c.width).toBeCloseTo(4 / 3, 1)
+      const b = await box(button)
+      expect(Math.round(b.width)).toBe(Math.round(c.width))
+      expect(Math.round(b.height)).toBe(Math.round(c.height))
+      // The long text of the fixture is clamped: nothing leaves the tile or its text layer
+      const fits = () =>
+        cta(page)
+          .locator(':scope > div')
+          .evaluate((root) => {
+            const tile = root.getBoundingClientRect()
+            const layers = [root, ...root.querySelectorAll<HTMLElement>(':scope > div')]
+            const overflow = layers.flatMap((el) =>
+              el.scrollHeight > el.clientHeight ? [`overflow ${el.className}`] : [],
+            )
+            const outside = [...root.querySelectorAll('*')].flatMap((el) => {
+              const r = el.getBoundingClientRect()
+              const out =
+                r.width > 0 &&
+                (r.left < tile.left - 0.5 ||
+                  r.right > tile.right + 0.5 ||
+                  r.top < tile.top - 0.5 ||
+                  r.bottom > tile.bottom + 0.5)
+              return out ? [`outside ${el.tagName} «${el.textContent}»`] : []
+            })
+            return [...overflow, ...outside]
+          })
+      expect(await fits()).toEqual([])
+
+      // Open: the three messengers of the fixture inside the tile, 44 each, clear of the title
+      await button.scrollIntoViewIfNeeded()
+      await button.click()
+      await expect(button).toHaveAttribute('aria-expanded', 'true')
+      await expect(button).toHaveAccessibleName('Закрыть выбор мессенджера')
+      const links = cta(page).getByRole('group', { name: 'Выбрать мессенджер' }).getByRole('link')
+      await expect(links).toHaveCount(3)
+      await motionEnded(cta(page))
+      const h = await box(cta(page).getByRole('heading', { level: 2 }))
+      const t = await box(cta(page))
+      for (const link of await links.all()) {
+        await expect(link).toBeVisible()
+        const l = await box(link)
+        expect(Math.round(l.width)).toBeGreaterThanOrEqual(44)
+        expect(Math.round(l.height)).toBeGreaterThanOrEqual(44)
+        expect(l.x).toBeGreaterThanOrEqual(t.x - 0.5)
+        expect(l.x + l.width).toBeLessThanOrEqual(t.x + t.width + 0.5)
+        expect(l.y).toBeGreaterThanOrEqual(h.y + h.height)
+        expect(l.y + l.height).toBeLessThanOrEqual(t.y + t.height + 0.5)
+      }
+      expect(await fits()).toEqual([])
+      expect(await axe(page)).toEqual([])
+
+      // Esc closes, the focus back on the tile
+      await page.keyboard.press('Escape')
+      await expect(button).toHaveAttribute('aria-expanded', 'false')
+      await expect(button).toBeFocused()
 
       expect(await layoutShifts(page)).toEqual([])
       expect(await axe(page)).toEqual([])
@@ -154,15 +233,16 @@ test.describe('works: project page', () => {
     await page.goto(`${BASE}/works/${REELS.slug}`)
     const frames = zonesOf(REELS).reduce((n, zone) => n + zone.count, 0)
     const items = grid(page).locator(':scope > li')
-    await expect(items).toHaveCount(frames + REELS.videos!)
+    await expect(items).toHaveCount(frames + REELS.videos! + 1)
     const reels = await items.evaluateAll((els) =>
       els.flatMap((el, i) => (el.textContent?.includes('REELS') ? [i] : [])),
     )
-    // 0 frames before the first, 6 before the second, 12 before the third, the fourth last
-    expect(reels).toEqual([0, 7, 14, frames + REELS.videos! - 1])
+    // 0 frames before the first, 6 before the second, 12 before the third, the fourth last; the
+    // CTA at the middle (13 frames → frame 6, where the second video is) takes the next place
+    expect(reels).toEqual([0, 7, 15, frames + REELS.videos!])
+    expect(await ctaIndex(page)).toBe(8)
     await expect(about(page)).toHaveCount(0)
     await expect(page.locator('main h1 + ul > li').last()).toHaveText(REELS.place)
-    await expect(cta(page)).toBeVisible()
   })
 
   for (const width of [390, 1440] as const) {

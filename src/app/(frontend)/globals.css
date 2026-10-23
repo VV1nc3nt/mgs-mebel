@@ -365,6 +365,9 @@
   --container-intro: 880px;
   --container-media-text: 620px;
   --container-section-text: 760px;
+  /* CTA tile of a project page: from this width the capsule button and «×» in the row of the
+     open choice (3 × 44 + 44 + gaps) fit; narrower (2 columns of 390) — lime text instead */
+  --container-cta-tile: 15rem;
 
   /* Radii (pill buttons use rounded-full) */
   --radius-thumb: 14px;

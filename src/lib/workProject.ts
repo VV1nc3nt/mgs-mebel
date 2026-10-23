@@ -1,4 +1,5 @@
-import type { Media, Project } from '@/payload-types'
+import type { Media, Project, WorksPage } from '@/payload-types'
+import type { Messenger } from './chrome'
 import { asMedia, isImage } from './media'
 import { plural } from './plural'
 import { paragraphs } from './text'
@@ -53,7 +54,13 @@ export type FrameTile = {
   frame: number
 }
 
-export type GalleryTile = FrameTile | ReelTile
+/** The CTA of the page among the frames (its content is a slot of the grid). */
+export type CtaTile = { kind: 'cta'; key: 'cta'; ratio: number; featured: false }
+
+export type GalleryTile = FrameTile | ReelTile | CtaTile
+
+/** Texts of the CTA tile (worksPage.project). */
+export type ProjectCtaData = { title: string; text: string | null; button: string }
 
 /** A chip of a zone: the view from the first frame of the item. */
 export type ProjectZone = { id: number; title: string; count: number; href: string }
@@ -83,6 +90,12 @@ export type WorkProject = {
 
 /** Places of the project's videos among the frames (§3.3); the rest go to the end. */
 export const REEL_PLACES = [0, 6, 12] as const
+
+/** Height / width of the CTA tile (3:4): known ahead, the masonry stays on the server. */
+export const CTA_RATIO = 4 / 3
+
+/** Fewer frames than this — the CTA goes after the last one. */
+const CTA_MIN_FRAMES = 3
 
 /** «1 зона», «3 зоны», «6 зон». */
 export const zonesCount = (n: number): string => `${n} ${plural(n, ['зона', 'зоны', 'зон'])}`
@@ -140,6 +153,43 @@ export function projectGallery(
     }
   })
   return [...placed, ...tail]
+}
+
+/**
+ * Index of the CTA in the gallery: before the frame floor(n / 2), so a video placed at that frame
+ * (REEL_PLACES) stays and the CTA takes the next place; fewer than 3 frames — after the last one.
+ */
+export function ctaPlace(gallery: readonly GalleryTile[]): number {
+  const frames = gallery.filter((tile) => tile.kind === 'frame').length
+  if (frames < CTA_MIN_FRAMES) {
+    let last = gallery.length - 1
+    while (last >= 0 && gallery[last]!.kind !== 'frame') last--
+    return last + 1
+  }
+  const middle = Math.floor(frames / 2)
+  return gallery.findIndex((tile) => tile.kind === 'frame' && tile.frame === middle)
+}
+
+/** The gallery with the CTA tile at its place; no CTA — the same list. */
+export function withCta(gallery: GalleryTile[], show: boolean): GalleryTile[] {
+  if (!show) return gallery
+  const place = ctaPlace(gallery)
+  const cta: CtaTile = { kind: 'cta', key: 'cta', ratio: CTA_RATIO, featured: false }
+  return [...gallery.slice(0, place), cta, ...gallery.slice(place)]
+}
+
+/**
+ * Texts of the CTA tile, or null — no tile: no title, no label of its button (the tile is that
+ * button), no messenger.
+ */
+export function projectCta(
+  cta: WorksPage['project'] | null | undefined,
+  messengers: readonly Messenger[],
+): ProjectCtaData | null {
+  const title = cta?.ctaTitle?.trim()
+  const button = cta?.ctaButton?.trim()
+  if (!title || !button || !messengers.length) return null
+  return { title, text: cta?.ctaText?.trim() || null, button }
 }
 
 /** «О проекте» of a project: null when it has no text, price or designer. */

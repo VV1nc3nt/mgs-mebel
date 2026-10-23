@@ -218,5 +218,18 @@ export const e2eItem = (type: WorkType, title?: string): E2EItem =>
 export const e2eProject = (slug: string): E2EProject =>
   E2E_WORK_PROJECTS.find((p) => p.slug === slug)!
 
+/**
+ * CTA of the project page (worksPage.project): the seed title and button, a long text of an
+ * editor — the tile clamps it and nothing leaves the tile.
+ */
+export const E2E_CTA = {
+  ctaTitle: 'Хотите так же?',
+  ctaText:
+    'Рассчитаем под ваши размеры и пришлём смету. Приедем на замер, подберём материалы, фасады ' +
+    'и фурнитуру, покажем образцы в салоне и согласуем каждую деталь до начала производства. ' +
+    'Сроки и стоимость фиксируем в договоре, доставку и монтаж берём на себя.',
+  ctaButton: 'Оставить заявку',
+}
+
 /** Title of the `worksPage` heading draft in the draft-mode check. */
 export const WORKS_DRAFT_TITLE = 'Черновик наших работ'

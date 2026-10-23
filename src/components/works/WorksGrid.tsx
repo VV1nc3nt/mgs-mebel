@@ -1,4 +1,4 @@
-import { memo, type CSSProperties, type Ref } from 'react'
+import { memo, type CSSProperties, type ReactNode, type Ref } from 'react'
 
 import { gridVars, masonryLayouts, tileVars } from '@/lib/masonry'
 import type { GalleryTile } from '@/lib/workProject'
@@ -12,6 +12,8 @@ type Props = {
   /** Tiles whose image is preloaded: the first row of the widest layout. */
   priority?: number
   listRef?: Ref<HTMLUListElement>
+  /** Content of the CTA tile of a project page (its place is in `tiles`). */
+  cta?: ReactNode
 }
 
 /**
@@ -19,7 +21,13 @@ type Props = {
  * for every breakpoint — the order of the list is the reading order by rows. Memoized: the
  * address of the view of an item changes on every step, the feed under it stays as it is.
  */
-export const WorksGrid = memo(function WorksGrid({ tiles, leaving, priority = 0, listRef }: Props) {
+export const WorksGrid = memo(function WorksGrid({
+  tiles,
+  leaving,
+  priority = 0,
+  listRef,
+  cta,
+}: Props) {
   const layouts = masonryLayouts(tiles.map((tile) => tile.ratio))
   return (
     <div className="page-container">
@@ -33,7 +41,7 @@ export const WorksGrid = memo(function WorksGrid({ tiles, leaving, priority = 0,
         >
           {tiles.map((tile, i) => (
             <li key={tile.key} style={tileVars(tile.ratio, layouts, i) as CSSProperties}>
-              <WorkTile tile={tile} priority={i < priority} />
+              {tile.kind === 'cta' ? cta : <WorkTile tile={tile} priority={i < priority} />}
             </li>
           ))}
         </ul>
