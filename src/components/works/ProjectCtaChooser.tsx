@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 
 import { MessengerIcon } from '@/components/icons/MessengerIcon'
 import { Action } from '@/components/ui/Action'
+import { ChooserCapsule } from '@/components/ui/ContactChooser'
 import { useChooser } from '@/hooks/useChooser'
 import {
   CHOOSER_CLOSE_LABEL,
@@ -13,7 +14,7 @@ import {
   type Messenger,
 } from '@/lib/chrome'
 import { cssVars } from '@/lib/cssVars'
-import { CTA_CONTENT, CTA_TILE, CTA_TRIGGER } from './projectCtaStyles'
+import { CTA_CONTENT, CTA_LABEL_TEXT, CTA_TILE, CTA_TRIGGER } from './projectCtaStyles'
 
 type Props = {
   caption: string
@@ -23,17 +24,17 @@ type Props = {
   describedBy: string
   /** Title and text (server). */
   head: ReactNode
-  /** «<button> →» of the closed tile (server). */
-  label: ReactNode
 }
 
 /**
- * The CTA tile with a choice of messengers (two or three): the tile is the button. Open, the label
- * at the bottom gives way to the messenger links, 44 each, in the same place — nothing grows out
- * of the tile or covers the title; «×» joins the row where it fits. Esc, a click outside, ←/→ and
- * the focus — useChooser, as every contact button; closed, the focus is on the tile.
+ * The CTA tile with a choice of messengers (two or three): the tile is the button, one useChooser
+ * for the whole tile. Wide (`@cta-tile`), the lime capsule at the bottom is the capsule of the
+ * contact buttons (ChooserCapsule): it turns into the row of logos and «×» with the same motion.
+ * Narrow, no capsule fits: the lime label leaves, then the logos come out one by one from its
+ * corner, left to right (`chooser-reveal`). Nothing grows out of the tile or covers the title.
+ * Esc, a click outside, ←/→ and the focus — useChooser; closed, the focus is on the tile.
  */
-export function ProjectCtaChooser({ caption, messengers, describedBy, head, label }: Props) {
+export function ProjectCtaChooser({ caption, messengers, describedBy, head }: Props) {
   const { open, rootRef, groupRef, buttonRef, onButtonClick, onPick, onKeyDown } = useChooser()
 
   return (
@@ -54,17 +55,23 @@ export function ProjectCtaChooser({ caption, messengers, describedBy, head, labe
       />
       <div className={CTA_CONTENT}>
         {head}
-        {/* The label and the links share one cell: the open row never moves the text above */}
-        <div className="mt-auto grid items-end">
-          <div className="col-start-1 row-start-1 chooser-motion group-data-open/cta:opacity-0">
-            {label}
-          </div>
+        {/* Both layouts share one cell (only one is shown): the open row never moves the text */}
+        <div
+          ref={groupRef}
+          style={cssVars({ '--n': messengers.length })}
+          className="mt-auto grid items-end"
+        >
+          <span
+            aria-hidden="true"
+            className={`col-start-1 row-start-1 ${CTA_LABEL_TEXT} chooser-reveal-label group-data-open/cta:opacity-0 @cta-tile:hidden`}
+          >
+            {caption} →
+          </span>
           <div
-            ref={groupRef}
             role="group"
             aria-label={CHOOSER_GROUP_LABEL}
             inert={!open}
-            className="col-start-1 row-start-1 flex gap-1"
+            className="col-start-1 row-start-1 flex gap-1 @cta-tile:hidden"
           >
             {messengers.map(({ kind, href }, i) => (
               <Action
@@ -72,20 +79,27 @@ export function ProjectCtaChooser({ caption, messengers, describedBy, head, labe
                 href={href}
                 aria-label={MESSENGER_NAMES[kind]}
                 onClick={onPick}
-                style={cssVars({ '--i': messengers.length - 1 - i })}
-                className="pointer-events-none flex size-11 shrink-0 scale-60 chooser-motion items-center justify-center rounded-full border border-border-strong bg-surface-3 text-text opacity-0 chooser-stagger group-data-open/cta:pointer-events-auto group-data-open/cta:scale-100 group-data-open/cta:opacity-100 hover:border-accent"
+                style={cssVars({ '--i': i })}
+                className="chooser-reveal pointer-events-none flex size-11 shrink-0 origin-bottom-left scale-60 items-center justify-center rounded-full border border-border-strong bg-surface-3 text-text opacity-0 group-data-open/cta:pointer-events-auto group-data-open/cta:scale-100 group-data-open/cta:opacity-100 hover:border-accent"
               >
                 <MessengerIcon kind={kind} className="size-5.5 shrink-0" />
               </Action>
             ))}
-            {/* «×» of the tile button where it fits (clicks go through to it); narrow — the tile */}
-            <span
-              aria-hidden="true"
-              className="relative hidden size-11 shrink-0 scale-60 chooser-motion items-center justify-center rounded-full bg-accent opacity-0 group-data-open/cta:scale-100 group-data-open/cta:opacity-100 @cta-tile:flex"
-            >
-              <span className="absolute h-0.5 w-4 rotate-45 rounded-full bg-on-accent" />
-              <span className="absolute h-0.5 w-4 -rotate-45 rounded-full bg-on-accent" />
-            </span>
+          </div>
+          <div className="col-start-1 row-start-1 hidden @cta-tile:flex">
+            <ChooserCapsule
+              caption={caption}
+              messengers={messengers}
+              size={44}
+              fullWidth={false}
+              tone="accent"
+              arrow
+              grow="end"
+              open={open}
+              onPick={onPick}
+              fit
+              buttonClassName="group-hover/cta:bg-accent-hover"
+            />
           </div>
         </div>
       </div>

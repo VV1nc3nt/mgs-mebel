@@ -12,6 +12,16 @@ import { closeChooser, getActiveChooser, openChooser, subscribeChooser } from '@
 const NAV_KEYS = ['ArrowLeft', 'ArrowRight', 'Home', 'End']
 
 /**
+ * The links of the choice that are drawn: the CTA tile of a project page keeps a layout per width
+ * in its group, the other one `display: none`. None drawn (no layout, e.g. jsdom) — all of them.
+ */
+function shownLinks(group: HTMLElement | null): HTMLElement[] {
+  const links = [...(group?.querySelectorAll<HTMLElement>('a') ?? [])]
+  const shown = links.filter((a) => a.getClientRects().length > 0)
+  return shown.length ? shown : links
+}
+
+/**
  * A messenger choice opened in place by its button (the dock, contact buttons). Open state comes
  * from the shared store, so only one choice is open on the page. Here: Esc and a click outside
  * close it; ←/→, Home/End move between the links and the button; focus goes to the first link
@@ -38,7 +48,7 @@ export function useChooser() {
     if (!open || !focusFirst.current) return
     focusFirst.current = false
     const frame = requestAnimationFrame(() =>
-      groupRef.current?.querySelector('a')?.focus({ preventScroll: true }),
+      shownLinks(groupRef.current)[0]?.focus({ preventScroll: true }),
     )
     return () => cancelAnimationFrame(frame)
   }, [open])
@@ -90,7 +100,7 @@ export function useChooser() {
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (!open || !NAV_KEYS.includes(event.key)) return
     const items = [
-      ...(groupRef.current?.querySelectorAll<HTMLElement>('a') ?? []),
+      ...shownLinks(groupRef.current),
       ...(buttonRef.current ? [buttonRef.current] : []),
     ]
     const i = items.indexOf(document.activeElement as HTMLElement)

@@ -84,7 +84,9 @@ const zoneChips = (page: Page) =>
 const about = (page: Page) => page.getByRole('region', { name: 'О проекте' })
 /** The CTA tile: the item of the masonry with the title of the CTA. */
 const cta = (page: Page) =>
-  grid(page).locator(':scope > li').filter({ has: page.getByRole('heading', { level: 2 }) })
+  grid(page)
+    .locator(':scope > li')
+    .filter({ has: page.getByRole('heading', { level: 2 }) })
 /** The tile's button (its name changes to «Закрыть выбор мессенджера» while open). */
 const ctaButton = (page: Page) => cta(page).getByRole('button')
 /** Index of the CTA among the tiles of the masonry. */
@@ -103,9 +105,7 @@ test.describe('works: project page', () => {
   test.skip(EMPTY_DB, 'needs the works fixture')
 
   for (const width of [390, 834, 1440] as const) {
-    test(`${width}: heading, zones, gallery with the CTA tile, «О проекте»`, async ({
-      page,
-    }) => {
+    test(`${width}: heading, zones, gallery with the CTA tile, «О проекте»`, async ({ page }) => {
       await page.setViewportSize({ width, height: HEIGHTS[width] })
       const errors = watchConsole(page)
       const response = await page.goto(`${BASE}/works/${WARM.slug}`)
@@ -160,9 +160,7 @@ test.describe('works: project page', () => {
       const button = ctaButton(page)
       await expect(button).toHaveAttribute('aria-expanded', 'false')
       await expect(button).toHaveAccessibleName(/^Оставить заявку/)
-      await expect(button).toHaveAccessibleDescription(
-        `${E2E_CTA.ctaTitle} ${E2E_CTA.ctaText}`,
-      )
+      await expect(button).toHaveAccessibleDescription(`${E2E_CTA.ctaTitle} ${E2E_CTA.ctaText}`)
       await expect(button).toHaveCount(1)
       const c = await box(cta(page))
       expect(c.height / c.width).toBeCloseTo(4 / 3, 1)
@@ -179,8 +177,20 @@ test.describe('works: project page', () => {
             const overflow = layers.flatMap((el) =>
               el.scrollHeight > el.clientHeight ? [`overflow ${el.className}`] : [],
             )
+            // What a box with `overflow` clips does not leave it (the folded «×» of the capsule,
+            // turned inside its button)
             const outside = [...root.querySelectorAll('*')].flatMap((el) => {
               const r = el.getBoundingClientRect()
+              for (let a = el.parentElement; a && a !== root; a = a.parentElement) {
+                if (getComputedStyle(a).overflow === 'visible') continue
+                const c = a.getBoundingClientRect()
+                const [left, top] = [Math.max(r.left, c.left), Math.max(r.top, c.top)]
+                const [right, bottom] = [Math.min(r.right, c.right), Math.min(r.bottom, c.bottom)]
+                r.x = left
+                r.y = top
+                r.width = Math.max(0, right - left)
+                r.height = Math.max(0, bottom - top)
+              }
               const out =
                 r.width > 0 &&
                 (r.left < tile.left - 0.5 ||
@@ -224,6 +234,127 @@ test.describe('works: project page', () => {
       expect(await layoutShifts(page)).toEqual([])
       expect(await axe(page)).toEqual([])
       expect(errors).toEqual([])
+    })
+  }
+
+  /** The project page at a width, hydrated, the CTA tile in view. */
+  const openPage = async (page: Page, width: 390 | 834 | 1440) => {
+    await page.setViewportSize({ width, height: HEIGHTS[width] })
+    await page.goto(`${BASE}/works/${WARM.slug}`)
+    await hydrated(page)
+    await settle(page)
+    await ctaButton(page).scrollIntoViewIfNeeded()
+  }
+
+  /** Delays of the drawn links of the open choice (first transition), left to right. */
+  const linkDelays = (page: Page) =>
+    cta(page).evaluate((root) =>
+      [...root.querySelectorAll('a')]
+        .filter((a) => a.getClientRects().length > 0)
+        .map((a) => ({
+          x: a.getBoundingClientRect().x,
+          delay: parseFloat(getComputedStyle(a).transitionDelay.split(',')[0]!),
+        }))
+        .sort((a, b) => a.x - b.x)
+        .map(({ delay }) => delay),
+    )
+
+  test('1440: the capsule of the tile turns into the logos and «×» as the contact buttons do', async ({
+    page,
+  }) => {
+    await openPage(page, 1440)
+    // The capsule of the contact buttons (ChooserCapsule): its button, drawn only, under the trigger
+    // A string: functions declared inside evaluate break on the helpers of the test transpiler
+    const before = (await page.evaluate(`(() => {
+      const root = [...document.querySelectorAll('main ul[data-works-grid] > li')]
+        .find((el) => el.querySelector('h2'))
+      const capsule = root.querySelector('.group\\\\/chooser > div')
+      const drawn = capsule.lastElementChild
+      window.__cta = { capsule: [], drawn: [] }
+      const sample = () => {
+        window.__cta.capsule.push(capsule.getBoundingClientRect().width)
+        window.__cta.drawn.push(drawn.getBoundingClientRect().width)
+        if (window.__cta.drawn.length < 120) requestAnimationFrame(sample)
+      }
+      requestAnimationFrame(sample)
+      return { width: capsule.getBoundingClientRect().width, aria: drawn.getAttribute('aria-hidden') }
+    })()`)) as { width: number; aria: string | null }
+    expect(before.aria).toBe('true')
+    await ctaButton(page).click()
+    await expect(ctaButton(page)).toHaveAttribute('aria-expanded', 'true')
+    await motionEnded(cta(page))
+    const { capsule, drawn } = await page.evaluate(
+      () => (window as unknown as { __cta: { capsule: number[]; drawn: number[] } }).__cta,
+    )
+    // The button folds into «×» through the widths between (a morph, not a swap), the capsule
+    // ends at the width of the open choice of three
+    expect(drawn[0]).toBeCloseTo(before.width, 0)
+    expect(Math.round(drawn.at(-1)!)).toBe(44)
+    expect(drawn.some((w) => w > 46 && w < before.width - 2)).toBe(true)
+    expect(Math.round(capsule.at(-1)!)).toBe(Math.round(Math.max(before.width, 198)))
+    const open = await box(cta(page).locator('.group\\/chooser > div'))
+    expect(Math.round(open.height)).toBe(54)
+    // Logos come out of «×»: the one next to it first, then leftwards
+    const delays = await linkDelays(page)
+    expect(delays).toHaveLength(3)
+    expect(delays[2]).toBe(0)
+    expect(delays[1]).toBeGreaterThan(delays[2]!)
+    expect(delays[0]).toBeGreaterThan(delays[1]!)
+  })
+
+  test('390: the label leaves, then the logos come out one by one from the left; closing reverses', async ({
+    page,
+  }) => {
+    await openPage(page, 390)
+    await ctaButton(page).click()
+    await expect(ctaButton(page)).toHaveAttribute('aria-expanded', 'true')
+    const label = cta(page).locator('span.chooser-reveal-label')
+    await expect(label).toHaveCSS('transition-duration', '0.16s')
+    await expect(label).toHaveCSS('transition-delay', '0s')
+    const opening = await linkDelays(page)
+    expect(opening).toHaveLength(3)
+    // Not before the label is gone (--motion-chooser-fade-out), then left to right
+    expect(opening[0]).toBeGreaterThanOrEqual(0.16)
+    expect(opening[1]).toBeGreaterThan(opening[0]!)
+    expect(opening[2]).toBeGreaterThan(opening[1]!)
+    await motionEnded(cta(page))
+
+    await page.keyboard.press('Escape')
+    await expect(ctaButton(page)).toHaveAttribute('aria-expanded', 'false')
+    // Closing: the logos from the right, then the label
+    const closing = await linkDelays(page)
+    expect(closing[2]).toBe(0)
+    expect(closing[1]).toBeGreaterThan(closing[2]!)
+    expect(closing[0]).toBeGreaterThan(closing[1]!)
+    const labelDelay = parseFloat(
+      await label.evaluate((el) => getComputedStyle(el).transitionDelay),
+    )
+    expect(labelDelay).toBeGreaterThan(closing[0]!)
+  })
+
+  for (const width of [390, 1440] as const) {
+    test(`${width}, reduced motion: the choice of the tile fades, no scale`, async ({ page }) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' })
+      await openPage(page, width)
+      await ctaButton(page).click()
+      await expect(ctaButton(page)).toHaveAttribute('aria-expanded', 'true')
+      const moving = await cta(page).evaluate((root) =>
+        [...root.querySelectorAll<HTMLElement>('a, [aria-hidden] > span')]
+          .filter((el) => el.getClientRects().length > 0)
+          .map((el) => ({
+            scale: getComputedStyle(el).scale,
+            delay: getComputedStyle(el).transitionDelay,
+          })),
+      )
+      expect(moving.length).toBeGreaterThanOrEqual(3)
+      for (const el of moving) {
+        expect(el.scale).toBe('none')
+        expect(el.delay.split(',').every((d) => parseFloat(d) === 0)).toBe(true)
+      }
+      await motionEnded(cta(page))
+      await expect(
+        cta(page).getByRole('group', { name: 'Выбрать мессенджер' }).getByRole('link'),
+      ).toHaveCount(3)
     })
   }
 
