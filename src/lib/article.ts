@@ -227,7 +227,7 @@ export const articleBlocks = (body: readonly unknown[] | null | undefined): Arti
     return result ? [result] : []
   })
 
-const DOC_PATHS: Record<string, string> = { news: '/news', projects: '/works' }
+const DOC_PATHS: Record<string, string> = { news: '/news' }
 
 /** Fields of a Lexical link node (LinkFeature). */
 export type LinkFields = {
@@ -239,6 +239,15 @@ export type LinkFields = {
 /** Visible items of «Наши работы» by id: their type (the feed of the view). */
 export type VisibleItems = ReadonlyMap<number, string>
 
+/**
+ * Visible projects with visible items by id: where a link leads — the page of a complex one, the
+ * view of the first item of another.
+ */
+export type VisibleProjects = ReadonlyMap<number, string>
+
+/** What links of a text to «Наши работы» may lead to (read only when the text has such links). */
+export type ArticleLinks = { items?: VisibleItems; projects?: VisibleProjects }
+
 const docId = (value: unknown): number | null =>
   typeof value === 'number'
     ? value
@@ -247,16 +256,23 @@ const docId = (value: unknown): number | null =>
       : null
 
 /**
- * Address of a link in the text. Internal — the page of the linked news or project, the view of
- * an item (`itemViewHref`, its visibility and type from `items`); a document not readable as
- * published (no slug) or a hidden item gives null: the text stays, without a link. Custom — own
- * pages in the same tab, other sites in a new tab.
+ * Address of a link in the text. Internal — the page of the linked news; a project — its page
+ * when complex, else the view of its first item (from `projects`); the view of an item
+ * (`itemViewHref`, its visibility and type from `items`). A document not readable as published
+ * (no slug), a hidden item or a project not visible (or without visible items) gives null: the
+ * text stays, without a link. Custom — own pages in the same tab, other sites in a new tab.
  */
 export const linkHref = (
   fields: LinkFields | null | undefined,
   items: VisibleItems = new Map(),
+  projects: VisibleProjects = new Map(),
 ): HrefKind | null => {
   if (!fields) return null
+  if (fields.linkType === 'internal' && fields.doc?.relationTo === 'projects') {
+    const id = docId(fields.doc.value)
+    const href = id === null ? undefined : projects.get(id)
+    return href ? { kind: 'internal', href } : null
+  }
   if (fields.linkType === 'internal' && fields.doc?.relationTo === 'items') {
     const id = docId(fields.doc.value)
     const type = id === null ? undefined : items.get(id)
@@ -276,12 +292,12 @@ export const linkHref = (
 
 type LinkNode = { type?: string; fields?: LinkFields; children?: LinkNode[] }
 
-/** Ids of the items linked from the paragraphs (their visibility is read only when there are). */
-export function linkedItemIds(blocks: readonly ArticleBlock[]): number[] {
+/** Ids of the documents of a collection linked from the paragraphs. */
+function linkedIds(blocks: readonly ArticleBlock[], relationTo: string): number[] {
   const ids = new Set<number>()
   const walk = (node: LinkNode | null | undefined) => {
     if (!node || typeof node !== 'object') return
-    if (node.type === 'link' && node.fields?.doc?.relationTo === 'items') {
+    if (node.type === 'link' && node.fields?.doc?.relationTo === relationTo) {
       const id = docId(node.fields.doc.value)
       if (id !== null) ids.add(id)
     }
@@ -292,3 +308,11 @@ export function linkedItemIds(blocks: readonly ArticleBlock[]): number[] {
   }
   return [...ids]
 }
+
+/** Ids of the items linked from the paragraphs (their visibility is read only when there are). */
+export const linkedItemIds = (blocks: readonly ArticleBlock[]): number[] =>
+  linkedIds(blocks, 'items')
+
+/** Ids of the projects linked from the paragraphs (read only when there are). */
+export const linkedProjectIds = (blocks: readonly ArticleBlock[]): number[] =>
+  linkedIds(blocks, 'projects')

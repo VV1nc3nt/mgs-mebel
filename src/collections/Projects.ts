@@ -13,6 +13,7 @@ import { PREVIEW_BREAKPOINTS, previewUrl } from '@/globals/shared'
 import { checkVideoPosters, imageField, videoField } from '@/fields/media'
 import { revalidateCollection } from '@/lib/revalidate'
 import { isSlug, slugify } from '@/lib/slugify'
+import { projectPreviewPath } from '@/lib/workView'
 
 const validateSlug: TextFieldSingleValidation = (value, args) => {
   const base = validateText(value, args)
@@ -69,8 +70,34 @@ export const Projects: CollectionConfig = {
     defaultColumns: ['title', 'place', 'complex', 'items', 'hidden'],
     description:
       'Проект — адрес: всё, что в нём сделано, — его изделия. Порядок на сайте — перетаскиванием в списке.',
-    // «Комплекс» — the default feed of /works; the project page comes later
-    livePreview: { url: () => previewUrl('/works'), breakpoints: PREVIEW_BREAKPOINTS },
+    // Where the project shows: its page, the view of its first visible item, or /works
+    livePreview: {
+      url: async ({ data, req }) => {
+        const id = typeof data?.id === 'number' ? data.id : null
+        const { docs } =
+          id === null || data?.hidden
+            ? { docs: [] }
+            : await req.payload.find({
+                collection: 'items',
+                where: {
+                  and: [
+                    { project: { equals: id } },
+                    { or: [{ hidden: { equals: false } }, { hidden: { exists: false } }] },
+                  ],
+                },
+                sort: '_order',
+                limit: 1,
+                depth: 0,
+                select: { type: true },
+                req,
+              })
+        const first = docs[0]
+        return previewUrl(
+          projectPreviewPath(data ?? null, first ? { id: first.id, type: first.type } : null),
+        )
+      },
+      breakpoints: PREVIEW_BREAKPOINTS,
+    },
   },
   // Drag-and-drop order of the list (`_order`); the list must be sorted by it to drag
   orderable: true,

@@ -387,6 +387,8 @@
   --shadow-booklet-face: inset 0 0 0 1px rgb(255 255 255 / 0.05);
   /* Lime ring of the manager photo, apart from it by the card surface (design: designers v2 §2.4) */
   --shadow-avatar-ring: 0 0 0 3px var(--color-surface), 0 0 0 4px var(--color-accent);
+  /* Lime ring of the designer's initial in «О проекте» (design: works v2 §3.3) */
+  --shadow-avatar-ring-sm: 0 0 0 2px var(--color-accent);
 
   /* Backdrop blur: soft — buttons over media, glass — badges, sticky — sticky bar and dock */
   --blur-soft: 8px;
@@ -857,6 +859,12 @@
 /* «История» from desktop: the collage and the text column (design: about v2 §2.4) */
 @utility grid-history-xl {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+}
+
+/* «О проекте» from tablet: the text and, by its content, the price and the designer
+   (works v2 §3.3) */
+@utility grid-project-about {
+  grid-template-columns: minmax(0, 1.6fr) minmax(min-content, 1fr);
 }
 
 /* Glass */

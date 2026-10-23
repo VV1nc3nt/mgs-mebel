@@ -198,6 +198,11 @@ export const globals = (id: MediaId): SeedGlobals => ({
   worksPage: {
     hero: { label: 'наши работы', title: 'Портфолио' },
     prices: { priceDate: 'октябрь 2026' },
+    project: {
+      ctaTitle: 'Хотите так же?',
+      ctaText: 'Рассчитаем под ваши размеры и пришлём смету.',
+      ctaButton: 'Оставить заявку',
+    },
     // No description text on the page; the image is the first photo of the first project.
     meta: seoMeta({ title: 'Портфолио', image: id(itemPlan[0]!.photos[0]!) }),
   },

@@ -18,7 +18,7 @@ import { Action } from './Action'
 import { BUTTON_SIZE, BUTTON_VARIANT } from './Button'
 
 export type ContactSize = 44 | 48 | 52
-export type ContactTone = 'accent' | 'outline'
+export type ContactTone = 'accent' | 'outline' | 'inverse'
 /** `true` — the width of the parent; `'mobile'` — on mobile only, by content from tablet. */
 export type ContactWidth = boolean | 'mobile'
 
@@ -28,7 +28,7 @@ export type ContactChooserProps = {
   messengers: Messenger[]
   size: ContactSize
   fullWidth: ContactWidth
-  /** `outline` — on the accent CTA block of an article. */
+  /** `outline` / `inverse` — on an accent block (the CTA of an article, of a project page). */
   tone: ContactTone
   arrow: boolean
   /** Which way the open capsule grows: `start` — to the left (the header), `end` — to the right. */
@@ -55,6 +55,11 @@ const TONE: Record<ContactTone, string> = {
   outline: cn(
     BUTTON_VARIANT['inverse-outline'],
     'outline-on-accent group-data-open/chooser:border-transparent group-data-open/chooser:bg-accent group-data-open/chooser:text-on-accent group-data-open/chooser:outline-accent',
+  ),
+  // Dark on the accent block; open, «×» is accent like the other tones
+  inverse: cn(
+    BUTTON_VARIANT.inverse,
+    'outline-on-accent group-data-open/chooser:bg-accent group-data-open/chooser:text-on-accent group-data-open/chooser:outline-accent',
   ),
 }
 

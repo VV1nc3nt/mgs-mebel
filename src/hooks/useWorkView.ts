@@ -57,6 +57,14 @@ function preloadFrame(frame: ViewerFrame | undefined) {
   })
 }
 
+export type WorkViewOptions = {
+  /**
+   * Every item the address may open, known up front (the page of a project): no request, and an
+   * id that is not here closes the view. Without it — the items load by id (/works).
+   */
+  items?: Readonly<Record<number, ViewerItem>>
+}
+
 export type WorkView = {
   /** The item of `?item=` once its data is here; null — closed. */
   item: ViewerItem | null
@@ -70,6 +78,8 @@ export type WorkView = {
   close: () => void
   /** The current frame: `?photo=` replaced. */
   setPhoto: (index: number) => void
+  /** The current frame of another item (a project's view crosses items): `?item=&photo=`. */
+  setFrame: (id: number, index: number) => void
 }
 
 /**
@@ -79,7 +89,10 @@ export type WorkView = {
  * passed to every pushState / replaceState: Next skips the sync for a state that already carries
  * its own fields.
  */
-export function useWorkView(initial: InitialView | null): WorkView {
+export function useWorkView(
+  initial: InitialView | null,
+  { items: fixed }: WorkViewOptions = {},
+): WorkView {
   const search = useSearchParams()
   const { item: itemId, photo: rawPhoto } = readItemView(search)
   const lite = useLiteNetwork()
@@ -108,8 +121,9 @@ export function useWorkView(initial: InitialView | null): WorkView {
     return created
   })
 
-  const known = itemId !== null && items.has(itemId)
-  const item = itemId !== null ? (items.get(itemId) ?? null) : null
+  const known = itemId !== null && (fixed !== undefined || items.has(itemId))
+  const item =
+    itemId === null ? null : fixed ? (fixed[itemId] ?? null) : (items.get(itemId) ?? null)
 
   // An address with an item not here yet (back / forward to it, an address typed in): load it
   useEffect(() => {
@@ -131,22 +145,34 @@ export function useWorkView(initial: InitialView | null): WorkView {
     }
   }, [itemId, known, item])
 
-  // The feed of the address is the item's type
+  // The feed of the address is the item's type (/works; a project page has no feed)
   const category = search.get('category')
+  const feed = fixed === undefined
   useEffect(() => {
-    if (item && category !== item.type) {
+    if (feed && item && category !== item.type) {
       window.history.replaceState(
         { workView: pushedByView() },
         '',
         withParams({ category: item.type }),
       )
     }
-  }, [item, category])
+  }, [feed, item, category])
+
+  const fixedRef = useRef(fixed)
+  useEffect(() => {
+    fixedRef.current = fixed
+  }, [fixed])
 
   const request = useRef(0)
   const open = useCallback(
     (id: number, href: string) => {
       const ticket = ++request.current
+      if (fixedRef.current) {
+        // The data is on the page: a new history entry at once
+        if (!fixedRef.current[id]) return window.location.assign(href)
+        window.history.pushState({ workView: true }, '', href)
+        return
+      }
       loader
         .load(id)
         .then((data) => {
@@ -178,6 +204,14 @@ export function useWorkView(initial: InitialView | null): WorkView {
     )
   }, [])
 
+  const setFrame = useCallback((id: number, index: number) => {
+    window.history.replaceState(
+      { workView: pushedByView() },
+      '',
+      withParams({ [ITEM_PARAM]: String(id), [PHOTO_PARAM]: index > 0 ? String(index + 1) : null }),
+    )
+  }, [])
+
   // Data Saver or a slow connection: nothing ahead, the data comes on a click
   const intent = useCallback(
     (id: number) => {
@@ -194,5 +228,6 @@ export function useWorkView(initial: InitialView | null): WorkView {
     cancelIntent: loader.cancelIntent,
     close,
     setPhoto,
+    setFrame,
   }
 }

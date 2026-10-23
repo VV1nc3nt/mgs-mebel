@@ -1307,6 +1307,17 @@ export interface WorksPage {
      */
     priceDate?: string | null;
   };
+  project?: {
+    /**
+     * Пусто — блока нет. Например, «Хотите так же?».
+     */
+    ctaTitle?: string | null;
+    ctaText?: string | null;
+    /**
+     * Кнопка открывает выбор мессенджера. Пусто — без кнопки.
+     */
+    ctaButton?: string | null;
+  };
   meta?: {
     title?: string | null;
     description?: string | null;
@@ -1827,6 +1838,13 @@ export interface WorksPageSelect<T extends boolean = true> {
     | T
     | {
         priceDate?: T;
+      };
+  project?:
+    | T
+    | {
+        ctaTitle?: T;
+        ctaText?: T;
+        ctaButton?: T;
       };
   meta?:
     | T

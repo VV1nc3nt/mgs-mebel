@@ -3,6 +3,7 @@ import { Play } from 'lucide-react'
 import { CarouselIcon } from '@/components/icons/CarouselIcon'
 import { MediaCard } from '@/components/ui/MediaCard'
 import type { WorkPreview } from '@/lib/works'
+import { ProjectLink } from './ProjectLink'
 
 type Props = {
   /** Preview of the home «Наши работы» (README §6.1 п.6, H3 under the section's H2). */
@@ -29,8 +30,9 @@ export function WorkCard({ work }: Props) {
       overlay="work"
       inset="work"
       href={work.href}
-      // The project page is rendered on the click only
+      // A project page is fetched ahead on an intent (hover, touch); other previews on the click
       prefetch={false}
+      linkAs={work.project ? ProjectLink : undefined}
       top={
         <KindIcon
           work={work}

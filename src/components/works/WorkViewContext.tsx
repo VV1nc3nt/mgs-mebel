@@ -7,7 +7,8 @@ import { parseItemId } from '@/lib/workView'
 
 /** The view of an item around the feed: tiles open it in place and fetch its data ahead. */
 export type WorkViewApi = {
-  open: (id: number, href: string) => void
+  /** `from` — the link clicked (the focus goes back to it on close). */
+  open: (id: number, href: string, from?: HTMLElement) => void
   intent: (id: number) => void
   cancelIntent: () => void
 }
@@ -58,7 +59,7 @@ export function WorkViewLink({
         if (event.defaultPrevented || !plainClick(event)) return
         event.preventDefault()
         view.cancelIntent()
-        view.open(id, href)
+        view.open(id, href, event.currentTarget)
       }}
     />
   )

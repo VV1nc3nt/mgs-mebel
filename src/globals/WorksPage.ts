@@ -22,6 +22,26 @@ export const WorksPage = pageGlobal(
         },
       ],
     },
+    {
+      name: 'project',
+      label: 'Страница проекта',
+      description: 'Лаймовый блок заявки под галереей проекта.',
+      fields: [
+        {
+          name: 'ctaTitle',
+          type: 'text',
+          label: 'Заголовок заявки',
+          admin: { description: 'Пусто — блока нет. Например, «Хотите так же?».' },
+        },
+        { name: 'ctaText', type: 'textarea', label: 'Текст заявки' },
+        {
+          name: 'ctaButton',
+          type: 'text',
+          label: 'Подпись кнопки',
+          admin: { description: 'Кнопка открывает выбор мессенджера. Пусто — без кнопки.' },
+        },
+      ],
+    },
   ],
   { previewPath: '/works' },
 )

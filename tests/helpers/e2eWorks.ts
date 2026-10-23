@@ -31,6 +31,12 @@ export type E2EProject = {
   hidden?: boolean
   /** Videos of the whole flat. */
   videos?: number
+  /** «О проекте» of its page. */
+  about?: string
+  price?: number
+  designer?: string
+  city?: string
+  year?: number
   items: E2EItem[]
 }
 
@@ -41,6 +47,12 @@ export const E2E_WORK_PROJECTS: E2EProject[] = [
     place: 'ЖК Уно',
     complex: true,
     videos: 1,
+    about:
+      'Мебель для всей квартиры в одном стиле: тёплый дуб и матовые светлые фасады.\n\nШкафы до потолка и встроенная подсветка.',
+    price: 2300000,
+    designer: 'Кирилл',
+    city: 'Москва',
+    year: 2025,
     items: [
       {
         type: 'kitchens',
@@ -83,6 +95,39 @@ export const E2E_WORK_PROJECTS: E2EProject[] = [
     items: [
       { type: 'livingrooms', photos: ['wide', 'wide'] },
       { type: 'bedrooms', photos: ['tall'] },
+    ],
+  },
+  {
+    // The project page: its videos among the frames at 0, 6, 12 and the fourth at the end
+    // (13 frames); no «О проекте»
+    title: 'Квартира с роликами',
+    slug: 'kvartira-s-rolikami',
+    place: 'ЖК Остров',
+    complex: true,
+    videos: 4,
+    items: [
+      { type: 'kitchens', title: 'Кухня с островом', photos: ['tall', 'wide', 'square', 'tall'] },
+      {
+        type: 'bedrooms',
+        title: 'Спальня с изголовьем',
+        photos: ['wide', 'tall', 'square', 'tall'],
+      },
+      {
+        type: 'bathrooms',
+        title: 'Санузел с нишей',
+        photos: ['square', 'tall', 'wide', 'tall', 'square'],
+      },
+    ],
+  },
+  {
+    // Not complex: its address leads to the view of its first visible item (308)
+    title: 'Прихожая на Арбате',
+    slug: 'prikhozhaya-na-arbate',
+    place: 'Арбат',
+    complex: false,
+    items: [
+      { type: 'hallways', title: 'Скрытая прихожая', photos: ['tall'], hidden: true },
+      { type: 'hallways', title: 'Прихожая до потолка', photos: ['tall', 'wide'] },
     ],
   },
   {
@@ -168,6 +213,10 @@ export const e2eItem = (type: WorkType, title?: string): E2EItem =>
   [...E2E_WORK_PROJECTS.flatMap((p) => p.items), ...E2E_SEPARATE_ITEMS].find(
     (i) => i.type === type && i.title === title,
   )!
+
+/** Project of the fixture by its slug. */
+export const e2eProject = (slug: string): E2EProject =>
+  E2E_WORK_PROJECTS.find((p) => p.slug === slug)!
 
 /** Title of the `worksPage` heading draft in the draft-mode check. */
 export const WORKS_DRAFT_TITLE = 'Черновик наших работ'

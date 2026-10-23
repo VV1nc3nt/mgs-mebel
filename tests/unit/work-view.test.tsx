@@ -87,9 +87,9 @@ describe('view of an item', () => {
   it('frames: photos at their own ratio, then videos with a poster', () => {
     const frames = itemFrames(row({ videos: [posterVideo, video] }))
     expect(frames.map((f) => [f.key, f.kind, f.owner])).toEqual([
-      ['p-1', 'photo', 4],
-      ['p-5', 'photo', 4],
-      ['v-7', 'video', 4],
+      ['p-4-0', 'photo', 4],
+      ['p-4-1', 'photo', 4],
+      ['v-4-0', 'video', 4],
     ])
     expect(frames[0]!.ratio).toBeCloseTo(1.5)
     expect(frames[1]!.ratio).toBeCloseTo(2 / 3)

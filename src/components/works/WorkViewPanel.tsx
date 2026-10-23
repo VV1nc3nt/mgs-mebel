@@ -1,20 +1,22 @@
 import { Button } from '@/components/ui/Button'
 import { ContactButton } from '@/components/ui/ContactButton'
 import type { Messenger } from '@/lib/chrome'
-import type { ViewerItem } from '@/lib/workView'
+import { projectHrefOf, type ViewerItem } from '@/lib/workView'
 
 type Props = {
   item: ViewerItem
   /** «Цена актуальна на …» (worksPage.prices); empty — no line. */
   priceDate: string | null
   messengers: Messenger[]
+  /** On the page of the project: «Весь проект →» closes the view instead of leading there. */
+  onProject?: () => void
 }
 
 /**
  * Panel of the view of an item (works v2 §3.4): title, description, specs, price, «Весь проект →»
  * of a complex project, the CTA. Empty parts are left out.
  */
-export function WorkViewPanel({ item, priceDate, messengers }: Props) {
+export function WorkViewPanel({ item, priceDate, messengers, onProject }: Props) {
   const cta = messengers.length > 0
   return (
     <div className="flex min-h-full flex-col gap-6 px-5 pt-7 pb-10 xl:px-10 xl:pt-24 xl:pb-8">
@@ -46,12 +48,17 @@ export function WorkViewPanel({ item, priceDate, messengers }: Props) {
           )}
         </div>
       )}
-      {item.project && (
-        // The project page renders on the click only
-        <Button href={`/works/${item.project.slug}`} prefetch={false} variant="outline" arrow>
-          Весь проект
-        </Button>
-      )}
+      {item.project &&
+        (onProject ? (
+          <Button type="button" onClick={onProject} variant="outline" arrow>
+            Весь проект
+          </Button>
+        ) : (
+          // The project page renders on the click only
+          <Button href={projectHrefOf(item.project.slug)} prefetch={false} variant="outline" arrow>
+            Весь проект
+          </Button>
+        ))}
       {cta && (
         <div className="mt-auto flex flex-col gap-2.5 pt-2">
           <ContactButton caption={item.cta} messengers={messengers} size={52} fullWidth />

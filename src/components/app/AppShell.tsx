@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { Suspense, type ReactNode } from 'react'
 
 import { RoutePathProvider } from '@/hooks/useRoutePath'
 import { toChrome } from '@/lib/chrome'
@@ -10,6 +10,7 @@ import { FirstScreenEnd, HEADER_END_ID } from './FirstScreenEnd'
 import { FloatingDock } from './FloatingDock'
 import { MenuProvider, PageRoot } from './MenuProvider'
 import { PreviewBanner } from './PreviewBanner'
+import { RouteHistory } from './RouteHistory'
 import { SkipLink } from './SkipLink'
 import { ViewerInert } from './ViewerInert'
 
@@ -61,6 +62,10 @@ export async function AppShell({
             menu: chrome.menu,
           }}
         />
+        {/* The query is read on the client only: nothing of the page waits for it */}
+        <Suspense fallback={null}>
+          <RouteHistory />
+        </Suspense>
       </MenuProvider>
     </RoutePathProvider>
   )

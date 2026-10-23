@@ -23,6 +23,12 @@ type Props = {
   shiftNeighbours?: boolean
 }
 
+const TONE_VARIANT = {
+  accent: 'primary',
+  outline: 'inverse-outline',
+  inverse: 'inverse',
+} as const satisfies Record<ContactTone, string>
+
 const LINK_WIDTH = { true: 'full', false: 'auto', mobile: 'mobile-full' } as const
 
 /**
@@ -48,7 +54,7 @@ export function ContactButton({
     return (
       <Button
         href={first.href}
-        variant={tone === 'outline' ? 'inverse-outline' : 'primary'}
+        variant={TONE_VARIANT[tone]}
         size={size}
         width={LINK_WIDTH[`${fullWidth}`]}
         arrow={arrow}

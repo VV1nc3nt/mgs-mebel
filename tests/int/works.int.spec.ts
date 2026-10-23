@@ -15,7 +15,7 @@ vi.mock('next/cache', () => ({
   unstable_cache: <T extends (...args: never[]) => unknown>(fn: T) => fn,
 }))
 
-const { getWorkFeeds, getWorkItem } = await import('@/lib/queries')
+const { getProjectIndex, getWorkFeeds, getWorkItem, getWorkProject } = await import('@/lib/queries')
 const { GET: getItemRoute } = await import('@/app/work-items/[id]/route')
 
 let payload: Payload
@@ -305,13 +305,119 @@ describe('view of an item', () => {
   })
 })
 
+describe('page of a project', () => {
+  it('reads a visible complex project: its visible items in the editor’s order, «О проекте»', async () => {
+    const project = await createProject('Страница', {
+      complex: true,
+      about: 'О квартире.',
+      price: 2300000,
+      designer: 'Анна',
+      videos: [video.id],
+    })
+    const first = await createItem({ project: project.id, type: 'bathrooms' })
+    await createItem({ project: project.id, hidden: true })
+    const last = await createItem({ project: project.id, videos: [video.id] })
+
+    const answer = await getWorkProject(project.slug)
+    expect(answer && 'page' in answer).toBe(true)
+    const page = answer && 'page' in answer ? answer.page : null
+    expect(page!.zones.map((zone) => zone.id)).toEqual([first.id, last.id])
+    expect(page!.frames.map((frame) => frame.owner)).toEqual([first.id, last.id, last.id])
+    expect(page!.zones[1]!.href).toBe(`/works/${project.slug}?item=${last.id}`)
+    expect(page!.meta[0]).toBe('2 зоны')
+    expect(page!.meta[1]).toBe('2 фото + 2 видео')
+    // The project video first (place 0), then the frames
+    expect(page!.gallery.map((tile) => tile.kind)).toEqual(['reel', 'frame', 'frame', 'frame'])
+    expect(page!.about?.designer).toBe('Анна')
+    expect(page!.items[first.id]!.project?.slug).toBe(project.slug)
+  })
+
+  it('not complex — 308 to its first visible item; hidden or without visible items — nothing', async () => {
+    const own = await createProject('Не комплекс')
+    await createItem({ project: own.id, hidden: true })
+    const first = await createItem({ project: own.id, type: 'hallways' })
+    expect(await getWorkProject(own.slug)).toEqual({
+      redirect: `/works?category=hallways&item=${first.id}`,
+    })
+
+    const hidden = await createProject('Скрытый проект', { complex: true, hidden: true })
+    await createItem({ project: hidden.id })
+    const empty = await createProject('Без изделий', { complex: true })
+    const allHidden = await createProject('Скрытые изделия', { complex: true })
+    await createItem({ project: allHidden.id, hidden: true })
+    for (const { slug } of [hidden, empty, allHidden]) expect(await getWorkProject(slug)).toBeNull()
+
+    // Unchecking «Комплекс» turns the page into a redirect
+    const complex = await createProject('Был комплексом', { complex: true })
+    const item = await createItem({ project: complex.id })
+    expect(await getWorkProject(complex.slug)).toHaveProperty('page')
+    await payload.update({ collection: 'projects', id: complex.id, data: { complex: false } })
+    expect(await getWorkProject(complex.slug)).toEqual({
+      redirect: `/works?category=kitchens&item=${item.id}`,
+    })
+    expect((await getProjectIndex()).find((p) => p.id === complex.id)?.complex).toBe(false)
+  })
+
+  it('the cached query of a page runs for visible complex projects only', async () => {
+    const visible = await createProject('Кэш страницы', { complex: true })
+    await createItem({ project: visible.id })
+    const plain = await createProject('Кэш не комплекс')
+    await createItem({ project: plain.id })
+    const find = vi.spyOn(payload, 'find')
+    // The query of one project (`where.id.equals`); not the feeds, not the populate of relations
+    const pageQueries = () =>
+      find.mock.calls.filter(
+        ([args]) =>
+          args.collection === 'projects' &&
+          (args.where as { id?: { equals?: unknown } } | undefined)?.id?.equals !== undefined,
+      ).length
+    try {
+      for (const slug of ['nope-nope', 'NOPE', 'a_b', '../x', '', 'кухня', plain.slug, 42]) {
+        const answer = await getWorkProject(slug)
+        expect(answer === null || 'redirect' in answer).toBe(true)
+      }
+      expect(pageQueries()).toBe(0)
+      expect(await getWorkProject(visible.slug)).toHaveProperty('page')
+      expect(pageQueries()).toBe(1)
+    } finally {
+      find.mockRestore()
+    }
+  })
+})
+
+describe('worksPage: the project page tab', () => {
+  it('stores the CTA texts of a project page (the columns exist on a fresh database)', async () => {
+    // A draft: no required fields of the other tabs to fill, the published page stays
+    await payload.updateGlobal({
+      slug: 'worksPage',
+      draft: true,
+      data: {
+        project: {
+          ctaTitle: 'Хотите так же?',
+          ctaText: 'Рассчитаем под ваши размеры и пришлём смету.',
+          ctaButton: 'Оставить заявку',
+        },
+      },
+      context: { disableRevalidate: true },
+    })
+    const doc = await payload.findGlobal({ slug: 'worksPage', draft: true, depth: 0 })
+    expect(doc.project).toMatchObject({ ctaTitle: 'Хотите так же?', ctaButton: 'Оставить заявку' })
+  })
+})
+
 describe('works cache tags', () => {
   it('writes of projects and items expire their own tags', async () => {
     revalidateTag.mockClear()
     const project = await createProject('теги')
-    await createItem({ project: project.id })
+    const item = await createItem({ project: project.id })
     const tags = revalidateTag.mock.calls.map(([tag]) => tag)
     expect(tags).toContain('collection:projects')
     expect(tags).toContain('collection:items')
+    // Hiding an item or unchecking «Комплекс» expires the tags of the page of the project too
+    revalidateTag.mockClear()
+    await payload.update({ collection: 'items', id: item.id, data: { hidden: true } })
+    await payload.update({ collection: 'projects', id: project.id, data: { complex: true } })
+    const after = revalidateTag.mock.calls.map(([tag]) => tag)
+    expect(after).toEqual(expect.arrayContaining(['collection:items', 'collection:projects']))
   })
 })

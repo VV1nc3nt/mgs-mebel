@@ -1,11 +1,12 @@
 import { memo, type CSSProperties, type Ref } from 'react'
 
 import { gridVars, masonryLayouts, tileVars } from '@/lib/masonry'
+import type { GalleryTile } from '@/lib/workProject'
 import type { WorkTile as Tile } from '@/lib/works'
 import { WorkTile } from './WorkTile'
 
 type Props = {
-  tiles: readonly Tile[]
+  tiles: readonly (Tile | GalleryTile)[]
   /** Change of the feed: the old tiles fade out (`works-wave` in globals.css). */
   leaving?: boolean
   /** Tiles whose image is preloaded: the first row of the widest layout. */
