@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 
 import { FIRST_SCREEN_END_ID, HEADER_END_ID } from '../../src/components/app/FirstScreenEnd'
 import { E2E_ARTICLE } from '../helpers/e2eArticle'
+import { E2E_WORK_PROJECTS } from '../helpers/e2eWorks'
 import { layoutShifts } from '../helpers/scroll'
 import { slowHtmlProxy } from '../helpers/slowHtml'
 
@@ -13,6 +14,8 @@ const BASE = 'http://localhost:3000'
 const EMPTY_DB = !!process.env.E2E_EMPTY_DB
 // A news article with its body: the cover ends the first screen
 const ARTICLE = `/news/${E2E_ARTICLE.slug}`
+// A project page with «О проекте»: the gallery (and the CTA under it) ends the first screen
+const PROJECT = `/works/${E2E_WORK_PROJECTS[0]!.slug}`
 const PAGES = [
   '/',
   '/salons',
@@ -21,6 +24,7 @@ const PAGES = [
   '/designers',
   '/works',
   '/works?category=kitchens',
+  PROJECT,
   '/news',
   ARTICLE,
 ] as const
@@ -91,6 +95,26 @@ test.describe('partial paint', () => {
       })
     }
 
+    // The view of a project rendered open over its page (`?item=`)
+    for (const [width, height] of VIEWPORTS) {
+      test(`${PROJECT}?item= ${width}: the view does not shift while the page arrives`, async ({
+        page,
+      }) => {
+        const { docs } = await (
+          await page.request.get(
+            `${BASE}/api/items?where[type][equals]=kitchens&where[title][exists]=false&depth=0&limit=1`,
+          )
+        ).json()
+        await page.setViewportSize({ width, height })
+        await stubMedia(page)
+        await page.goto(`${proxy.origin}${PROJECT}?item=${docs[0].id}&photo=2`, {
+          waitUntil: 'domcontentloaded',
+        })
+        await expect(page.getByRole('dialog')).toBeVisible()
+        expect(await layoutShifts(page)).toEqual([])
+      })
+    }
+
     // «Показать ещё» comes after the grid: on a tall screen it is on the first screen too
     test('/news 1440×1600: «Показать ещё» does not shift while the page arrives', async ({
       page,
@@ -113,6 +137,7 @@ test.describe('partial paint', () => {
     ['/catalogs', [HEADER_END_ID, FIRST_SCREEN_END_ID]],
     ['/designers', [HEADER_END_ID, FIRST_SCREEN_END_ID]],
     ['/works', [HEADER_END_ID, FIRST_SCREEN_END_ID]],
+    [PROJECT, [HEADER_END_ID, FIRST_SCREEN_END_ID]],
     ['/news', [HEADER_END_ID, FIRST_SCREEN_END_ID]],
     [ARTICLE, [HEADER_END_ID, FIRST_SCREEN_END_ID]],
     ['/ui-kit', [HEADER_END_ID]],

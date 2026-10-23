@@ -100,14 +100,14 @@ const MP4 = Buffer.concat([
 const VIDEO_FILE = 'e2e-reel.mp4'
 
 /** The video of the reels projects, salon cards and «О нас», or null if the upload rejects it. */
-const upsertVideo = async (payload: Payload) => {
-  const existing = await findMedia(payload, VIDEO_FILE)
+const upsertVideo = async (payload: Payload, name = VIDEO_FILE) => {
+  const existing = await findMedia(payload, name)
   if (existing) return existing
   try {
     const doc = await payload.create({
       collection: 'media',
       data: {},
-      file: { data: MP4, mimetype: 'video/mp4', name: VIDEO_FILE, size: MP4.length },
+      file: { data: MP4, mimetype: 'video/mp4', name, size: MP4.length },
     })
     return doc.id
   } catch (error) {
@@ -312,15 +312,24 @@ try {
       ]),
     ),
   ) as Record<E2EPhoto, number>
-  if (videoId) {
+  // Several videos of one project are different files (a project page shows each in its place)
+  const reelVideos = videoId
+    ? [
+        videoId,
+        ...(
+          await Promise.all([2, 3, 4].map((n) => upsertVideo(payload, `e2e-reel-${n}.mp4`)))
+        ).filter((id): id is number => id !== null),
+      ]
+    : []
+  for (const id of reelVideos) {
     await payload.update({
       collection: 'media',
-      id: videoId,
+      id,
       data: { poster: workPhoto.tall },
       depth: 0,
     })
   }
-  const videos = (n = 0) => (videoId ? Array.from({ length: n }, () => videoId) : [])
+  const videos = (n = 0) => reelVideos.slice(0, n)
   const upsertItem = async (item: E2EItem, project: number | null) => {
     const { totalDocs } = await payload.count({
       collection: 'items',
@@ -365,6 +374,11 @@ try {
           complex: project.complex,
           hidden: Boolean(project.hidden),
           videos: videos(project.videos),
+          about: project.about ?? null,
+          price: project.price ?? null,
+          designer: project.designer ?? null,
+          city: project.city ?? null,
+          year: project.year ?? null,
         },
         depth: 0,
       }),
