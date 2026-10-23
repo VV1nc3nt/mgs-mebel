@@ -94,7 +94,10 @@ export const readItemView = (search: Search): { item: number | null; photo: stri
 
 /** A frame of a view: a photo, or a video over its poster; `owner` — its item (a panel). */
 export type ViewerFrame = {
-  /** Unique within the view: `p-<media>` / `v-<media>`. */
+  /**
+   * Unique within the view, whatever media repeat: `p-<item>-<n>` / `v-<item>-<n>` (n — the place
+   * among the item's photos / videos).
+   */
   key: string
   owner: number
   kind: 'photo' | 'video'
@@ -187,21 +190,21 @@ const projectOf = (value: ViewerItemRow['project']): ViewerProjectRow | null =>
 export const itemFrames = (
   item: Pick<ViewerItemRow, 'id' | 'photos' | 'videos'>,
 ): ViewerFrame[] => [
-  ...(item.photos ?? []).filter(isImage).map((photo): ViewerFrame => ({
-    key: `p-${photo.id}`,
+  ...(item.photos ?? []).filter(isImage).map((photo, n): ViewerFrame => ({
+    key: `p-${item.id}-${n}`,
     owner: item.id,
     kind: 'photo',
     image: photo,
     video: null,
     ratio: ratioOf(photo, PHOTO_FALLBACK_RATIO),
   })),
-  ...((item.videos ?? []) as MediaValue[]).filter(isVideo).flatMap((video): ViewerFrame[] => {
+  ...((item.videos ?? []) as MediaValue[]).filter(isVideo).flatMap((video, n): ViewerFrame[] => {
     const poster = asMedia(video.poster)
     const source = videoSource(video)
     return poster && isImage(poster) && source
       ? [
           {
-            key: `v-${video.id}`,
+            key: `v-${item.id}-${n}`,
             owner: item.id,
             kind: 'video',
             image: poster,

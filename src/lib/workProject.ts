@@ -178,9 +178,9 @@ export function toWorkProject(
 
   const byId = Object.fromEntries(visible.map((item) => [item.id, item]))
   const frames = visible.flatMap((item) => item.frames)
-  const reels: ReelTile[] = showableVideos(project.videos).map((video) => ({
+  const reels: ReelTile[] = showableVideos(project.videos).map((video, n) => ({
     kind: 'reel',
-    key: `r-p-${project.id}-${video.id}`,
+    key: `r-p-${project.id}-${n}`,
     title: project.title,
     type: null,
     image: asMedia(video.poster),
