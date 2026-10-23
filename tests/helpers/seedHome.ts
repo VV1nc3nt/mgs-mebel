@@ -19,7 +19,13 @@ import { catalogPdfFile, E2E_CATALOGS } from './e2eCatalogs'
 import { E2E_MANAGER, E2E_PROJECTS } from './e2eDesigners'
 import { articleBody, E2E_ARTICLE } from './e2eArticle'
 import { E2E_EXTRA_NEWS } from './e2eNews'
-import { E2E_SEPARATE_ITEMS, E2E_WORK_PROJECTS, type E2EItem, type E2EPhoto } from './e2eWorks'
+import {
+  E2E_CTA,
+  E2E_SEPARATE_ITEMS,
+  E2E_WORK_PROJECTS,
+  type E2EItem,
+  type E2EPhoto,
+} from './e2eWorks'
 import {
   ABOUT_CTA,
   E2E_NEWS_COUNT,
@@ -407,10 +413,11 @@ try {
       depth: 0,
     })
   }
-  // «Наши работы»: the heading (the projects are above), published without a draft.
+  // «Наши работы»: the heading (the projects are above), the CTA of a project page with a long
+  // text, published without a draft.
   await payload.updateGlobal({
     slug: 'worksPage',
-    data: { ...worksPage, _status: 'published' },
+    data: { ...worksPage, project: E2E_CTA, _status: 'published' },
     depth: 0,
   })
   // «Каталоги»: the heading and the catalogs of E2E_CATALOGS (covers — the generated photos).

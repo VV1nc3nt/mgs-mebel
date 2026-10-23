@@ -1,18 +1,21 @@
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { ProjectAbout } from '@/components/works/ProjectAbout'
-import { ProjectCta } from '@/components/works/ProjectCta'
+import { ProjectCtaTile } from '@/components/works/ProjectCtaTile'
 import { WorkViewPanel } from '@/components/works/WorkViewPanel'
-import { ContactButton } from '@/components/ui/ContactButton'
 import { previousRoute, resetRouteHistory, trackRoute } from '@/lib/routeHistory'
 import { parentOf } from '@/lib/routes'
 import {
+  CTA_RATIO,
+  ctaPlace,
   projectAbout,
+  projectCta,
   projectGallery,
   projectMeta,
   REEL_PLACES,
   toWorkProject,
+  withCta,
   zonesCount,
   type WorkProjectRow,
 } from '@/lib/workProject'
@@ -189,6 +192,47 @@ describe('project gallery', () => {
   it('sends the videos past the frames to the end when there are few', () => {
     const tiles = projectGallery('kvartira', [frame(3, 0), frame(3, 1)], items, [reel(1), reel(2)])
     expect(tiles.map((t) => t.key)).toEqual(['r-1', 'f-p-3-0', 'f-p-3-1', 'r-2'])
+  })
+})
+
+describe('CTA tile of the gallery', () => {
+  const items = { 3: toViewerItem(viewRow(3))! }
+  const gallery = (frames: number, reels = 0) =>
+    projectGallery(
+      'kvartira',
+      Array.from({ length: frames }, (_, n) => frame(3, n)),
+      items,
+      Array.from({ length: reels }, (_, n) => reel(n + 1)),
+    )
+  const keys = (frames: number, reels = 0) => withCta(gallery(frames, reels), true).map((t) => t.key)
+
+  it('stands before the middle frame, floor(n / 2), never last', () => {
+    expect(keys(3)).toEqual(['f-p-3-0', 'cta', 'f-p-3-1', 'f-p-3-2'])
+    expect(keys(8).indexOf('cta')).toBe(4)
+    expect(keys(13).indexOf('cta')).toBe(6)
+    const tile = withCta(gallery(5), true).find((t) => t.kind === 'cta')!
+    expect(tile.ratio).toBe(CTA_RATIO)
+    expect(CTA_RATIO).toBeCloseTo(4 / 3)
+  })
+
+  it('takes the next place when a project video stands at the middle (0 / 6 / 12)', () => {
+    // 12 frames: the middle is frame 6, where the second video stands — the CTA right after it
+    const tiles = keys(12, 3)
+    expect(tiles.slice(6, 9)).toEqual(['f-p-3-5', 'r-2', 'cta'])
+    expect(tiles[9]).toBe('f-p-3-6')
+    // The video at 0 stays first
+    expect(keys(4, 1)).toEqual(['r-1', 'f-p-3-0', 'f-p-3-1', 'cta', 'f-p-3-2', 'f-p-3-3'])
+  })
+
+  it('goes after the last frame with fewer than 3 frames', () => {
+    expect(keys(1)).toEqual(['f-p-3-0', 'cta'])
+    expect(keys(2, 2)).toEqual(['r-1', 'f-p-3-0', 'f-p-3-1', 'cta', 'r-2'])
+    expect(ctaPlace(gallery(2))).toBe(2)
+  })
+
+  it('is left out without a CTA', () => {
+    const tiles = gallery(5)
+    expect(withCta(tiles, false)).toBe(tiles)
   })
 })
 
@@ -382,26 +426,44 @@ describe('project blocks', () => {
     expect(textOnly.textContent).not.toContain('Дизайнер проекта')
   })
 
-  it('CTA: title, text and the dark contact button; no title — nothing, no messengers — no button', () => {
-    const cta = { ctaTitle: 'Хотите так же?', ctaText: 'Рассчитаем.', ctaButton: 'Оставить заявку' }
-    const { unmount } = render(<ProjectCta cta={cta} messengers={MESSENGERS} />)
-    expect(screen.getByRole('heading', { level: 2, name: 'Хотите так же?' })).toBeTruthy()
-    const button = screen.getByRole('button', { name: /Оставить заявку/ })
-    expect(button.className).toContain('bg-bg')
-    unmount()
-
-    const { container } = render(
-      <ProjectCta cta={{ ...cta, ctaTitle: ' ' }} messengers={MESSENGERS} />,
-    )
-    expect(container.innerHTML).toBe('')
-    render(<ProjectCta cta={cta} messengers={[]} />)
-    expect(screen.queryByRole('button')).toBeNull()
-    expect(screen.queryByRole('link')).toBeNull()
+  it('CTA: no title, no button label or no messenger — no tile', () => {
+    const cta = { ctaTitle: 'Хотите так же?', ctaText: ' ', ctaButton: 'Оставить заявку' }
+    expect(projectCta(cta, MESSENGERS)).toEqual({
+      title: 'Хотите так же?',
+      text: null,
+      button: 'Оставить заявку',
+    })
+    expect(projectCta({ ...cta, ctaTitle: ' ' }, MESSENGERS)).toBeNull()
+    expect(projectCta({ ...cta, ctaButton: null }, MESSENGERS)).toBeNull()
+    expect(projectCta(cta, [])).toBeNull()
+    expect(projectCta(undefined, MESSENGERS)).toBeNull()
   })
 
-  it('the inverse tone with one messenger is a dark link', () => {
-    render(<ContactButton caption="Оставить заявку" messengers={[MESSENGERS[0]!]} tone="inverse" />)
-    expect(screen.getByRole('link').className).toContain('bg-bg')
+  it('CTA tile: the whole tile is the button of the choice, described by its title and text', () => {
+    const cta = { title: 'Хотите так же?', text: 'Рассчитаем.', button: 'Оставить заявку' }
+    const { container } = render(<ProjectCtaTile cta={cta} messengers={MESSENGERS} />)
+    expect(screen.getByRole('heading', { level: 2, name: 'Хотите так же?' })).toBeTruthy()
+    const button = screen.getByRole('button', { name: /^Оставить заявку/ })
+    expect(button.getAttribute('aria-expanded')).toBe('false')
+    expect(button.getAttribute('aria-describedby')).toBe('project-cta-title project-cta-text')
+    // The capsule is a picture of the button, not a control of its own
+    expect(container.querySelectorAll('button')).toHaveLength(1)
+    expect(screen.getByRole('group', { hidden: true }).hasAttribute('inert')).toBe(true)
+    act(() => button.click())
+    expect(button.getAttribute('aria-expanded')).toBe('true')
+    expect(button.getAttribute('aria-label')).toBe('Закрыть выбор мессенджера')
+    expect(screen.getByRole('group').hasAttribute('inert')).toBe(false)
+  })
+
+  it('CTA tile with one messenger is a link to it in a new tab', () => {
+    const cta = { title: 'Хотите так же?', text: null, button: 'Оставить заявку' }
+    render(<ProjectCtaTile cta={cta} messengers={[MESSENGERS[0]!]} />)
+    const link = screen.getByRole('link', { name: /^Оставить заявку/ })
+    expect(link.getAttribute('href')).toBe(MESSENGERS[0]!.href)
+    expect(link.getAttribute('target')).toBe('_blank')
+    expect(link.getAttribute('rel')).toBe('noopener noreferrer')
+    expect(link.getAttribute('aria-describedby')).toBe('project-cta-title')
+    expect(screen.queryByRole('button')).toBeNull()
   })
 
   it('«Весь проект →» closes the view on the page of the project', () => {

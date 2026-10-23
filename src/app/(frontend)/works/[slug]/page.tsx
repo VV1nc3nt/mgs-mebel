@@ -6,13 +6,13 @@ import { PreviewRefresh } from '@/components/app/PreviewRefresh'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { BackToWorks } from '@/components/works/BackToWorks'
 import { ProjectAbout } from '@/components/works/ProjectAbout'
-import { ProjectCta } from '@/components/works/ProjectCta'
+import { ProjectCtaTile } from '@/components/works/ProjectCtaTile'
 import { ProjectGallery } from '@/components/works/ProjectGallery'
 import { toChrome } from '@/lib/chrome'
 import { breadcrumbJsonLd } from '@/lib/jsonld'
 import { getLayout, getPageGlobal, getSettings, getWorkProject } from '@/lib/queries'
 import { buildMetadata } from '@/lib/seo'
-import type { WorkProject } from '@/lib/workProject'
+import { projectCta, withCta, type WorkProject } from '@/lib/workProject'
 import { ITEM_PARAM, parseItemId, projectHrefOf, WORKS_PATH } from '@/lib/workView'
 
 type SearchParams = Record<string, string | string[] | undefined>
@@ -56,7 +56,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 
 /**
  * A project of «Наши работы» (works v2 §3): «← Все работы», the title and its meta, zone chips,
- * «О проекте», the masonry of every frame of the project with its videos, the CTA, and the view of
+ * «О проекте», the masonry of every frame of the project with its videos and the CTA tile, and the view of
  * the project (`?item=&photo=`), rendered open on the server for a direct link.
  */
 export default async function WorkProjectPage({ params, searchParams }: Props) {
@@ -70,6 +70,7 @@ export default async function WorkProjectPage({ params, searchParams }: Props) {
   const { nav, messengers } = toChrome(layout, settings)
   const worksName = nav.find((item) => item.href === WORKS_PATH)?.label || page.hero?.title
   const priceDate = page.prices?.priceDate?.trim() || null
+  const cta = projectCta(page.project, messengers)
 
   return (
     <>
@@ -103,11 +104,11 @@ export default async function WorkProjectPage({ params, searchParams }: Props) {
           </div>
         }
         zones={project.zones}
-        tiles={project.gallery}
+        tiles={withCta(project.gallery, cta !== null)}
         frames={project.frames}
         items={project.items}
         about={project.about && <ProjectAbout about={project.about} priceDate={priceDate} />}
-        cta={<ProjectCta cta={page.project} messengers={messengers} />}
+        cta={cta && <ProjectCtaTile cta={cta} messengers={messengers} />}
         priority={PRIORITY_TILES}
         initialView={viewedItem(project, query)}
         priceDate={priceDate}

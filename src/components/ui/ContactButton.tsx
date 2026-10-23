@@ -26,7 +26,6 @@ type Props = {
 const TONE_VARIANT = {
   accent: 'primary',
   outline: 'inverse-outline',
-  inverse: 'inverse',
 } as const satisfies Record<ContactTone, string>
 
 const LINK_WIDTH = { true: 'full', false: 'auto', mobile: 'mobile-full' } as const

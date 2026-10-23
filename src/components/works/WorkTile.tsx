@@ -3,14 +3,14 @@ import { ArrowRight, ArrowUpRight } from 'lucide-react'
 import { Chip } from '@/components/ui/Chip'
 import { MediaCard } from '@/components/ui/MediaCard'
 import type { SizesPreset } from '@/lib/media'
-import type { GalleryTile } from '@/lib/workProject'
+import type { FrameTile } from '@/lib/workProject'
 import { mediaBadge, type WorkTile as Tile } from '@/lib/works'
 import { workTypeLabel } from '@/lib/workTypes'
 import { ProjectLink } from './ProjectLink'
 import { WorkViewLink } from './WorkViewContext'
 
 type Props = {
-  tile: Tile | GalleryTile
+  tile: Tile | FrameTile
   /** H2 on /works (under the page's H1), H3 under a section's H2. */
   heading?: 'h2' | 'h3'
   /** LCP image: preloaded, not lazy (the first row of the grid). */

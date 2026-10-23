@@ -30,7 +30,7 @@ type Props = {
   items: Record<number, ViewerItem>
   /** «О проекте» (server): < 768 under the gallery, from 768 over it. */
   about: ReactNode
-  /** The CTA strip (server), last. */
+  /** Content of the CTA tile (server); its place is in `tiles`. */
   cta: ReactNode
   /** Tiles whose image is preloaded (the first row). */
   priority: number
@@ -45,7 +45,7 @@ const itemOf = (href: string): number | null =>
 
 /**
  * The project page under its heading (works v2 §3.2–§3.4): zone chips, «О проекте», the masonry
- * of the frames, the CTA, and the view of the whole project over them — every frame item after
+ * of the frames with the CTA tile among them, and the view of the whole project over them — every frame item after
  * item, the panel of the current frame's item. A chip opens the view at the first frame of its
  * item, a tile at its frame; the address is `?item=&photo=` (pushState, then replaceState), the
  * data of every item is on the page.
@@ -136,13 +136,12 @@ export function ProjectGallery({
             </li>
           ))}
         </ul>
-        {/* One DOM order (about, gallery, CTA); below 768 «О проекте» stands under the gallery */}
+        {/* One DOM order (about, gallery); below 768 «О проекте» stands under the gallery */}
         <div className="flex flex-col gap-3 md:gap-4">
           {about && <div className="order-2 empty:hidden md:order-none">{about}</div>}
           <div className="order-1">
-            <WorksGrid tiles={tiles} priority={priority} />
+            <WorksGrid tiles={tiles} priority={priority} cta={cta} />
           </div>
-          {cta && <div className="order-3 empty:hidden">{cta}</div>}
         </div>
       </div>
       {viewItem && (
