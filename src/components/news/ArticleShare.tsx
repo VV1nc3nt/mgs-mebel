@@ -2,12 +2,11 @@
 
 import { Link as LinkIcon } from 'lucide-react'
 
+import { ARTICLE_COLUMN } from '@/components/article/articleStyles'
 import { MessengerIcon } from '@/components/icons/MessengerIcon'
 import { IconButton } from '@/components/ui/IconButton'
 import { SHARE_COPIED, useShareStatus } from '@/hooks/useShareStatus'
 import type { MessengerKind } from '@/lib/chrome'
-
-import { ARTICLE_COLUMN } from './articleStyles'
 
 /** Microcopy: the row and the button names. */
 const SHARE_LABEL = 'Поделиться'

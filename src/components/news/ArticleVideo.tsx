@@ -1,9 +1,8 @@
+import { ARTICLE_COLUMN } from '@/components/article/articleStyles'
 import { PosterImage } from '@/components/ui/PosterImage'
 import { PosterPlayer } from '@/components/ui/PosterPlayer'
 import { VIDEO_POSTER, type ArticleVideo as Video, type VideoShape } from '@/lib/article'
 import { cn } from '@/lib/cn'
-
-import { ARTICLE_COLUMN } from './articleStyles'
 
 const WIDTH: Record<VideoShape, string> = {
   column: ARTICLE_COLUMN,

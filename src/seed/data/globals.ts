@@ -1,12 +1,15 @@
 import type { DataFromGlobalSlug, GlobalSlug } from 'payload'
 
+import type { LegalSlug } from '@/lib/legal'
+
 import { seoMeta } from '../seo'
 import { itemPlan } from './works'
 import type { MediaId } from './types'
 
 type Service = 'id' | 'createdAt' | 'updatedAt' | 'globalType'
 type GlobalData<S extends GlobalSlug> = Omit<DataFromGlobalSlug<S>, Service>
-export type SeedGlobals = { [S in GlobalSlug]: GlobalData<S> }
+// Legal documents are not seeded: their texts come from the client only (an empty one has no page)
+export type SeedGlobals = { [S in Exclude<GlobalSlug, LegalSlug>]: GlobalData<S> }
 
 const MESSENGERS_LABEL = 'Рассчитать проект в мессенджере'
 const HOTLINE_LABEL = 'Бесплатная горячая линия'

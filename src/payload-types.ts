@@ -109,6 +109,9 @@ export interface Config {
     catalogsPage: CatalogsPage;
     designers: Designer;
     newsPage: NewsPage;
+    legalPrivacy: LegalPrivacy;
+    legalCookies: LegalCookies;
+    legalOffer: LegalOffer;
     stats: Stat;
     layout: Layout;
     settings: Setting;
@@ -121,6 +124,9 @@ export interface Config {
     catalogsPage: CatalogsPageSelect<false> | CatalogsPageSelect<true>;
     designers: DesignersSelect<false> | DesignersSelect<true>;
     newsPage: NewsPageSelect<false> | NewsPageSelect<true>;
+    legalPrivacy: LegalPrivacySelect<false> | LegalPrivacySelect<true>;
+    legalCookies: LegalCookiesSelect<false> | LegalCookiesSelect<true>;
+    legalOffer: LegalOfferSelect<false> | LegalOfferSelect<true>;
     stats: StatsSelect<false> | StatsSelect<true>;
     layout: LayoutSelect<false> | LayoutSelect<true>;
     settings: SettingsSelect<false> | SettingsSelect<true>;
@@ -1501,6 +1507,108 @@ export interface NewsPage {
   createdAt?: string | null;
 }
 /**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "legalPrivacy".
+ */
+export interface LegalPrivacy {
+  id: number;
+  title: string;
+  body: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  };
+  meta?: {
+    title?: string | null;
+    description?: string | null;
+    /**
+     * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
+     */
+    image?: (number | null) | Media;
+  };
+  _status?: ('draft' | 'published') | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "legalCookies".
+ */
+export interface LegalCookies {
+  id: number;
+  title: string;
+  body: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  };
+  meta?: {
+    title?: string | null;
+    description?: string | null;
+    /**
+     * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
+     */
+    image?: (number | null) | Media;
+  };
+  _status?: ('draft' | 'published') | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "legalOffer".
+ */
+export interface LegalOffer {
+  id: number;
+  title: string;
+  body: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  };
+  meta?: {
+    title?: string | null;
+    description?: string | null;
+    /**
+     * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
+     */
+    image?: (number | null) | Media;
+  };
+  _status?: ('draft' | 'published') | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
  * Блок статистики на Главной и странице «О нас».
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1980,6 +2088,63 @@ export interface NewsPageSelect<T extends boolean = true> {
     | {
         title?: T;
       };
+  meta?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        image?: T;
+      };
+  _status?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "legalPrivacy_select".
+ */
+export interface LegalPrivacySelect<T extends boolean = true> {
+  title?: T;
+  body?: T;
+  meta?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        image?: T;
+      };
+  _status?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "legalCookies_select".
+ */
+export interface LegalCookiesSelect<T extends boolean = true> {
+  title?: T;
+  body?: T;
+  meta?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        image?: T;
+      };
+  _status?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "legalOffer_select".
+ */
+export interface LegalOfferSelect<T extends boolean = true> {
+  title?: T;
+  body?: T;
   meta?:
     | T
     | {

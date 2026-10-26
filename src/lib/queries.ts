@@ -7,6 +7,15 @@ import { cache } from 'react'
 import type { Catalog, News, Salon, Setting } from '@/payload-types'
 
 import type { LayoutInput, SettingsInput } from './chrome'
+import {
+  isLegalShown,
+  LEGAL_DOCS,
+  LEGAL_KEYS,
+  legalLinks,
+  type LegalKey,
+  type LegalLinks,
+  type LegalSlug,
+} from './legal'
 import { getPayloadClient } from './payload'
 import { getPreviewUser } from './preview'
 import { collectionTag, globalTag, newsTag, type PAGE_GLOBALS } from './revalidate'
@@ -118,21 +127,42 @@ export type PageSlug = (typeof PAGE_GLOBALS)[number]
 
 export type PageData<S extends PageSlug> = DataFromGlobalSlug<S>
 
+// Links of a Lexical text (news body, legal documents): the address needs the slug only; an item —
+// its id (its visibility and type come from the works feeds, their own cache: an edit of the works
+// expires no text). A news not readable as published stays an id: its text without a link.
+const TEXT_LINKS_POPULATE = {
+  news: { slug: true },
+  projects: { slug: true },
+  items: { type: true },
+} as const
+
+// A legal text links to news by their slug: publishing, unpublishing or renaming a news expires it.
+const LEGAL_SLUGS: ReadonlySet<PageSlug> = new Set(LEGAL_KEYS.map((key) => LEGAL_DOCS[key].slug))
+const pageRead = (slug: PageSlug) =>
+  LEGAL_SLUGS.has(slug)
+    ? { populate: TEXT_LINKS_POPULATE, tags: [globalTag(slug), collectionTag('news')] }
+    : { populate: undefined, tags: [globalTag(slug)] }
+
 // Published version only: read as an anonymous visitor (`overrideAccess: false`, no user), so the
 // global's read access (`_status = published`) applies even if the main row is not published.
 const readPublished = async <S extends PageSlug>(slug: S): Promise<PageData<S>> => {
   const payload = await getPayloadClient()
-  return payload.findGlobal({ slug, depth: 1, overrideAccess: false })
+  return payload.findGlobal({
+    slug,
+    depth: 1,
+    overrideAccess: false,
+    populate: pageRead(slug).populate,
+  }) as Promise<PageData<S>>
 }
 
-// One cache entry and one tag per page: the global's hooks expire `global:<slug>` on publishing.
+// One cache entry per page: the global's hooks expire `global:<slug>` on publishing.
 const pageCache = new Map<PageSlug, () => Promise<unknown>>()
 
 const pageCached = <S extends PageSlug>(slug: S): Promise<PageData<S>> => {
   let cached = pageCache.get(slug)
   if (!cached) {
     cached = unstable_cache(() => readPublished(slug), ['global:page', slug], {
-      tags: [globalTag(slug)],
+      tags: pageRead(slug).tags,
     })
     pageCache.set(slug, cached)
   }
@@ -148,9 +178,37 @@ export async function getPageGlobal<S extends PageSlug>(slug: S): Promise<PageDa
   await connection()
   if ((await draftMode()).isEnabled && (await getPreviewUser())) {
     const payload = await getPayloadClient()
-    return payload.findGlobal({ slug, depth: 1, draft: true })
+    return payload.findGlobal({
+      slug,
+      depth: 1,
+      draft: true,
+      populate: pageRead(slug).populate,
+    }) as Promise<PageData<S>>
   }
   return pageCached(slug)
+}
+
+export type LegalDoc = PageData<LegalSlug>
+
+/**
+ * A legal document with its page: a title and some text, else null (the page answers 404). Read
+ * like any page global (drafts to an editor in draft mode); React `cache` — the page and its
+ * metadata read it once per request.
+ */
+export const getLegalDoc = cache(async (key: LegalKey): Promise<LegalDoc | null> => {
+  const doc = await getPageGlobal(LEGAL_DOCS[key].slug)
+  return isLegalShown(doc) ? doc : null
+})
+
+/**
+ * Links to the legal documents that have a page (footer, cookie notice): the published version
+ * only, in draft mode too — a draft is never linked. The same cache entries as the pages
+ * (`global:<slug>` of each document).
+ */
+export async function getLegalLinks(): Promise<LegalLinks> {
+  await connection()
+  const docs = await Promise.all(LEGAL_KEYS.map((key) => pageCached(LEGAL_DOCS[key].slug)))
+  return legalLinks(Object.fromEntries(LEGAL_KEYS.map((key, i) => [key, docs[i]])))
 }
 
 const statsCached = unstable_cache(
@@ -251,11 +309,7 @@ const ARTICLE_QUERY = {
         og: ARTICLE_MEDIA_SIZE,
       },
     },
-    // Links of the text: the address needs the slug only; an item — its id (its visibility and
-    // type come from the works feeds, their own cache: an edit of the works expires no article)
-    news: { slug: true },
-    projects: { slug: true },
-    items: { type: true },
+    ...TEXT_LINKS_POPULATE,
   },
 } as const
 

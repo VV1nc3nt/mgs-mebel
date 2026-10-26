@@ -19,6 +19,10 @@ export const PAGE_GLOBALS = [
   'catalogsPage',
   'designers',
   'newsPage',
+  // Legal documents (privacy, cookies, offer): one global per document, the same drafts
+  'legalPrivacy',
+  'legalCookies',
+  'legalOffer',
 ] as const
 
 /** Cache tags of the site data (lib/queries.ts). */

@@ -3,30 +3,15 @@ import {
   InlineToolbarFeature,
   ItalicFeature,
   lexicalEditor,
-  LinkFeature,
   ParagraphFeature,
   StrikethroughFeature,
   UnderlineFeature,
 } from '@payloadcms/richtext-lexical'
-import type { Block, FieldAffectingData, RichTextField } from 'payload'
-import { richText as validateRichText } from 'payload/shared'
+import type { Block } from 'payload'
 
 import { mediaField } from '@/fields/media'
+import { allowedNodesOnly, INLINE_NODES, siteLinkFeature } from '@/fields/richText'
 import { videoPlayerFields } from '@/fields/videoPlayer'
-
-type LinkFields = { linkType?: 'custom' | 'internal' }
-
-/** External links always open in a new tab (rendered with rel="noopener noreferrer"), internal ones never. */
-const newTabByLinkType = (field: FieldAffectingData): FieldAffectingData =>
-  field.name === 'newTab' && field.type === 'checkbox'
-    ? {
-        ...field,
-        admin: { ...field.admin, hidden: true },
-        hooks: {
-          beforeChange: [({ siblingData }) => (siblingData as LinkFields)?.linkType === 'custom'],
-        },
-      }
-    : field
 
 /**
  * Inline formatting only. Headings, lists, quotes and media are separate blocks:
@@ -40,35 +25,16 @@ const paragraphEditor = lexicalEditor({
     UnderlineFeature(),
     StrikethroughFeature(),
     InlineToolbarFeature(),
-    LinkFeature({
-      enabledCollections: ['news', 'projects', 'items'],
-      fields: ({ defaultFields }) => defaultFields.map(newTabByLinkType),
-    }),
+    siteLinkFeature(),
   ],
 })
 
-/** Nodes the paragraph editor can produce. */
-const INLINE_NODES = new Set(['root', 'paragraph', 'text', 'linebreak', 'tab', 'link', 'autolink'])
-
-const findForeignNode = (node: unknown): string | undefined => {
-  if (!node || typeof node !== 'object') return undefined
-  const { type, children } = node as { type?: unknown; children?: unknown }
-  if (typeof type === 'string' && !INLINE_NODES.has(type)) return type
-  return Array.isArray(children) ? children.map(findForeignNode).find(Boolean) : undefined
-}
-
-/**
- * The editor only hides other features; data sent through the API may still contain
- * headings, lists or images. Refuse them on the server.
- */
-const validateInlineOnly: RichTextField['validate'] = async (value, args) => {
-  const base = await validateRichText(value, args)
-  if (base !== true) return base
-  const foreign = findForeignNode((value as { root?: unknown } | null)?.root)
-  return foreign
-    ? `В абзаце допустимо только строчное форматирование и ссылки (найдено: ${foreign}). Заголовки, списки, цитаты и фото — отдельные блоки.`
-    : true
-}
+/** Refused on the server too: data sent through the API may contain other nodes. */
+const validateInlineOnly = allowedNodesOnly(
+  INLINE_NODES,
+  (foreign) =>
+    `В абзаце допустимо только строчное форматирование и ссылки (найдено: ${foreign}). Заголовки, списки, цитаты и фото — отдельные блоки.`,
+)
 
 export const ParagraphBlock: Block = {
   slug: 'paragraph',

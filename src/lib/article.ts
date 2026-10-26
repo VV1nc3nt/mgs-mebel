@@ -292,8 +292,8 @@ export const linkHref = (
 
 type LinkNode = { type?: string; fields?: LinkFields; children?: LinkNode[] }
 
-/** Ids of the documents of a collection linked from the paragraphs. */
-function linkedIds(blocks: readonly ArticleBlock[], relationTo: string): number[] {
+/** Ids of the documents of a collection linked from Lexical texts (their roots). */
+export function linkedIdsIn(roots: readonly unknown[], relationTo: string): number[] {
   const ids = new Set<number>()
   const walk = (node: LinkNode | null | undefined) => {
     if (!node || typeof node !== 'object') return
@@ -303,11 +303,16 @@ function linkedIds(blocks: readonly ArticleBlock[], relationTo: string): number[
     }
     node.children?.forEach(walk)
   }
-  for (const block of blocks) {
-    if (block.blockType === 'paragraph') walk(block.text?.root as LinkNode | undefined)
-  }
+  roots.forEach((root) => walk(root as LinkNode | undefined))
   return [...ids]
 }
+
+/** Ids of the documents of a collection linked from the paragraphs. */
+const linkedIds = (blocks: readonly ArticleBlock[], relationTo: string): number[] =>
+  linkedIdsIn(
+    blocks.flatMap((block) => (block.blockType === 'paragraph' ? [block.text?.root] : [])),
+    relationTo,
+  )
 
 /** Ids of the items linked from the paragraphs (their visibility is read only when there are). */
 export const linkedItemIds = (blocks: readonly ArticleBlock[]): number[] =>

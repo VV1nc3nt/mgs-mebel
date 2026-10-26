@@ -1,9 +1,15 @@
+import {
+  ARTICLE_BODY,
+  ARTICLE_H2,
+  ARTICLE_ITEM,
+  ARTICLE_LIST,
+  ARTICLE_MARKER,
+} from '@/components/article/articleStyles'
 import type { ArticleBlock, ArticleLinks } from '@/lib/article'
 
 import { ArticleFigure } from './ArticleFigure'
 import { ArticleGallery } from './ArticleGallery'
 import { ArticleParagraph } from './ArticleParagraph'
-import { ARTICLE_COLUMN } from './articleStyles'
 import { ArticleVideo } from './ArticleVideo'
 import { NewsQuote } from './NewsQuote'
 
@@ -12,17 +18,13 @@ const Block = ({ block, links }: { block: ArticleBlock; links?: ArticleLinks }) 
     case 'paragraph':
       return <ArticleParagraph block={block} links={links} />
     case 'heading':
-      return <h2 className={`${ARTICLE_COLUMN} mt-4 text-article-h2 text-balance`}>{block.text}</h2>
+      return <h2 className={ARTICLE_H2}>{block.text}</h2>
     case 'list':
       return (
-        <ul className={`${ARTICLE_COLUMN} flex flex-col gap-3`}>
+        <ul className={ARTICLE_LIST}>
           {block.items!.map((item, i) => (
-            <li
-              key={item.id ?? i}
-              className="flex gap-3.5 text-article-item text-article xl:text-article-item-xl"
-            >
-              {/* One line high: the dot stays centred on the first line at every size */}
-              <span aria-hidden="true" className="flex h-lh shrink-0 items-center">
+            <li key={item.id ?? i} className={ARTICLE_ITEM}>
+              <span aria-hidden="true" className={ARTICLE_MARKER}>
                 <span className="size-2 rounded-full bg-accent" />
               </span>
               <span>{item.text}</span>
@@ -49,7 +51,7 @@ const Block = ({ block, links }: { block: ArticleBlock; links?: ArticleLinks }) 
 export function ArticleBlocks({ blocks, links }: { blocks: ArticleBlock[]; links?: ArticleLinks }) {
   if (!blocks.length) return null
   return (
-    <div className="page-container flex flex-col gap-6 pt-12 xl:pt-section-xl">
+    <div className={ARTICLE_BODY}>
       {blocks.map((block, i) => (
         <Block key={block.id ?? i} block={block} links={links} />
       ))}

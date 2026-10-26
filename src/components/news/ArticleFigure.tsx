@@ -1,8 +1,7 @@
+import { ARTICLE_COLUMN } from '@/components/article/articleStyles'
 import { MediaCard } from '@/components/ui/MediaCard'
 import { COLUMN_PHOTO_SIZES, type ArticleFigure as Figure } from '@/lib/article'
 import { cn } from '@/lib/cn'
-
-import { ARTICLE_COLUMN } from './articleStyles'
 
 /**
  * One photo of a news body: the text column, or the page container when wide; the ratio set by
