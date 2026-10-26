@@ -27,6 +27,9 @@ const PAGES = [
   PROJECT,
   '/news',
   ARTICLE,
+  // Legal documents: the heading ends the first screen (the published ones of seedHome)
+  '/privacy',
+  '/offer',
 ] as const
 const VIEWPORTS = [
   [390, 844],
@@ -140,6 +143,8 @@ test.describe('partial paint', () => {
     [PROJECT, [HEADER_END_ID, FIRST_SCREEN_END_ID]],
     ['/news', [HEADER_END_ID, FIRST_SCREEN_END_ID]],
     [ARTICLE, [HEADER_END_ID, FIRST_SCREEN_END_ID]],
+    ['/privacy', [HEADER_END_ID, FIRST_SCREEN_END_ID]],
+    ['/offer', [HEADER_END_ID, FIRST_SCREEN_END_ID]],
     ['/ui-kit', [HEADER_END_ID]],
     ['/nesushchestvuet', [HEADER_END_ID]],
   ] as const) {

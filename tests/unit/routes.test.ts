@@ -39,6 +39,12 @@ describe('routes', () => {
     })
     expect(parentOf('/news')).toEqual({ href: '/', label: 'На главную' })
     expect(parentOf('/salons')).toEqual({ href: '/', label: 'На главную' })
+    // Legal documents: not in the navigation, «←» home
+    for (const path of ['/privacy', '/cookies', '/offer']) {
+      expect(parentOf(path)).toEqual({ href: '/', label: 'На главную' })
+      expect(isHeroRoute(path)).toBe(false)
+      expect(NAV_ROUTES.some((route) => isActive(path, route.href))).toBe(false)
+    }
   })
 
   it('gives the global 404 a flow header, no active section and «←» home', () => {
