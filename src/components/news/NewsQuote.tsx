@@ -1,6 +1,5 @@
+import { ARTICLE_COLUMN } from '@/components/article/articleStyles'
 import type { NewsQuoteBlock } from '@/payload-types'
-
-import { ARTICLE_COLUMN } from './articleStyles'
 
 /** Quote of a news body: a card with an accent mark; the author under it, if any. */
 export function NewsQuote({ block }: { block: NewsQuoteBlock }) {

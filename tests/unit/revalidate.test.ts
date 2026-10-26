@@ -91,6 +91,9 @@ describe('expireTags', () => {
         'global:stats',
         'global:home',
         'global:newsPage',
+        'global:legalPrivacy',
+        'global:legalCookies',
+        'global:legalOffer',
         'collection:news',
         'collection:projects',
         'collection:items',
@@ -98,6 +101,6 @@ describe('expireTags', () => {
         'collection:catalogs',
       ]),
     )
-    expect(ALL_TAGS).toHaveLength(15)
+    expect(ALL_TAGS).toHaveLength(18)
   })
 })

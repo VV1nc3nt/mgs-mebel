@@ -21,11 +21,14 @@ import { CatalogsPage } from './globals/CatalogsPage'
 import { Designers } from './globals/Designers'
 import { Home } from './globals/Home'
 import { Layout } from './globals/Layout'
+import { legalGlobals } from './globals/Legal'
 import { NewsPage } from './globals/NewsPage'
 import { SalonsPage } from './globals/SalonsPage'
 import { Settings } from './globals/Settings'
 import { Stats } from './globals/Stats'
 import { WorksPage } from './globals/WorksPage'
+import { richTextPlain } from './lib/legal'
+import { seoDescription } from './lib/seo'
 import { migrations } from './migrations'
 
 const filename = fileURLToPath(import.meta.url)
@@ -47,7 +50,7 @@ export default buildConfig({
     fallbackLanguage: 'ru',
   },
   collections: [Projects, Items, News, Salons, Catalogs, Media, Users],
-  globals: [...pageGlobals, Stats, Layout, Settings],
+  globals: [...pageGlobals, ...legalGlobals, Stats, Layout, Settings],
   // Payload defaults are 20 MB per file / 50 MB per request; catalog PDFs are larger.
   // Per-type limits live in collections/Media.ts. Temp files keep large uploads out of RAM.
   upload: {
@@ -71,7 +74,7 @@ export default buildConfig({
   plugins: [
     seoPlugin({
       collections: ['projects', 'news'],
-      globals: pageGlobals.map((g) => g.slug),
+      globals: [...pageGlobals, ...legalGlobals].map((g) => g.slug),
       uploadsCollection: 'media',
       tabbedUI: true,
       generateTitle: ({ doc }) => {
@@ -80,7 +83,13 @@ export default buildConfig({
         return title ? `${String(title).replace(/\s+/g, ' ')} — MGS MEBEL` : 'MGS MEBEL'
       },
       generateDescription: ({ doc }) =>
-        doc?.lead ?? doc?.hero?.lead ?? doc?.hero?.text ?? doc?.hero?.slides?.[0]?.text ?? '',
+        doc?.lead ??
+        doc?.hero?.lead ??
+        doc?.hero?.text ??
+        doc?.hero?.slides?.[0]?.text ??
+        // A legal document: the start of its text
+        seoDescription(richTextPlain(doc?.body?.root)) ??
+        '',
     }),
     // Media goes to S3 only when S3_BUCKET is set; otherwise files stay on disk (Media.upload.staticDir).
     s3Storage({
