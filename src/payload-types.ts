@@ -1701,9 +1701,41 @@ export interface Layout {
     sloganAccent?: string | null;
     hotlineLabel?: string | null;
     /**
-     * «© год» добавляется автоматически.
+     * «© год» добавляется автоматически. Если в «Контактах и настройках» заполнены реквизиты — вместо копирайта выводятся они.
      */
     copyright?: string | null;
+    menuTitle?: string | null;
+    buyersTitle?: string | null;
+    salonsTitle?: string | null;
+    contactsTitle?: string | null;
+    /**
+     * Без подписи кнопки или мессенджеров кнопки нет.
+     */
+    contact?: {
+      title?: string | null;
+      buttonLabel?: string | null;
+    };
+    /**
+     * Нет ссылок — колонки нет.
+     */
+    buyerLinks?:
+      | {
+          label: string;
+          /**
+           * Страница сайта «/salons» или https://…
+           */
+          href: string;
+          id?: string | null;
+        }[]
+      | null;
+  };
+  cookies?: {
+    lead?: string | null;
+    text?: string | null;
+    moreLabel?: string | null;
+    rejectLabel?: string | null;
+    necessaryLabel?: string | null;
+    acceptLabel?: string | null;
   };
   updatedAt?: string | null;
   createdAt?: string | null;
@@ -1725,6 +1757,19 @@ export interface Setting {
      */
     whatsapp?: string | null;
     telegram?: string | null;
+  };
+  requisites?: {
+    /**
+     * ООО «…»
+     */
+    company?: string | null;
+    inn?: string | null;
+    ogrn?: string | null;
+    legalAddress?: string | null;
+    /**
+     * Рядом с горячей линией, например «Ежедневно 9:00–21:00»
+     */
+    hours?: string | null;
   };
   designerManager?: {
     photo?: (number | null) | Media;
@@ -2241,6 +2286,33 @@ export interface LayoutSelect<T extends boolean = true> {
         sloganAccent?: T;
         hotlineLabel?: T;
         copyright?: T;
+        menuTitle?: T;
+        buyersTitle?: T;
+        salonsTitle?: T;
+        contactsTitle?: T;
+        contact?:
+          | T
+          | {
+              title?: T;
+              buttonLabel?: T;
+            };
+        buyerLinks?:
+          | T
+          | {
+              label?: T;
+              href?: T;
+              id?: T;
+            };
+      };
+  cookies?:
+    | T
+    | {
+        lead?: T;
+        text?: T;
+        moreLabel?: T;
+        rejectLabel?: T;
+        necessaryLabel?: T;
+        acceptLabel?: T;
       };
   updatedAt?: T;
   createdAt?: T;
@@ -2263,6 +2335,15 @@ export interface SettingsSelect<T extends boolean = true> {
         max?: T;
         whatsapp?: T;
         telegram?: T;
+      };
+  requisites?:
+    | T
+    | {
+        company?: T;
+        inn?: T;
+        ogrn?: T;
+        legalAddress?: T;
+        hours?: T;
       };
   designerManager?:
     | T

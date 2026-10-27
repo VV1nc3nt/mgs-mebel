@@ -13,6 +13,7 @@ import * as migration_20261020_025642_news_share_max from './20261020_025642_new
 import * as migration_20261020_125550_works_v2 from './20261020_125550_works_v2'
 import * as migration_20261023_190746_works_project_cta from './20261023_190746_works_project_cta'
 import * as migration_20261026_135522_legal_docs from './20261026_135522_legal_docs'
+import * as migration_20261027_042009_footer_cookies from './20261027_042009_footer_cookies'
 
 export const migrations = [
   {
@@ -89,5 +90,10 @@ export const migrations = [
     up: migration_20261026_135522_legal_docs.up,
     down: migration_20261026_135522_legal_docs.down,
     name: '20261026_135522_legal_docs',
+  },
+  {
+    up: migration_20261027_042009_footer_cookies.up,
+    down: migration_20261027_042009_footer_cookies.down,
+    name: '20261027_042009_footer_cookies',
   },
 ]
