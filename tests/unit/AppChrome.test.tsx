@@ -1,10 +1,11 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AppFooter } from '@/components/app/AppFooter'
 import { AppHeader } from '@/components/app/AppHeader'
 import { MenuProvider } from '@/components/app/MenuProvider'
 import { toChrome } from '@/lib/chrome'
+import { toFooter } from '@/lib/footer'
 import { globals } from '@/seed/data/globals'
 
 const nav = vi.hoisted(() => ({ pathname: '/' }))
@@ -79,36 +80,111 @@ describe('AppHeader', () => {
 })
 
 describe('AppFooter', () => {
-  it('shows slogan, hotline, socials in messenger order and the copyright with the year', () => {
-    render(<AppFooter chrome={full} />)
+  const salons = [
+    { name: 'Пражская', address: 'Кировоградская, 15' },
+    { name: 'Химки', address: null },
+  ]
+  const legal = {
+    privacy: { href: '/privacy', title: 'Политика конфиденциальности' },
+    offer: { href: '/offer', title: 'Оферта' },
+  }
+  const footerOf = (
+    layout: typeof seed.layout | object = seed.layout,
+    settings: typeof seed.settings | object = seed.settings,
+  ) => {
+    const chrome = toChrome(layout, settings)
+    return toFooter({
+      layout,
+      settings,
+      nav: chrome.nav,
+      phone: chrome.phone,
+      messengers: chrome.messengers,
+      salons,
+      legal,
+    })
+  }
+
+  it('shows the slogan, the columns, the contacts and the bottom row', () => {
+    render(<AppFooter footer={footerOf()} cookieSettings />)
     expect(screen.getByText('для жизни').className).toContain('text-accent')
     // A line break typed in the CMS becomes <br> (design: «Производитель<br>мебели»)
     const slogan = screen.getByText('для жизни').parentElement!
     expect(slogan.innerHTML).toMatch(/^Производитель<br>мебели <span/)
-    expect(screen.getByText('Бесплатная горячая линия')).toBeTruthy()
-    const socials = screen
-      .getAllByRole('listitem')
-      .map((li) => li.querySelector('a')?.getAttribute('aria-label'))
-    expect(socials).toEqual(['MAX', 'Telegram', 'WhatsApp'])
-    for (const link of screen.getAllByRole('listitem').map((li) => li.querySelector('a')!)) {
+    // Buyers: no links in the seed — no column
+    expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent?.trim())).toEqual([
+      'МенюМеню',
+      'СалоныСалоны',
+      'Контакты',
+    ])
+    const contacts = screen.getByRole('region', { name: 'Контакты' })
+    const messengers = within(contacts).getAllByRole('link', { name: /^(MAX|Telegram|WhatsApp)$/ })
+    expect(messengers.map((a) => a.getAttribute('aria-label'))).toEqual([
+      'MAX',
+      'Telegram',
+      'WhatsApp',
+    ])
+    for (const link of messengers) {
       expect(link.getAttribute('target')).toBe('_blank')
       expect(link.getAttribute('rel')).toBe('noopener noreferrer')
     }
+    expect(screen.getByRole('link', { name: '8 800 100-16-58' }).getAttribute('href')).toBe(
+      'tel:88001001658',
+    )
+    expect(screen.getByRole('link', { name: 'Оферта' }).getAttribute('href')).toBe('/offer')
+    expect(screen.getByRole('button', { name: 'Настройки cookies' })).toBeTruthy()
     expect(screen.getByText(/^© \d{4} MGS MEBEL\. Все права защищены\.$/)).toBeTruthy()
+    expect(screen.getByText('Расскажем о сроках и стоимости')).toBeTruthy()
+    expect(
+      screen.getByRole('button', { name: 'Рассчитать проект — выбрать мессенджер' }),
+    ).toBeTruthy()
   })
 
-  it('hides a missing messenger and the whole block without any', () => {
-    const { rerender } = render(
-      <AppFooter chrome={toChrome(seed.layout, { messengers: { telegram: 'https://t.me/x' } })} />,
+  it('the menu accordion: one open at a time, the links stay in the DOM', () => {
+    render(<AppFooter footer={footerOf()} cookieSettings />)
+    const menu = screen.getByRole('button', { name: 'Меню' })
+    const salonsButton = screen.getByRole('button', { name: 'Салоны' })
+    const panel = document.getElementById(menu.getAttribute('aria-controls')!)!
+    expect(menu.getAttribute('aria-expanded')).toBe('false')
+    expect(panel.className).toContain('max-md:hidden')
+    expect(panel.querySelectorAll('a')).toHaveLength(6)
+    fireEvent.click(menu)
+    expect(menu.getAttribute('aria-expanded')).toBe('true')
+    expect(panel.className).not.toContain('max-md:hidden')
+    fireEvent.click(salonsButton)
+    expect(menu.getAttribute('aria-expanded')).toBe('false')
+    expect(salonsButton.getAttribute('aria-expanded')).toBe('true')
+    fireEvent.click(salonsButton)
+    expect(salonsButton.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('shows the requisites instead of the copyright', () => {
+    render(
+      <AppFooter
+        footer={footerOf(seed.layout, {
+          ...seed.settings,
+          requisites: { company: 'ООО «МГС»', inn: '7700000000', legalAddress: 'Москва' },
+        })}
+        cookieSettings={false}
+      />,
     )
-    expect(screen.getAllByRole('listitem')).toHaveLength(1)
-    rerender(<AppFooter chrome={toChrome(seed.layout, {})} />)
-    expect(screen.queryByRole('list')).toBeNull()
+    const legalText = screen.getByText(/ООО «МГС»/)
+    expect(legalText.textContent).toMatch(/^© \d{4} ООО «МГС» · ИНН 7700000000Москва$/)
+    expect(screen.queryByText(/Все права защищены/)).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Настройки cookies' })).toBeNull()
   })
 
   it('renders empty globals as an empty footer', () => {
-    const { container } = render(<AppFooter chrome={empty} />)
-    expect(container.querySelector('footer')?.textContent).toBe('')
+    const empty = toFooter({
+      layout: {},
+      settings: {},
+      nav: [],
+      messengers: [],
+      salons: [],
+      legal: {},
+    })
+    const { container } = render(<AppFooter footer={empty} cookieSettings={false} />)
+    // The logo only (its letters are hidden from screen readers)
+    expect(container.querySelector('footer')?.textContent).toBe('MGSMEBEL')
     expect(container.querySelectorAll('a')).toHaveLength(0)
   })
 })

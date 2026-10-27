@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test, type Locator, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page, newConsentContext } from '../helpers/test'
 
 import { globals } from '../../src/seed/data/globals'
 import { salons } from '../../src/seed/data/salons'
@@ -617,7 +617,7 @@ test.describe('salons', () => {
   })
 
   test('reduced motion: photos only, no mp4 requested', async ({ browser }) => {
-    const context = await browser.newContext({
+    const context = await newConsentContext(browser, {
       reducedMotion: 'reduce',
       viewport: { width: 390, height: 844 },
       isMobile: true,

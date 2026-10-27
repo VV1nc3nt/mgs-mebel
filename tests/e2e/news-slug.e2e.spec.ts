@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
+import { expect, test, type APIRequestContext, type Page } from '../helpers/test'
 
 import { formatDate } from '../../src/lib/date'
 import { globals } from '../../src/seed/data/globals'

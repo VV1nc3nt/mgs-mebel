@@ -1,10 +1,10 @@
-import { test, expect, Page } from '@playwright/test'
+import { test, expect, Page, newConsentContext } from '../helpers/test'
 
 test.describe('Frontend', () => {
   let page: Page
 
   test.beforeAll(async ({ browser }, testInfo) => {
-    const context = await browser.newContext()
+    const context = await newConsentContext(browser)
     page = await context.newPage()
   })
 

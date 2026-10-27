@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from '../helpers/test'
 
 import { FIRST_SCREEN_END_ID, HEADER_END_ID } from '../../src/components/app/FirstScreenEnd'
 import { E2E_ARTICLE } from '../helpers/e2eArticle'

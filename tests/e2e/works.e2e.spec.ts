@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page, newConsentContext } from '../helpers/test'
 
 import { globals } from '../../src/seed/data/globals'
 import {
@@ -194,7 +194,7 @@ test.describe('works', () => {
     for (const project of E2E_COMPLEX) expect(unknown).toContain(project.title)
 
     // Without JS the feed is the same
-    const context = await page.context().browser()!.newContext({ javaScriptEnabled: false })
+    const context = await newConsentContext(page.context().browser()!, { javaScriptEnabled: false })
     const noJs = await context.newPage()
     await noJs.goto(`${URL}?category=bathrooms`)
     await expect(noJs.locator('main h2')).toHaveText(e2eFeedTitles('bathrooms'))

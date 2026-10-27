@@ -42,9 +42,9 @@ describe('site chrome queries', () => {
     expect(raw.technical?.consultantWidgetCode).toContain('window.widget')
   })
 
-  it('getSettings returns only public contacts and messengers', async () => {
+  it('getSettings returns only public contacts, messengers and requisites', async () => {
     const settings = await getSettings()
-    expect(Object.keys(settings).sort()).toEqual(['contacts', 'messengers'])
+    expect(Object.keys(settings).sort()).toEqual(['contacts', 'messengers', 'requisites'])
     expect(settings).not.toHaveProperty('technical')
     expect(settings).not.toHaveProperty('designerManager')
     expect(JSON.stringify(settings)).not.toContain('window.widget')

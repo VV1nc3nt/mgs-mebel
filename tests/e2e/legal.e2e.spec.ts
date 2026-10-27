@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
+import { expect, test, type APIRequestContext, type Page } from '../helpers/test'
 
 import { news } from '../../src/seed/data/news'
 import { e2eEditor } from '../helpers/e2eEditor'

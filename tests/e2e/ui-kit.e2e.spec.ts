@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from '../helpers/test'
 
 const URL = 'http://localhost:3000/ui-kit'
 const WIDTHS = [390, 834, 1440] as const

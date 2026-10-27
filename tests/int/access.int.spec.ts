@@ -46,6 +46,7 @@ afterAll(async () => {
         contacts: settingsBefore.contacts,
         messengers: settingsBefore.messengers,
         designerManager: settingsBefore.designerManager,
+        requisites: settingsBefore.requisites,
         technical: { consultantWidgetCode: settingsBefore.technical?.consultantWidgetCode ?? null },
       },
     })
@@ -213,6 +214,48 @@ describe('settings.technical', () => {
         ...as(users.content),
       }),
     ).rejects.toThrow()
+  })
+})
+
+describe('settings.requisites', () => {
+  const requisites = {
+    company: `${PREFIX} ООО`,
+    inn: '7700000000',
+    ogrn: '1027700000000',
+    legalAddress: 'Москва',
+    hours: '9–21',
+  }
+
+  it('as the contacts: manager and admin change them, content only reads, anonymous reads', async () => {
+    for (const user of [users.manager, users.admin, users.developer]) {
+      await expect(
+        payload.updateGlobal({ slug: 'settings', data: { requisites }, ...as(user) }),
+      ).resolves.toBeTruthy()
+    }
+    await expect(
+      payload.updateGlobal({
+        slug: 'settings',
+        data: { requisites: { company: 'content' } },
+        ...as(users.content),
+      }),
+    ).rejects.toThrow()
+    const read = await payload.findGlobal({ slug: 'settings', ...as(users.content) })
+    expect(read.requisites?.company).toBe(requisites.company)
+    const anonymous = await payload.findGlobal({ slug: 'settings', overrideAccess: false })
+    expect(anonymous.requisites).toMatchObject(requisites)
+  })
+
+  it('ИНН — 10 or 12 digits, ОГРН — 13 or 15; empty is fine', async () => {
+    const save = (data: Record<string, string | null>) =>
+      payload.updateGlobal({ slug: 'settings', data: { requisites: data } })
+    for (const inn of ['770000000', '77000000001', '77000000000a']) {
+      await expect(save({ inn }), inn).rejects.toThrow()
+    }
+    for (const ogrn of ['102770000000', '10277000000001']) {
+      await expect(save({ ogrn }), ogrn).rejects.toThrow()
+    }
+    await expect(save({ inn: '770000000000', ogrn: '102770000000000' })).resolves.toBeTruthy()
+    await expect(save({ inn: null, ogrn: '' })).resolves.toBeTruthy()
   })
 })
 
