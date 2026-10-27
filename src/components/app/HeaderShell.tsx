@@ -100,12 +100,6 @@ export function HeaderShell({
     }
   }, [])
 
-  useEffect(() => {
-    const root = document.documentElement
-    root.toggleAttribute('data-header-pinned', state === 'pinned')
-    return () => root.removeAttribute('data-header-pinned')
-  }, [state])
-
   return (
     <OverMediaContext value={hero && state === 'top'}>
       <header

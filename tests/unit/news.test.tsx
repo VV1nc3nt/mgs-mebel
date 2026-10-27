@@ -1,4 +1,4 @@
-import { act, render, screen, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useSyncExternalStore } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -256,6 +256,79 @@ describe('NewsFeed', () => {
     await user.click(screen.getByRole('button', { name: 'Показать ещё' }))
     expect(cards()).toHaveLength(7)
     expect(screen.queryByRole('button', { name: 'Показать ещё' })).toBeNull()
+  })
+
+  it('back to a tab: no request, with every page loaded on it', async () => {
+    action.load.mockImplementation(async ({ page, type }: { page: number; type: string }) =>
+      type === 'new'
+        ? { items: cardsOf(20, 6, 'new'), hasMore: false }
+        : { items: cardsOf(1 + (page - 1) * 6, 6), hasMore: page < 3 },
+    )
+    render(feed())
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Показать ещё' }))
+    expect(cards()).toHaveLength(12)
+    await user.click(screen.getByRole('button', { name: 'новинки 6' }))
+    await waitFor(() => expect(cards()[0].textContent).toBe('Новость 20'))
+    await user.click(screen.getByRole('button', { name: 'все 13' }))
+    await waitFor(() => expect(cards()).toHaveLength(12))
+    expect(url.search).toBe('')
+    expect(action.load).toHaveBeenCalledTimes(2)
+    await user.click(screen.getByRole('button', { name: 'новинки 6' }))
+    await waitFor(() => expect(cards()[0].textContent).toBe('Новость 20'))
+    expect(action.load).toHaveBeenCalledTimes(2)
+    // The button goes on from the loaded page
+    await user.click(screen.getByRole('button', { name: 'все 13' }))
+    await waitFor(() => expect(cards()).toHaveLength(12))
+    await user.click(screen.getByRole('button', { name: 'Показать ещё' }))
+    expect(action.load).toHaveBeenLastCalledWith({ page: 3, type: 'all' })
+  })
+
+  it('a failed tab change keeps the tab, the URL and the list', async () => {
+    action.load.mockRejectedValueOnce(new Error('network'))
+    const { container } = render(feed())
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'новинки 6' }))
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'все 13' }).getAttribute('aria-pressed')).toBe(
+        'true',
+      ),
+    )
+    expect(url.search).toBe('')
+    expect(cards()).toHaveLength(6)
+    expect(container.querySelectorAll('[data-skeleton]')).toHaveLength(0)
+    // A click on the tab tries again
+    action.load.mockResolvedValueOnce({ items: cardsOf(20, 6, 'new'), hasMore: false })
+    await user.click(screen.getByRole('button', { name: 'новинки 6' }))
+    await waitFor(() => expect(cards()[0].textContent).toBe('Новость 20'))
+  })
+
+  it('no skeletons on a tab change; «Показать ещё» adds cards without a wave', async () => {
+    const rect = vi
+      .spyOn(Element.prototype, 'getBoundingClientRect')
+      .mockReturnValue({ top: 0, bottom: 100 } as DOMRect)
+    let resolve: (value: unknown) => void = () => {}
+    action.load.mockImplementation(() => new Promise((r) => (resolve = r)))
+    const { container } = render(feed())
+    const user = userEvent.setup()
+    // The server list: the first card is the LCP candidate
+    expect(container.querySelector('img')?.getAttribute('loading')).not.toBe('lazy')
+    await user.click(screen.getByRole('button', { name: 'Показать ещё' }))
+    await act(async () => resolve({ items: cardsOf(7, 6), hasMore: true }))
+    expect(cards()).toHaveLength(12)
+    expect(container.querySelectorAll('[data-wave]')).toHaveLength(0)
+    expect(container.querySelector('img')?.getAttribute('loading')).not.toBe('lazy')
+
+    await user.click(screen.getByRole('button', { name: 'новинки 6' }))
+    expect(container.querySelectorAll('[data-skeleton]')).toHaveLength(0)
+    // The old cards stay until the new ones come
+    expect(cards()).toHaveLength(12)
+    await act(async () => resolve({ items: cardsOf(20, 6, 'new'), hasMore: false }))
+    await waitFor(() => expect(cards()[0].textContent).toBe('Новость 20'))
+    // A later list: a wave, no priority image
+    expect(container.querySelectorAll('li[data-wave="wait"]').length).toBeGreaterThan(0)
+    expect(container.querySelector('img')?.getAttribute('loading')).toBe('lazy')
+    rect.mockRestore()
   })
 
   it('another tab replaces the URL and loads its first page', async () => {

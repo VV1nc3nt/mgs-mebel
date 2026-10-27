@@ -4,9 +4,9 @@ import { expect, test, type Page } from '../helpers/test'
 import { layoutShifts, settle, tallPage, wheel } from '../helpers/scroll'
 
 // The smart header (a deviation from README §5.2): in place at the top, hidden while scrolling
-// down, fixed on glass while scrolling up. /about puts it over the hero, /ui-kit in the flow and
-// has the sticky segment bar. Jumps lengthen the page first (tallPage): the checks do not depend
-// on how long the page content is.
+// down, fixed on glass while scrolling up. /about puts it over the hero, /ui-kit in the flow.
+// Jumps lengthen the page first (tallPage): the checks do not depend on how long the page
+// content is.
 const BASE = 'http://localhost:3000'
 const PAGES = [
   { path: '/about', variant: 'hero', position: 'absolute' },
@@ -159,45 +159,6 @@ test.describe('smart header', () => {
         await expect(header(page)).toHaveAttribute('data-state', 'pinned')
         await expect.poll(() => style(page, 'opacity')).toBe('1')
         await expect(focused).toBeInViewport({ ratio: 1 })
-      })
-
-      test('/ui-kit: the sticky segment bar sits under the pinned header', async ({ page }) => {
-        await page.goto(`${BASE}/ui-kit`)
-        const group = page.getByRole('group', { name: 'Категории работ' })
-        const sticky = page.locator('.sticky-under-header')
-        await settle(page)
-        // Just below the start of the bar's section: the bar is stuck, with room to stay so
-        // after a small wheel up
-        const section = await sticky.evaluate(
-          (el) => el.parentElement!.getBoundingClientRect().top + window.scrollY,
-        )
-        await jumpTo(page, Math.round(section + 200))
-        await expect.poll(async () => (await sticky.boundingBox())!.y).toBe(0)
-
-        await wheel(page, -60)
-        await expect(header(page)).toHaveAttribute('data-state', 'pinned')
-        await expect.poll(() => style(page, 'transform')).toBe('none')
-        const headerBottom = await page.evaluate(() =>
-          Math.round(
-            document.querySelector('header > .header-bar')!.getBoundingClientRect().bottom,
-          ),
-        )
-        await expect
-          .poll(async () => Math.round((await sticky.boundingBox())!.y))
-          .toBe(headerBottom)
-        const covered = await group.evaluate((el) => {
-          const first = el.querySelector('button')!
-          const r = first.getBoundingClientRect()
-          return !first.contains(
-            document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2),
-          )
-        })
-        expect(covered).toBe(false)
-        await page.screenshot({ path: `test-results/header/ui-kit-filter-${width}.png` })
-
-        await wheel(page, 60)
-        await expect(header(page)).toHaveAttribute('data-state', 'hidden')
-        await expect.poll(async () => (await sticky.boundingBox())!.y).toBe(0)
       })
 
       test('reduced motion: fades without sliding', async ({ page }) => {

@@ -1,8 +1,6 @@
-import type { About, Catalog, News, Stat } from '@/payload-types'
+import type { About, News, Stat } from '@/payload-types'
 
 import { getPayloadClient } from '@/lib/payload'
-import { getWorkFeeds } from '@/lib/queries'
-import { feedCounts, type WorkCounts } from '@/lib/works'
 
 export type UiKitData = {
   news: News[]
@@ -14,9 +12,6 @@ export type UiKitData = {
   hardware: About['hardware'] | null
   exhibitions: About['exhibitions'] | null
   stats: NonNullable<Stat['items']>
-  /** Tiles per feed of «Наши работы». */
-  workCounts: Partial<WorkCounts>
-  catalogCounts: Partial<Record<Catalog['category'] | 'all', number>>
 }
 
 const EMPTY: UiKitData = {
@@ -28,15 +23,7 @@ const EMPTY: UiKitData = {
   hardware: null,
   exhibitions: null,
   stats: [],
-  workCounts: {},
-  catalogCounts: {},
 }
-
-const countBy = <K extends string>(keys: K[]) =>
-  keys.reduce<Partial<Record<K, number>>>(
-    (acc, key) => ({ ...acc, [key]: (acc[key] ?? 0) + 1 }),
-    {},
-  )
 
 /**
  * Demo content from the seed. Without a database or seed the primitives get empty values and
@@ -46,7 +33,7 @@ export async function getUiKitData(): Promise<UiKitData> {
   try {
     const payload = await getPayloadClient()
     const published = { _status: { equals: 'published' } } as const
-    const [news, newsTotal, onlyNews, about, stats, feeds, catalogs] = await Promise.all([
+    const [news, newsTotal, onlyNews, about, stats] = await Promise.all([
       payload.find({ collection: 'news', where: published, sort: '-date', limit: 3, depth: 1 }),
       payload.count({ collection: 'news', where: published }),
       payload.count({
@@ -55,13 +42,6 @@ export async function getUiKitData(): Promise<UiKitData> {
       }),
       payload.findGlobal({ slug: 'about', depth: 1 }),
       payload.findGlobal({ slug: 'stats', depth: 0 }),
-      getWorkFeeds(),
-      payload.find({
-        collection: 'catalogs',
-        depth: 0,
-        pagination: false,
-        select: { category: true },
-      }),
     ])
     return {
       news: news.docs,
@@ -76,11 +56,6 @@ export async function getUiKitData(): Promise<UiKitData> {
       hardware: about.hardware,
       exhibitions: about.exhibitions,
       stats: stats.items ?? [],
-      workCounts: feedCounts(feeds),
-      catalogCounts: {
-        ...countBy(catalogs.docs.map((c) => c.category)),
-        all: catalogs.docs.length,
-      },
     }
   } catch (error) {
     console.warn('ui-kit: demo data unavailable, rendering empty states', error)

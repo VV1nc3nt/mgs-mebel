@@ -4,9 +4,10 @@ import { expect, test, type Page, newConsentContext } from '../helpers/test'
 import { globals } from '../../src/seed/data/globals'
 import { CATALOGS_DRAFT_TITLE, catalogPdfFile, E2E_CATALOGS } from '../helpers/e2eCatalogs'
 import { e2eEditor } from '../helpers/e2eEditor'
-import { layoutShifts, settle, tallPage, wheel } from '../helpers/scroll'
+import { countActions, recordWave, waveStates } from '../helpers/feeds'
+import { layoutShifts, settle } from '../helpers/scroll'
 
-// «Каталоги» (README §6.5): heading, sticky category bar with the counter, catalog cards.
+// «Каталоги» (README §6.5): heading with the counter, category chips, catalog cards.
 const BASE = 'http://localhost:3000'
 const URL = `${BASE}/catalogs`
 const EMPTY_DB = !!process.env.E2E_EMPTY_DB
@@ -16,8 +17,8 @@ const COLUMNS = { 390: 1, 834: 2, 1440: 3 } as const
 // Fixture: 1 kitchen, 2 wardrobe and 5 facade catalogs; no bathrooms, no tables
 const SEGMENTS = ['все', 'кухни', 'гардеробные', 'фасады']
 const COUNT = { all: 8, kitchens: 1, wardrobes: 2, facades: 5 } as const
-// Cards follow the bar after the grid's top padding (design: 14)
-const LIST_GAP = 14
+// Cards follow the chips after the row's bottom padding (as on the works page)
+const LIST_GAP = 20
 
 /** Fails the test on hydration mismatches and other console errors. */
 const watchConsole = (page: Page) => {
@@ -41,66 +42,18 @@ const axe = async (page: Page) => {
 const hydrated = (page: Page) =>
   page.waitForFunction(() => document.documentElement.style.getPropertyValue('--header-h') !== '')
 
-const bar = (page: Page) => page.getByRole('group', { name: 'Категории каталогов' })
+const chips = (page: Page) => page.getByRole('group', { name: 'Категории каталогов' })
 const segment = (page: Page, name: string) =>
-  bar(page).getByRole('button', { name: new RegExp(`^${name}$`, 'i') })
+  chips(page).getByRole('button', { name: new RegExp(`^${name} \\d+$`, 'i') })
 const counter = (page: Page) => page.locator('main p[aria-live="polite"]')
+const GRID = 'main [data-catalogs-grid]'
 const cards = (page: Page) => page.locator('main article')
-const stickyBar = (page: Page) => page.locator('main .sticky-under-header')
-
-/** Viewport geometry the scroll checks compare. */
-const geometry = (page: Page) =>
-  page.evaluate(() => {
-    const root = document.documentElement
-    const sticky = document.querySelector('main .sticky-under-header')!.getBoundingClientRect()
-    const first = document.querySelector('main article')!.getBoundingClientRect()
-    return {
-      y: window.scrollY,
-      pinned: root.hasAttribute('data-header-pinned'),
-      headerH: Number(root.style.getPropertyValue('--header-h')),
-      headerBottom: document.querySelector('.header-bar')!.getBoundingClientRect().bottom,
-      barTop: sticky.top,
-      barBottom: sticky.bottom,
-      firstTop: first.top,
-    }
-  })
-
-/**
- * The first card right under the bar: 14, less a fraction of a pixel when the bar's own place is
- * fractional (the scroll target is rounded so that the bar sticks to the header without a gap).
- */
-const expectListUnderBar = (g: { firstTop: number; barBottom: number }) => {
-  const gap = g.firstTop - g.barBottom
-  expect(gap).toBeGreaterThan(LIST_GAP - 1)
-  expect(gap).toBeLessThanOrEqual(LIST_GAP + 0.05)
-}
-
-/** Resolves on the next `scrollend` (or after 2 s if nothing scrolls). */
-const armScrollEnd = (page: Page) =>
-  page.evaluate(() => {
-    const w = window as Window & { filterScrollEnd?: Promise<void> }
-    w.filterScrollEnd = new Promise((resolve) => {
-      window.addEventListener('scrollend', () => resolve(), { once: true })
-      setTimeout(resolve, 2000)
-    })
-  })
-const scrollEnded = (page: Page) =>
-  page.evaluate(() => (window as Window & { filterScrollEnd?: Promise<void> }).filterScrollEnd)
-
-/** Mouse click at the centre: the bar sits in the top 80 px, where a locator click scrolls. */
-const clickAt = async (page: Page, name: string) => {
-  const box = (await segment(page, name).boundingBox())!
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
-}
-
-/** Waits for the header's slide and the bar's `top` transition (350 ms). */
-const settled = (page: Page) => page.waitForTimeout(500)
 
 test.describe('catalogs', () => {
   test.skip(EMPTY_DB, 'needs the catalogs fixture')
 
   for (const width of [390, 834, 1440] as const) {
-    test(`${width}: heading, bar, grid — no violations, errors or shifts`, async ({ page }) => {
+    test(`${width}: heading, chips, grid — no violations, errors or shifts`, async ({ page }) => {
       await page.setViewportSize({ width, height: HEIGHTS[width] })
       const errors = watchConsole(page)
       const response = await page.goto(URL)
@@ -110,8 +63,21 @@ test.describe('catalogs', () => {
 
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(HERO.title!)
       await expect(page.locator('main').getByText(HERO.lead!)).toBeVisible()
-      await expect(bar(page).getByRole('button')).toHaveCount(SEGMENTS.length)
+      await expect(chips(page).getByRole('button')).toHaveCount(SEGMENTS.length)
       for (const name of SEGMENTS) await expect(segment(page, name)).toBeVisible()
+      for (const [name, key] of [
+        ['все', 'all'],
+        ['кухни', 'kitchens'],
+        ['гардеробные', 'wardrobes'],
+        ['фасады', 'facades'],
+      ] as const) {
+        await expect(segment(page, name)).toHaveAccessibleName(
+          new RegExp(`^${name} ${COUNT[key]}$`, 'i'),
+        )
+        // Capitalised in the CMS, lowercase on the site
+        await expect(segment(page, name)).toHaveCSS('text-transform', 'lowercase')
+        expect(Math.round((await segment(page, name).boundingBox())!.height)).toBe(44)
+      }
       await expect(segment(page, 'все')).toHaveAttribute('aria-pressed', 'true')
       await expect(counter(page)).toHaveText('8 каталогов')
       await expect(cards(page)).toHaveCount(COUNT.all)
@@ -123,13 +89,18 @@ test.describe('catalogs', () => {
         (els) => [...new Set(els.map((el) => Math.round(el.getBoundingClientRect().left)))].length,
       )
       expect(lefts).toBe(COLUMNS[width])
-      // The grid starts 14 below the bar
-      const g = await geometry(page)
-      expect(Math.round(g.firstTop - g.barBottom)).toBe(LIST_GAP)
+      // The grid starts 20 below the chips; the counter is next to (under, on mobile) the H1
+      const [chip, card] = await Promise.all([
+        segment(page, 'все').boundingBox(),
+        cards(page).first().boundingBox(),
+      ])
+      expect(Math.round(card!.y - chip!.y - chip!.height)).toBe(LIST_GAP)
+      await expect(page.locator('main h1 + p[aria-live]')).toHaveText('8 каталогов')
 
       expect(await axe(page)).toEqual([])
       expect(await layoutShifts(page)).toEqual([])
       expect(errors).toEqual([])
+      await page.screenshot({ path: `test-results/catalogs/page-${width}.png` })
     })
   }
 
@@ -210,105 +181,58 @@ test.describe('catalogs', () => {
     await context.close()
   })
 
-  for (const width of [390, 1440] as const) {
-    test(`${width}: the bar sticks under the smart header`, async ({ page }) => {
-      await page.setViewportSize({ width, height: HEIGHTS[width] })
-      await page.goto(URL)
-      await hydrated(page)
-      await tallPage(page)
-      await settle(page)
-      // Down: the header goes away, the bar at the top edge
-      await wheel(page, 1400)
-      await settled(page)
-      let g = await geometry(page)
-      expect(g.pinned).toBe(false)
-      expect(g.barTop).toBeCloseTo(0, 1)
-      // Up: the header is pinned, the bar right under it — no gap, no overlap
-      await wheel(page, -200)
-      await settled(page)
-      g = await geometry(page)
-      expect(g.pinned).toBe(true)
-      expect(g.barTop).toBeCloseTo(g.headerH, 1)
-      expect(g.barTop).toBeCloseTo(g.headerBottom, 1)
-    })
-
-    for (const start of ['header hidden', 'header pinned'] as const) {
-      test(`${width}: a filter change with the bar stuck (${start}) → the list from its start`, async ({
-        page,
-      }) => {
-        await page.setViewportSize({ width, height: HEIGHTS[width] })
-        await page.emulateMedia({ reducedMotion: 'no-preference' })
-        await page.goto(URL)
-        await hydrated(page)
-        await tallPage(page)
-        await settle(page)
-        await wheel(page, 1600)
-        if (start === 'header pinned') await wheel(page, -200)
-        await settled(page)
-        expect((await geometry(page)).pinned).toBe(start === 'header pinned')
-
-        await armScrollEnd(page)
-        await clickAt(page, 'фасады')
-        await scrollEnded(page)
-        await settled(page)
-        await expect(counter(page)).toHaveText('5 каталогов')
-        const g = await geometry(page)
-        expect(g.pinned).toBe(true)
-        expect(g.barTop).toBeCloseTo(g.headerBottom, 1)
-        expectListUnderBar(g)
-        expect(await layoutShifts(page)).toEqual([])
-      })
-    }
-
-    test(`${width}: reduced motion — the jump to the list is instant`, async ({ page }) => {
-      await page.setViewportSize({ width, height: HEIGHTS[width] })
-      await page.emulateMedia({ reducedMotion: 'reduce' })
-      await page.goto(URL)
-      await hydrated(page)
-      await tallPage(page)
-      await settle(page)
-      await wheel(page, 1600)
-      await settled(page)
-      await clickAt(page, 'гардеробные')
-      await expect(counter(page)).toHaveText('2 каталога')
-      // No smooth scroll: at the target within two frames
-      await page.evaluate(
-        () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))),
-      )
-      const y = await page.evaluate(() => window.scrollY)
-      await settled(page)
-      const g = await geometry(page)
-      expect(g.y).toBe(y)
-      expect(g.pinned).toBe(true)
-      expect(g.barTop).toBeCloseTo(g.headerBottom, 1)
-      expectListUnderBar(g)
-    })
-  }
-
-  test('a filter change with the bar in its place keeps the position', async ({ page }) => {
+  test('a filter change keeps the position, makes no request, shifts nothing', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto(URL)
     await hydrated(page)
     await settle(page)
-    await page.mouse.wheel(0, 60)
+    const actions = countActions(page)
+    const navigations: string[] = []
+    page.on('request', (r) => {
+      if (r.headers()['rsc'] && !r.headers()['next-router-prefetch']) navigations.push(r.url())
+    })
+    await page.mouse.wheel(0, 120)
     await page.waitForFunction(() => window.scrollY > 0)
-    await settled(page)
-    const before = await geometry(page)
-    expect(before.barTop).toBeGreaterThan(before.headerH)
+    await page.waitForTimeout(300)
+    const y = await page.evaluate(() => window.scrollY)
     await segment(page, 'кухни').click()
     await expect(counter(page)).toHaveText('1 каталог')
-    await settled(page)
-    expect((await geometry(page)).y).toBe(before.y)
+    await expect(cards(page)).toHaveCount(COUNT.kitchens)
+    await page.waitForTimeout(300)
+    expect(await page.evaluate(() => window.scrollY)).toBe(y)
+    expect(actions.count()).toBe(0)
+    expect(navigations).toEqual([])
+    expect(await layoutShifts(page)).toEqual([])
   })
 
-  test('390: a fade on the right while the bar scrolls further', async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 })
+  test('the wave: the old cards fade out, the new ones in the viewport rise', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
     await page.goto(URL)
     await hydrated(page)
-    const fade = stickyBar(page).locator('[aria-hidden="true"].bg-linear-to-r')
-    await expect(fade).toBeVisible()
-    await bar(page).evaluate((el) => el.scrollTo({ left: el.scrollWidth }))
-    await expect(fade).toHaveCount(0)
+    await recordWave(page, GRID)
+    await segment(page, 'фасады').click()
+    await expect(cards(page)).toHaveCount(COUNT.facades)
+    await expect(page.locator(`${GRID} > [data-wave="wait"]`)).toHaveCount(0)
+    const states = await waveStates(page)
+    expect(states).toContain('list:out')
+    expect(states).toContain('wait')
+    expect(states).toContain('in')
+    await expect
+      .poll(() =>
+        cards(page).evaluateAll((els) => els.every((el) => getComputedStyle(el).opacity === '1')),
+      )
+      .toBe(true)
+  })
+
+  test('reduced motion: the new cards show at once, no wave', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.goto(URL)
+    await hydrated(page)
+    await recordWave(page, GRID)
+    await segment(page, 'гардеробные').click()
+    await expect(cards(page)).toHaveCount(COUNT.wardrobes)
+    expect(await waveStates(page)).toEqual([])
   })
 
   test('card links: the PDF in a new tab and the download', async ({ page, request }) => {
@@ -376,12 +300,12 @@ test.describe('catalogs', () => {
   })
 })
 
-test('catalogs on an empty database: no bar, no cards @empty', async ({ page }) => {
+test('catalogs on an empty database: no chips, no cards @empty', async ({ page }) => {
   test.skip(!EMPTY_DB, 'empty database only')
   const errors = watchConsole(page)
   const response = await page.goto(URL)
   expect(response?.status()).toBe(200)
-  await expect(bar(page)).toHaveCount(0)
+  await expect(chips(page)).toHaveCount(0)
   await expect(cards(page)).toHaveCount(0)
   expect(await axe(page)).toEqual([])
   expect(errors).toEqual([])

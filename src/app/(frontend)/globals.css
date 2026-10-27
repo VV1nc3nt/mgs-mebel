@@ -35,7 +35,7 @@
   /* Street lines of the map placeholder (design: home) */
   --color-map-line: #232527;
   --color-map-line-2: #212325;
-  /* Bottom line of the sticky segment bar (design: works/catalogs pages) */
+  /* Bottom line of the header bar out of its place (smart header) */
   --color-line-sticky: #1f1f1e;
   /* Catalog booklet mockup: back sheet and cover face (design: catalogs) */
   --color-booklet-back: #2c2c2a;
@@ -411,8 +411,6 @@
   --shadow-dock: 0 10px 30px rgb(0 0 0 / 0.35);
   /* Cookie notice (design: footer 2b) */
   --shadow-cookie: 0 20px 56px rgb(0 0 0 / 0.5);
-  /* Active item of the segment bar (design: works/catalogs pages) */
-  --shadow-segment: 0 2px 10px rgb(0 0 0 / 0.35);
   /* Catalog booklet mockup (README §3: mockup shadows; design: catalogs) */
   --shadow-booklet: 24px 30px 40px rgb(0 0 0 / 0.55), inset 0 0 0 1px rgb(255 255 255 / 0.04);
   --shadow-booklet-back: 16px 20px 30px rgb(0 0 0 / 0.4);
@@ -422,7 +420,7 @@
   /* Lime ring of the designer's initial in «О проекте» (design: works v2 §3.3) */
   --shadow-avatar-ring-sm: 0 0 0 2px var(--color-accent);
 
-  /* Backdrop blur: soft — buttons over media, glass — badges, sticky — sticky bar and dock */
+  /* Backdrop blur: soft — buttons over media, glass — badges, sticky — header bar and dock */
   --blur-soft: 8px;
   --blur-glass: 10px;
   /* «REELS» badge of a works tile (design: works v2 §2.3) */
@@ -471,13 +469,13 @@
   /* Skeleton cards while the news feed loads */
   --motion-skeleton-pulse: 1.2s;
   /*
-   * Works feeds (design: works v2): the old tiles fade out, then the new ones in the viewport rise
+   * Feed changes (works, catalogs, news; design: works v2): the old tiles fade out, then the new ones in the viewport rise
    * one by one, each when its image is ready, at most 600ms after its turn
    */
-  --motion-works-out: 200ms;
-  --motion-works-in: 450ms;
-  --motion-works-stagger: 60ms;
-  --motion-works-wait: 600ms;
+  --motion-feed-out: 200ms;
+  --motion-feed-in: 450ms;
+  --motion-feed-stagger: 60ms;
+  --motion-feed-wait: 600ms;
   /* View of an item (works v2 §3.4): fade in; the strip of frames moves (as REELS, §3.5) */
   --motion-viewer-in: 200ms;
   --motion-viewer-slide: 450ms;
@@ -927,18 +925,14 @@
 }
 
 /*
- * Stacking order, the only place z-index values live: content < sticky bar < header over the
- * hero < cookie notice < dock < project viewer < menu < menu header < skip link. Sticky bar 5 (segment filters,
- * under the pinned header), header 8 and dock 20: design (dc.html);
+ * Stacking order, the only place z-index values live: content < header over the hero < cookie
+ * notice < dock < project viewer < menu < menu header < skip link. Header 8 and dock 20: design
+ * (dc.html);
  * viewer 50, menu 60 / 61: README §6.4, §5.3. Inside a media block (its own stacking context,
  * `isolate`): text over the media — 1, above the player that follows it in the document.
  */
 @utility z-media-text {
   z-index: 1;
-}
-
-@utility z-sticky {
-  z-index: 5;
 }
 
 @utility z-header {
@@ -1432,22 +1426,6 @@
 }
 
 /*
- * Sticky bars (segment filters): at the viewport top, under the header while it is pinned,
- * moving together with it.
- */
-@utility sticky-under-header {
-  position: sticky;
-  top: 0;
-  transition: top var(--motion-dock) var(--ease-soft);
-  :root[data-header-pinned] & {
-    top: calc(var(--header-h) * 1px);
-  }
-  @media (prefers-reduced-motion: reduce) {
-    transition: none;
-  }
-}
-
-/*
  * Page content container: 1600 wide at most, centered, with the 20 / 32 / 64 page gutters.
  * Sections, their background media and the footer surface span the whole window; text and grids
  * sit inside this container.
@@ -1561,14 +1539,14 @@
 }
 
 /*
- * Change of the works feed (design: works v2): `data-wave="out"` on the list fades the old tiles;
+ * Change of a feed (works, catalogs, news; design: works v2): `data-wave="out"` on the list fades the old tiles;
  * a new tile in the viewport waits with `data-wave="wait"` and rises when set to `in` (its image
  * is ready or its time ran out). Reduced motion: none of it.
  */
-@utility works-wave {
+@utility feed-wave {
   &[data-wave='out'] > * {
     opacity: 0;
-    transition: opacity var(--motion-works-out) ease-out;
+    transition: opacity var(--motion-feed-out) ease-out;
   }
   & > [data-wave='wait'] {
     opacity: 0;
@@ -1576,8 +1554,8 @@
   }
   & > [data-wave='in'] {
     transition:
-      opacity var(--motion-works-in) var(--ease-soft),
-      translate var(--motion-works-in) var(--ease-soft);
+      opacity var(--motion-feed-in) var(--ease-soft),
+      translate var(--motion-feed-in) var(--ease-soft);
   }
   @media (prefers-reduced-motion: reduce) {
     &[data-wave='out'] > *,

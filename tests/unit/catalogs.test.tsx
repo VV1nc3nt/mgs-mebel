@@ -1,4 +1,4 @@
-import { act, render, screen, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useSyncExternalStore } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -10,7 +10,6 @@ import { catalogCount, catalogMeta, formatFileSize } from '@/lib/catalogs'
 import type { CatalogData } from '@/lib/queries'
 import type { Catalog, Media } from '@/payload-types'
 import { photo } from './fixtures'
-import { env } from './setup'
 
 // useSearchParams follows the URL replaced through history.replaceState, as in Next.js
 const url = vi.hoisted(() => {
@@ -164,96 +163,63 @@ const CARDS = [
   { id: 3, category: 'wardrobes', node: <article>Шкафы-купе</article> },
 ]
 
-const rect = (top: number) => ({ top, bottom: top, left: 0, right: 0 }) as DOMRect
-
-describe('CatalogsBrowser (useSegmentFilter)', () => {
-  let scrollTo: ReturnType<typeof vi.spyOn>
+describe('CatalogsBrowser', () => {
   let replaceState: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
     url.search = ''
-    scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
     replaceState = vi
       .spyOn(window.history, 'replaceState')
       .mockImplementation((_data, _unused, next) => {
         act(() => url.set(new URL(String(next), window.location.href).search))
       })
   })
-  afterEach(() => {
-    scrollTo.mockRestore()
-    replaceState.mockRestore()
-    document.documentElement.removeAttribute('data-header-pinned')
-    document.documentElement.style.removeProperty('--header-h')
-  })
+  afterEach(() => replaceState.mockRestore())
 
-  const bar = () => screen.getByRole('group', { name: 'Категории каталогов' })
+  const browser = () => (
+    <CatalogsBrowser label="каталоги" title="Каталоги" lead="Лид" items={ITEMS} cards={CARDS} />
+  )
+  const chips = () => screen.getByRole('group', { name: 'Категории каталогов' })
   const count = () => screen.getByText(/каталог/, { selector: 'p[aria-live]' }).textContent
 
-  it('a sticky bar in the z-index scale, lowercase labels, the counter', () => {
-    const { container } = render(<CatalogsBrowser items={ITEMS} cards={CARDS} />)
-    const sticky = container.querySelector('.sticky-under-header')!
-    expect(sticky.className).toContain('z-sticky')
-    expect(sticky.className).not.toContain('z-10')
-    expect(within(bar()).getByRole('button', { name: 'Кухни' }).className).toContain('lowercase')
+  it('the heading with the counter, chips 44 with numbers in lowercase', () => {
+    render(browser())
+    expect(screen.getByRole('heading', { level: 1, name: 'Каталоги' })).toBeTruthy()
     expect(count()).toBe('3 каталога')
+    const kitchens = within(chips()).getByRole('button', { name: 'Кухни 1' })
+    expect(kitchens.className).toContain('lowercase')
+    expect(kitchens.className).toContain('h-11')
+    expect(
+      within(chips())
+        .getAllByRole('button')
+        .map((b) => b.textContent),
+    ).toEqual(['все 3', 'Кухни 1', 'Гардеробные 2'])
     expect(screen.getAllByRole('article')).toHaveLength(3)
   })
 
   it('the category from the URL; unknown values show all', () => {
     url.search = '?category=wardrobes'
-    const { unmount } = render(<CatalogsBrowser items={ITEMS} cards={CARDS} />)
+    const { unmount } = render(browser())
     expect(screen.getAllByRole('article')).toHaveLength(2)
     expect(count()).toBe('2 каталога')
     unmount()
     url.search = '?category=bathrooms'
-    render(<CatalogsBrowser items={ITEMS} cards={CARDS} />)
+    render(browser())
     expect(screen.getAllByRole('article')).toHaveLength(3)
   })
 
-  it('a choice replaces the URL; «все» removes the parameter', async () => {
-    render(<CatalogsBrowser items={ITEMS} cards={CARDS} />)
-    await userEvent.click(within(bar()).getByRole('button', { name: 'Кухни' }))
+  it('a choice replaces the URL and filters the cards on hand; «все» removes the parameter', async () => {
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
+    render(browser())
+    await userEvent.click(within(chips()).getByRole('button', { name: 'Кухни 1' }))
     expect(replaceState).toHaveBeenLastCalledWith(null, '', '/?category=kitchens')
-    expect(screen.getAllByRole('article')).toHaveLength(1)
     expect(count()).toBe('1 каталог')
-    await userEvent.click(within(bar()).getByRole('button', { name: 'все' }))
+    await waitFor(() => expect(screen.getAllByRole('article')).toHaveLength(1))
+    await userEvent.click(within(chips()).getByRole('button', { name: 'все 3' }))
     expect(replaceState).toHaveBeenLastCalledWith(null, '', '/')
-    expect(screen.getAllByRole('article')).toHaveLength(3)
-  })
-
-  it('the bar in its place: the page does not scroll', async () => {
-    const { container } = render(<CatalogsBrowser items={ITEMS} cards={CARDS} />)
-    const sentinel = container.firstElementChild!.firstElementChild!
-    vi.spyOn(sentinel, 'getBoundingClientRect').mockReturnValue(rect(300))
-    vi.spyOn(container.querySelector('.sticky-under-header')!, 'getBoundingClientRect')
-      .mockReturnValue(rect(300))
-    await userEvent.click(within(bar()).getByRole('button', { name: 'Кухни' }))
+    await waitFor(() => expect(screen.getAllByRole('article')).toHaveLength(3))
+    // The position stays
     expect(scrollTo).not.toHaveBeenCalled()
+    scrollTo.mockRestore()
   })
-
-  for (const [reduced, behavior] of [
-    [false, 'smooth'],
-    [true, 'auto'],
-  ] as const) {
-    it(`the bar stuck: to the start of the list (${behavior})`, async () => {
-      env.reducedMotion = reduced
-      const root = document.documentElement
-      root.style.setProperty('--header-h', '80')
-      root.setAttribute('data-header-pinned', '')
-      const { container } = render(<CatalogsBrowser items={ITEMS} cards={CARDS} />)
-      const sentinel = container.firstElementChild!.firstElementChild!
-      // The bar's own place 1000 px above the viewport, the bar under the pinned header
-      vi.spyOn(sentinel, 'getBoundingClientRect').mockReturnValue(rect(-1000.25))
-      vi.spyOn(container.querySelector('.sticky-under-header')!, 'getBoundingClientRect')
-        .mockReturnValue(rect(80))
-      window.scrollY = 1400
-      await userEvent.click(within(bar()).getByRole('button', { name: 'Кухни' }))
-      // 1400 − 1000.25 − 80, rounded up
-      expect(scrollTo).toHaveBeenCalledWith({ top: 320, behavior })
-      // Scroll anchoring is off until the scroll ends
-      expect(root.style.getPropertyValue('overflow-anchor')).toBe('none')
-      window.dispatchEvent(new Event('scrollend'))
-      expect(root.style.getPropertyValue('overflow-anchor')).toBe('')
-    })
-  }
 })

@@ -7,7 +7,7 @@ import { WorkTile } from './WorkTile'
 
 type Props = {
   tiles: readonly (Tile | GalleryTile)[]
-  /** Change of the feed: the old tiles fade out (`works-wave` in globals.css). */
+  /** Change of the feed: the old tiles fade out (`feed-wave` in globals.css). */
   leaving?: boolean
   /** Tiles whose image is preloaded: the first row of the widest layout. */
   priority?: number
@@ -36,7 +36,7 @@ export const WorksGrid = memo(function WorksGrid({
           ref={listRef}
           data-works-grid=""
           data-wave={leaving ? 'out' : undefined}
-          className="works-grid works-wave"
+          className="works-grid feed-wave"
           style={gridVars(layouts) as CSSProperties}
         >
           {tiles.map((tile, i) => (
