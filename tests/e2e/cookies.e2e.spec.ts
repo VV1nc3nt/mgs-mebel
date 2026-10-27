@@ -187,6 +187,46 @@ test.describe('cookie notice', () => {
     }
   })
 
+  test('390: at the bottom while the dock is hidden, over it while it is shown', async ({ page }) => {
+    const height = 844
+    await page.setViewportSize({ width: 390, height })
+    await page.goto(URL)
+    await hydrated(page)
+    await expect(notice(page)).toBeVisible()
+    const bottom = async () => {
+      await motionEnded(notice(page))
+      const box = (await notice(page).boundingBox())!
+      return Math.round(box.y + box.height)
+    }
+
+    // First screen: the dock is hidden, the notice is 12 from the bottom
+    await expect(dock(page)).toHaveAttribute('data-hidden', '')
+    expect(await bottom()).toBe(height - 12)
+
+    // Down and up: the dock is shown, the notice stands 12 above it
+    await showDock(page)
+    await expect.poll(bottom).toBeLessThan(height - 12)
+    const box = (await notice(page).boundingBox())!
+    const shown = (await dock(page).boundingBox())!
+    expect(overlap(box, shown)).toBe(false)
+    expect(Math.round(shown.y - (box.y + box.height))).toBe(12)
+
+    // Down again: the dock hides, the notice goes back
+    await wheel(page, 300)
+    await expect(dock(page)).toHaveAttribute('data-hidden', '')
+    await expect.poll(bottom).toBe(height - 12)
+    expect(await layoutShifts(page)).toEqual([])
+  })
+
+  test('390, reduced motion: the notice moves without a transition', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto(URL)
+    await hydrated(page)
+    await expect(notice(page)).toBeVisible()
+    expect(await notice(page).evaluate((el) => getComputedStyle(el).transitionDuration)).toBe('0s')
+  })
+
   for (const width of WIDTHS) {
     test(`${width}: no shifts, no violations; the labels stay on one line; clear of the dock`, async ({
       page,
@@ -222,6 +262,7 @@ test.describe('cookie notice', () => {
       expect(row).toBe(width >= 1280)
 
       await showDock(page)
+      await motionEnded(notice(page))
       const box = (await notice(page).boundingBox())!
       const closed = (await dock(page).boundingBox())!
       expect(overlap(box, closed), `closed dock ${Math.round(closed.width)}`).toBe(false)

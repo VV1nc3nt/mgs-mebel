@@ -85,6 +85,13 @@ export function FloatingDock({
     return () => observer.disconnect()
   }, [update])
 
+  // The cookie notice below 768 rises over the visible dock (globals.css, cookie-banner)
+  useEffect(() => {
+    const root = document.documentElement
+    root.toggleAttribute('data-dock-visible', visible)
+    return () => root.removeAttribute('data-dock-visible')
+  }, [visible])
+
   useEffect(() => {
     openRef.current = open
     update()
