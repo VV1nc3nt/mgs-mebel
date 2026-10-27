@@ -308,11 +308,10 @@
   --spacing-hit: 44px;
   /* Footer bottom padding: room for the floating dock (README §5.5) */
   --spacing-dock-clearance: 120px;
-  /*
-   * Cookie notice (design: footer 2b): below 768 it stands this high, over the dock; from 768 it
-   * keeps this much room on the right for the dock, the open messenger choice included.
-   */
-  --spacing-cookie-bottom: 80px;
+  /* Floating dock (README §5.4): 16 from the edges; height — 44 buttons, 4 padding, 1 border */
+  --spacing-dock-edge: 16px;
+  --spacing-dock-h: calc(var(--spacing-hit) + var(--spacing) * 2 + 2px);
+  /* Cookie notice (design: footer 2b): from 768 room on the right for the dock, open choice included */
   --spacing-cookie-dock: 260px;
   /* Menu button lines: 14×1.5 (README §5.2) */
   --spacing-burger-bar: 1.5px;
@@ -1149,19 +1148,32 @@
 }
 
 /*
- * Cookie notice (design: footer 2b): below 768 — 12 from the sides and over the dock; from 768 —
- * at the bottom left, with room for the dock on the right. Safe areas as at the dock.
+ * Cookie notice (design: footer 2b): below 768 — 12 from the sides and the bottom; while the dock
+ * is on screen (`data-dock-visible` from FloatingDock) it rises over it, 12 above, as the dock
+ * slides. From 768 — at the bottom left, with room for the dock on the right. Safe areas as at the
+ * dock.
  */
 @utility cookie-banner {
   position: fixed;
   left: calc(12px + env(safe-area-inset-left));
   right: calc(12px + env(safe-area-inset-right));
-  bottom: calc(var(--spacing-cookie-bottom) + env(safe-area-inset-bottom));
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  transition: transform var(--motion-dock) var(--ease-soft);
+  :root[data-dock-visible] & {
+    transform: translateY(calc(-1 * (var(--spacing-dock-edge) + var(--spacing-dock-h))));
+    @variant md {
+      transform: none;
+    }
+  }
   @variant md {
     left: calc(16px + env(safe-area-inset-left));
     right: calc(var(--spacing-cookie-dock) + env(safe-area-inset-right));
     bottom: calc(16px + env(safe-area-inset-bottom));
     max-width: var(--container-cookie);
+    transition: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
   }
 }
 
@@ -1189,8 +1201,8 @@
  */
 @utility dock {
   position: fixed;
-  right: calc(16px + env(safe-area-inset-right));
-  bottom: calc(16px + env(safe-area-inset-bottom));
+  right: calc(var(--spacing-dock-edge) + env(safe-area-inset-right));
+  bottom: calc(var(--spacing-dock-edge) + env(safe-area-inset-bottom));
   transition:
     transform var(--motion-dock) var(--ease-soft),
     opacity var(--motion-dock) var(--ease-soft);
