@@ -23,7 +23,7 @@ export const MESSENGER_ORDER = [
 export type NavItem = { key: NavKey; href: string; label: string; shortLabel: string }
 
 /**
- * Header, menu, dock and footer data: plain serialisable values only, so it can be passed to
+ * Header, menu and dock data (the footer: lib/footer.ts): plain serialisable values only, so it can be passed to
  * client components as is. Empty CMS fields become `undefined` and their elements are not shown.
  */
 export type SiteChrome = {
@@ -34,17 +34,13 @@ export type SiteChrome = {
   ctaLabel?: string
   menu: { hotlineLabel?: string; messengersLabel?: string }
   askLabel?: string
-  footer: {
-    sloganText?: string
-    sloganAccent?: string
-    hotlineLabel?: string
-    copyright?: string
-  }
 }
 
 /** Only the parts of the globals the site chrome reads (settings: no technical fields). */
-export type LayoutInput = Partial<Pick<Layout, 'header' | 'nav' | 'menu' | 'dock' | 'footer'>>
-export type SettingsInput = Partial<Pick<Setting, 'contacts' | 'messengers'>>
+export type LayoutInput = Partial<
+  Pick<Layout, 'header' | 'nav' | 'menu' | 'dock' | 'footer' | 'cookies'>
+>
+export type SettingsInput = Partial<Pick<Setting, 'contacts' | 'messengers' | 'requisites'>>
 
 const text = (value: string | null | undefined): string | undefined => value?.trim() || undefined
 
@@ -96,11 +92,5 @@ export const toChrome = (layout: LayoutInput, settings: SettingsInput): SiteChro
       messengersLabel: text(layout.menu?.messengersLabel),
     },
     askLabel: text(layout.dock?.askLabel),
-    footer: {
-      sloganText: text(layout.footer?.sloganText),
-      sloganAccent: text(layout.footer?.sloganAccent),
-      hotlineLabel: text(layout.footer?.hotlineLabel),
-      copyright: text(layout.footer?.copyright),
-    },
   }
 }

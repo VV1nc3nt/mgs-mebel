@@ -1,8 +1,10 @@
 import { Suspense, type ReactNode } from 'react'
 
+import { CookieBanner } from '@/components/cookies/CookieBanner'
 import { RoutePathProvider } from '@/hooks/useRoutePath'
 import { toChrome } from '@/lib/chrome'
-import { getLayout, getSettings } from '@/lib/queries'
+import { toCookieTexts, toFooter } from '@/lib/footer'
+import { getLayout, getLegalLinks, getSalons, getSettings } from '@/lib/queries'
 import { AppFooter } from './AppFooter'
 import { AppHeader } from './AppHeader'
 import { AppMenu } from './AppMenu'
@@ -15,7 +17,8 @@ import { SkipLink } from './SkipLink'
 import { ViewerInert } from './ViewerInert'
 
 /**
- * Everything inside <body> around the page: skip link, header, <main>, footer, dock and menu.
+ * Everything inside <body> around the page: skip link, header, <main>, footer, cookie notice,
+ * dock and menu.
  * Shared by the (frontend) layout and the global 404, which renders without a layout.
  * `routePath` replaces the URL for the header and menu (see NOT_FOUND_PATH).
  */
@@ -26,8 +29,23 @@ export async function AppShell({
   children: ReactNode
   routePath?: string
 }) {
-  const [layout, settings] = await Promise.all([getLayout(), getSettings()])
+  const [layout, settings, salons, legal] = await Promise.all([
+    getLayout(),
+    getSettings(),
+    getSalons(),
+    getLegalLinks(),
+  ])
   const chrome = toChrome(layout, settings)
+  const footer = toFooter({
+    layout,
+    settings,
+    nav: chrome.nav,
+    phone: chrome.phone,
+    messengers: chrome.messengers,
+    salons,
+    legal,
+  })
+  const cookieTexts = toCookieTexts(layout, legal)
 
   return (
     <RoutePathProvider value={routePath ?? null}>
@@ -47,10 +65,12 @@ export async function AppShell({
               {children}
             </main>
             <ViewerInert>
-              <AppFooter chrome={chrome} />
+              <AppFooter footer={footer} cookieSettings={Boolean(cookieTexts)} />
             </ViewerInert>
           </div>
           <ViewerInert>
+            {/* Under the dock in the stacking order, inert under the menu and the viewer */}
+            {cookieTexts && <CookieBanner texts={cookieTexts} />}
             <FloatingDock askLabel={chrome.askLabel} messengers={chrome.messengers} />
           </ViewerInert>
         </PageRoot>

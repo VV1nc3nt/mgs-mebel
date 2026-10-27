@@ -7,6 +7,8 @@ const SIZE = {
   header: { mark: 'text-logo', sub: 'text-logo-sub' },
   // Catalog booklet mockup (design: catalogs)
   booklet: { mark: 'text-logo-booklet', sub: 'text-logo-booklet-sub' },
+  // Footer: 22 / 7 below 768, as the header from 768 (design: footer 2a / 1a)
+  footer: { mark: 'text-logo-footer md:text-logo', sub: 'text-logo-footer-sub md:text-logo-sub' },
 } as const
 
 /**
