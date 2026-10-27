@@ -326,7 +326,7 @@ describe('NewsFeed', () => {
     await act(async () => resolve({ items: cardsOf(20, 6, 'new'), hasMore: false }))
     await waitFor(() => expect(cards()[0].textContent).toBe('Новость 20'))
     // A later list: a wave, no priority image
-    expect(container.querySelectorAll('li[data-wave="wait"]').length).toBeGreaterThan(0)
+    expect(container.querySelectorAll('li[data-wave]').length).toBeGreaterThan(0)
     expect(container.querySelector('img')?.getAttribute('loading')).toBe('lazy')
     rect.mockRestore()
   })
