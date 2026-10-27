@@ -2,11 +2,11 @@ import { cn } from '@/lib/cn'
 import { HIT_AREA_Y } from './hitArea'
 
 /*
- * «Карта / Список» switch over the map (design: home, salons). Shared by the overlay variant of
- * SegmentFilter (toggle buttons) and the home salons section (current view + a link), so a
+ * «Карта / Список» switch over the map (design: home, salons). Shared by SegmentFilter (toggle
+ * buttons) and the home salons section (current view + a link), so a
  * server component can use them: the client module would only hand it a reference.
  */
-/** Pill item of both variants; under 44 high, ::before extends the hit area. */
+/** Pill item of the switch; under 44 high, ::before extends the hit area. */
 export const segmentItemBase = cn(
   'relative inline-flex shrink-0 items-center rounded-pill whitespace-nowrap transition-colors',
   HIT_AREA_Y,

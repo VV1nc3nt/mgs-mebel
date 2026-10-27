@@ -5,6 +5,7 @@ import { globals } from '../../src/seed/data/globals'
 import { e2eEditor } from '../helpers/e2eEditor'
 import { NEWS_DRAFT_TITLE } from '../helpers/e2eHome'
 import { E2E_NEWS, NEWS_PAGE_DRAFT_TITLE, newsGate } from '../helpers/e2eNews'
+import { countActions, recordWave, waveStates } from '../helpers/feeds'
 import { layoutShifts, settle } from '../helpers/scroll'
 
 // «Новости» (README §6.7): heading, tabs with counters, the news grid and «Показать ещё».
@@ -57,7 +58,8 @@ const hydrated = (page: Page) =>
 const tabsOf = (page: Page) => page.getByRole('group', { name: 'Тип новостей' })
 const tab = (page: Page, name: string) =>
   tabsOf(page).getByRole('button', { name: new RegExp(`^${name} \\d+$`) })
-const list = (page: Page) => page.locator('main ul[data-news-list]')
+const LIST = 'main ul[data-news-list]'
+const list = (page: Page) => page.locator(LIST)
 const cards = (page: Page) => list(page).locator('> li:not([data-skeleton])')
 const skeletons = (page: Page) => list(page).locator('> li[data-skeleton]')
 const more = (page: Page) => page.getByRole('button', { name: MORE })
@@ -95,6 +97,7 @@ test.describe('news', () => {
       }
       await expect(tab(page, 'все')).toHaveAttribute('aria-pressed', 'true')
       await expect(tab(page, 'новости')).toHaveAttribute('aria-pressed', 'false')
+      expect(Math.round((await tab(page, 'все').boundingBox())!.height)).toBe(44)
 
       await expect(cards(page)).toHaveCount(PAGE)
       // H1 → H2 card titles, no skipped level
@@ -137,6 +140,7 @@ test.describe('news', () => {
       expect(await layoutShifts(page), 'layout shifts: value, start, what moved').toEqual([])
       expect(await axe(page)).toEqual([])
       expect(errors).toEqual([])
+      await page.screenshot({ path: `test-results/news/page-${width}.png` })
     })
   }
 
@@ -209,7 +213,7 @@ test.describe('news', () => {
     expect(errors).toEqual([])
   })
 
-  test('a failed first page of a tab: no skeletons left, the button loads it again', async ({
+  test('a failed tab change keeps the tab, the URL and the list; a click retries', async ({
     page,
   }) => {
     const errors = watchConsole(page, FAILED_LOAD)
@@ -223,14 +227,18 @@ test.describe('news', () => {
     )
     await tab(page, 'новинки').click()
     await failed
+    await expect(tab(page, 'все')).toHaveAttribute('aria-pressed', 'true')
+    await expect(tab(page, 'новинки')).toHaveAttribute('aria-pressed', 'false')
+    await expect(page).toHaveURL(URL)
+    await expect(list(page)).not.toHaveAttribute('data-wave')
     await expect(skeletons(page)).toHaveCount(0)
-    await expect(cards(page)).toHaveCount(0)
+    await expectTitles(page, titlesOf(OF.all.slice(0, PAGE)))
     await expect(more(page)).toBeVisible()
 
     gate.fail(false)
-    await more(page).click()
-    await expect(cards(page)).toHaveCount(PAGE)
+    await tab(page, 'новинки').click()
     await expectTitles(page, titlesOf(OF.new))
+    await expect(page).toHaveURL(`${URL}?type=new`)
     // 6 new news: one page, no button
     await expect(more(page)).toHaveCount(0)
     expect(errors).toEqual([])
@@ -282,16 +290,88 @@ test.describe('news', () => {
     await expectTitles(page, titlesOf(OF.new))
   })
 
-  test('another tab after «Показать ещё» starts the list over', async ({ page }) => {
+  test('back to a tab: no request, with every page loaded on it', async ({ page }) => {
     await page.goto(URL)
     await hydrated(page)
+    const actions = countActions(page)
     await more(page).click()
     await expect(cards(page)).toHaveCount(2 * PAGE)
     await tab(page, 'новости').click()
-    await expect(cards(page)).toHaveCount(PAGE)
     await expectTitles(page, titlesOf(OF.news.slice(0, PAGE)))
+    expect(actions.count()).toBe(2)
     await tab(page, 'все').click()
+    await expectTitles(page, titlesOf(OF.all.slice(0, 2 * PAGE)))
+    await tab(page, 'новости').click()
+    await expectTitles(page, titlesOf(OF.news.slice(0, PAGE)))
+    expect(actions.count()).toBe(2)
+    // The button goes on from the loaded pages
+    await tab(page, 'все').click()
+    await expect(cards(page)).toHaveCount(2 * PAGE)
+    await more(page).click()
+    await expect(cards(page)).toHaveCount(OF.all.length)
+    expect(actions.bodies().at(-1)).toContain('"page":3')
+  })
+
+  test('the wave on a tab change: no skeletons, the old cards fade out before the new ones', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    const gate = await newsGate(page)
+    await page.goto(URL)
+    await hydrated(page)
+    await settle(page)
+    await recordWave(page, LIST)
+    gate.hold()
+    await tab(page, 'новинки').click()
+    await expect.poll(() => gate.held('"new"')).toBe(1)
+    // Faded out, still in place: no skeletons, the grid keeps its height
+    await expect(list(page)).toHaveAttribute('data-wave', 'out')
+    await expect(skeletons(page)).toHaveCount(0)
     await expect(cards(page)).toHaveCount(PAGE)
+    await expect
+      .poll(() =>
+        cards(page).evaluateAll((els) => els.every((el) => getComputedStyle(el).opacity === '0')),
+      )
+      .toBe(true)
+    await gate.release('"new"')
+    await expectTitles(page, titlesOf(OF.new))
+    await expect(list(page).locator('> [data-wave="wait"]')).toHaveCount(0)
+    const states = await waveStates(page)
+    expect(states).toContain('list:out')
+    expect(states).toContain('wait')
+    expect(states).toContain('in')
+    await expect
+      .poll(() =>
+        cards(page).evaluateAll((els) => els.every((el) => getComputedStyle(el).opacity === '1')),
+      )
+      .toBe(true)
+    expect(await layoutShifts(page)).toEqual([])
+  })
+
+  test('reduced motion: the new tab shows at once, no wave', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.goto(URL)
+    await hydrated(page)
+    await recordWave(page, LIST)
+    await tab(page, 'новости').click()
+    await expectTitles(page, titlesOf(OF.news.slice(0, PAGE)))
+    expect(await waveStates(page)).toEqual([])
+  })
+
+  test('a link to the page itself (header nav) brings the list of the URL back', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.goto(`${URL}?type=new`)
+    await hydrated(page)
+    await expectTitles(page, titlesOf(OF.new))
+    await page
+      .locator('header nav')
+      .getByRole('link', { name: layout.nav!.news!.shortLabel! })
+      .click()
+    await expect(page).toHaveURL(URL)
+    await expect(tab(page, 'все')).toHaveAttribute('aria-pressed', 'true')
     await expectTitles(page, titlesOf(OF.all.slice(0, PAGE)))
   })
 
@@ -303,10 +383,10 @@ test.describe('news', () => {
     await tab(page, 'новости').click()
     await tab(page, 'новинки').click()
     await expect.poll(() => gate.held()).toBe(2)
-    await expect(skeletons(page)).toHaveCount(PAGE)
+    await expect(skeletons(page)).toHaveCount(0)
     // The newer request answers first, the older one after it: the older is dropped
     await gate.release('"new"')
-    await expect(cards(page)).toHaveCount(PAGE)
+    await expectTitles(page, titlesOf(OF.new))
     await gate.release('"news"')
     await page.waitForTimeout(300)
     await expectTitles(page, titlesOf(OF.new))

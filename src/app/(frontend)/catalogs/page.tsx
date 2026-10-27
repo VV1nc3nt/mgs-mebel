@@ -28,7 +28,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /**
- * «Каталоги» (README §6.5): heading, sticky category bar with the counter, catalog cards.
+ * «Каталоги» (README §6.5): heading with the counter, category chips, catalog cards.
  * No catalogs — the heading only.
  */
 export default async function CatalogsPage() {
@@ -59,9 +59,11 @@ export default async function CatalogsPage() {
           ])}
         />
       )}
-      <PageHeading label={page.hero?.label} title={title} lead={lead} />
-      {catalogs.length > 0 && (
+      {catalogs.length > 0 ? (
         <CatalogsBrowser
+          label={page.hero?.label}
+          title={title}
+          lead={lead}
           items={items}
           cards={catalogs.map((catalog) => ({
             id: catalog.id,
@@ -69,6 +71,8 @@ export default async function CatalogsPage() {
             node: <CatalogCard catalog={catalog} />,
           }))}
         />
+      ) : (
+        <PageHeading label={page.hero?.label} title={title} lead={lead} />
       )}
       <FirstScreenEnd />
       <PreviewRefresh />

@@ -9,13 +9,14 @@ import {
   E2E_WORK_PROJECTS,
   e2eFeedTitles,
 } from '../helpers/e2eWorks'
+import { countActions, failActions, recordWave, waveStates } from '../helpers/feeds'
 import { layoutShifts, settle } from '../helpers/scroll'
 
 // «Наши работы» v2 (works package §2): heading with the counter, feed chips, masonry of tiles.
 const BASE = 'http://localhost:3000'
 const URL = `${BASE}/works`
 const EMPTY_DB = !!process.env.E2E_EMPTY_DB
-const { worksPage } = globals(() => 0)
+const { worksPage, layout } = globals(() => 0)
 const HERO = worksPage.hero!
 const HEIGHTS = { 390: 844, 834: 1194, 1440: 900 } as const
 const COLUMNS = { 390: 2, 834: 3, 1440: 4 } as const
@@ -229,19 +230,11 @@ test.describe('works', () => {
     await page.goto(URL)
     await hydrated(page)
     // Every state the list and its tiles go through
-    await page.evaluate(
-      `(() => {
-        window.__wave = []
-        const list = document.querySelector('main ul[data-works-grid]')
-        new MutationObserver((records) => {
-          for (const r of records) window.__wave.push((r.target === list ? 'list:' : '') + r.target.getAttribute('data-wave'))
-        }).observe(list, { attributes: true, subtree: true, attributeFilter: ['data-wave'] })
-      })()`,
-    )
+    await recordWave(page, 'main ul[data-works-grid]')
     await chip(page, 'Кухни').click()
     await expect(page.locator('main h2').first()).toHaveText(e2eFeedTitles('kitchens')[0]!)
     await expect(grid(page).locator('[data-wave="wait"]')).toHaveCount(0)
-    const states = (await page.evaluate('window.__wave')) as (string | null)[]
+    const states = await waveStates(page)
     // The old tiles faded out, then the new ones waited and rose
     expect(states).toContain('list:out')
     expect(states).toContain('wait')
@@ -251,6 +244,93 @@ test.describe('works', () => {
         tiles(page).evaluateAll((els) => els.every((el) => getComputedStyle(el).opacity === '1')),
       )
       .toBe(true)
+  })
+
+  test('a failed feed change keeps the feed, the chip and the URL; a click retries', async ({
+    page,
+  }) => {
+    const errors: string[] = []
+    page.on('pageerror', (error) => errors.push(error.message))
+    await page.goto(URL)
+    await hydrated(page)
+    const failing = await failActions(page, '**/works**')
+    const failed = page.waitForResponse(
+      (r) => r.request().method() === 'POST' && r.status() === 500,
+    )
+    await chip(page, 'Кухни').click()
+    await failed
+    await expect(chip(page, 'Комплекс')).toHaveAttribute('aria-pressed', 'true')
+    await expect(chip(page, 'Кухни')).toHaveAttribute('aria-pressed', 'false')
+    await expect(page).toHaveURL(URL)
+    await expect(page.locator('main h2')).toHaveText(E2E_COMPLEX.map((p) => p.title))
+    await expect(grid(page)).not.toHaveAttribute('data-wave')
+    await failing.off()
+    await chip(page, 'Кухни').click()
+    await expect(page.locator('main h2').first()).toHaveText(e2eFeedTitles('kitchens')[0]!)
+    await expect(page).toHaveURL(`${URL}?category=kitchens`)
+    expect(errors).toEqual([])
+  })
+
+  test('back to a feed: from memory, no request', async ({ page }) => {
+    await page.goto(URL)
+    await hydrated(page)
+    const actions = countActions(page)
+    await chip(page, 'Кухни').click()
+    await expect(page.locator('main h2').first()).toHaveText(e2eFeedTitles('kitchens')[0]!)
+    await chip(page, 'Комплекс').click()
+    await expect(page.locator('main h2')).toHaveText(E2E_COMPLEX.map((p) => p.title))
+    await chip(page, 'Кухни').click()
+    await expect(page.locator('main h2').first()).toHaveText(e2eFeedTitles('kitchens')[0]!)
+    expect(actions.count()).toBe(1)
+  })
+
+  test('a direct visit to the view of an item: its feed from the server, no change under it', async ({
+    page,
+    request,
+  }) => {
+    const { docs } = await (
+      await request.get(`${BASE}/api/items?where[type][equals]=kitchens&depth=0&limit=1`)
+    ).json()
+    const id = (docs[0] as { id: number }).id
+    const actions = countActions(page)
+    await page.addInitScript(() => {
+      const w = window as Window & { __waveSeen?: number }
+      w.__waveSeen = 0
+      new MutationObserver((records) => {
+        for (const r of records) {
+          if ((r.target as Element).hasAttribute?.('data-wave')) w.__waveSeen! += 1
+        }
+      }).observe(document, { attributes: true, subtree: true, attributeFilter: ['data-wave'] })
+    })
+    await page.goto(`${URL}?item=${id}`)
+    await hydrated(page)
+    await expect(page.getByRole('dialog')).toBeVisible()
+    await expect
+      .poll(() => new globalThis.URL(page.url()).searchParams.get('category'))
+      .toBe('kitchens')
+    await page.waitForTimeout(500)
+    // Closed: the same feed, its chip
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect(chip(page, 'Кухни')).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.locator('main h2').first()).toHaveText(e2eFeedTitles('kitchens')[0]!)
+    await page.waitForTimeout(500)
+    expect(actions.count()).toBe(0)
+    expect(await page.evaluate(() => (window as Window & { __waveSeen?: number }).__waveSeen)).toBe(
+      0,
+    )
+  })
+
+  test('a link to the page itself (header nav) brings the feed of the URL back', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.goto(`${URL}?category=kitchens`)
+    await hydrated(page)
+    await page.locator('header nav').getByRole('link', { name: layout.nav!.works!.label }).click()
+    await expect(page).toHaveURL(URL)
+    await expect(chip(page, 'Комплекс')).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.locator('main h2')).toHaveText(E2E_COMPLEX.map((p) => p.title))
   })
 })
 
