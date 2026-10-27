@@ -22,6 +22,19 @@ const httpsUrl = (value: string | null | undefined, host?: string): string | tru
   }
 }
 
+/** ИНН — 10 или 12 цифр, ОГРН — 13 или 15. */
+export const digits = (
+  value: string | null | undefined,
+  lengths: number[],
+  name: string,
+): string | true => {
+  if (!value?.trim()) return true
+  const v = value.trim()
+  return /^\d+$/.test(v) && lengths.includes(v.length)
+    ? true
+    : `${name} — ${lengths.join(' или ')} цифр`
+}
+
 const messengerFields = (): Field[] => [
   {
     type: 'row',
@@ -73,6 +86,39 @@ export const Settings: GlobalConfig = {
           ],
         },
         { name: 'messengers', label: 'Мессенджеры', fields: messengerFields() },
+        {
+          name: 'requisites',
+          label: 'Реквизиты',
+          description: 'В подвале сайта. Пустые поля не выводятся.',
+          fields: [
+            { name: 'company', type: 'text', label: 'Компания', admin: { description: 'ООО «…»' } },
+            {
+              type: 'row',
+              fields: [
+                {
+                  name: 'inn',
+                  type: 'text',
+                  label: 'ИНН',
+                  validate: (value: string | null | undefined) => digits(value, [10, 12], 'ИНН'),
+                },
+                {
+                  name: 'ogrn',
+                  type: 'text',
+                  label: 'ОГРН',
+                  validate: (value: string | null | undefined) =>
+                    digits(value, [13, 15], 'ОГРН'),
+                },
+              ],
+            },
+            { name: 'legalAddress', type: 'text', label: 'Юридический адрес' },
+            {
+              name: 'hours',
+              type: 'text',
+              label: 'Часы работы',
+              admin: { description: 'Рядом с горячей линией, например «Ежедневно 9:00–21:00»' },
+            },
+          ],
+        },
         {
           name: 'designerManager',
           label: 'Менеджер для дизайнеров',

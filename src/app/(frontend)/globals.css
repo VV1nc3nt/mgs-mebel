@@ -187,11 +187,29 @@
   --text-booklet-title--letter-spacing: 0.02em;
   --text-booklet-title--font-weight: 700;
 
-  /* Footer (design: <footer> of every page) */
-  --text-slogan: 1.625rem;
+  /* Footer (design: footer 2a / 1a): slogan 24, from 768 — 36 */
+  --text-slogan: 1.5rem;
   --text-slogan--line-height: 1.1;
   --text-slogan--letter-spacing: -0.03em;
   --text-slogan--font-weight: 700;
+  --text-slogan-md: 2.25rem;
+  --text-slogan-md--line-height: 1.1;
+  --text-slogan-md--letter-spacing: -0.03em;
+  --text-slogan-md--font-weight: 700;
+  /* Footer hotline below 768 (design: footer 2a); from 768 — text-phone */
+  --text-phone-footer: 1.875rem;
+  --text-phone-footer--line-height: 1.1;
+  --text-phone-footer--letter-spacing: -0.025em;
+  --text-phone-footer--font-weight: 700;
+  /* Footer logo below 768 (design: footer 2a); from 768 — text-logo */
+  --text-logo-footer: 1.375rem;
+  --text-logo-footer--line-height: 1;
+  --text-logo-footer--letter-spacing: -0.03em;
+  --text-logo-footer--font-weight: 800;
+  --text-logo-footer-sub: 0.4375rem;
+  --text-logo-footer-sub--line-height: 1;
+  --text-logo-footer-sub--letter-spacing: 0.7em;
+  --text-logo-footer-sub--font-weight: 600;
   --text-phone: 1.375rem;
   --text-phone--line-height: normal;
   --text-phone--letter-spacing: -0.01em;
@@ -290,6 +308,12 @@
   --spacing-hit: 44px;
   /* Footer bottom padding: room for the floating dock (README §5.5) */
   --spacing-dock-clearance: 120px;
+  /*
+   * Cookie notice (design: footer 2b): below 768 it stands this high, over the dock; from 768 it
+   * keeps this much room on the right for the dock, the open messenger choice included.
+   */
+  --spacing-cookie-bottom: 80px;
+  --spacing-cookie-dock: 260px;
   /* Menu button lines: 14×1.5 (README §5.2) */
   --spacing-burger-bar: 1.5px;
   /* Hero height: 640 mobile, 780 tablet and the desktop minimum (README §4) */
@@ -368,6 +392,10 @@
   /* CTA tile of a project page: from this width the capsule button and «×» in the row of the
      open choice (3 × 44 + 44 + gaps) fit; narrower (2 columns of 390) — lime text instead */
   --container-cta-tile: 15rem;
+  /* Footer: the contact block on the right of the top row from 1280 (design: footer 1a) */
+  --container-footer-contact: 560px;
+  /* Cookie notice from 768 (design: footer 2b) */
+  --container-cookie: 1100px;
 
   /* Radii (pill buttons use rounded-full) */
   --radius-thumb: 14px;
@@ -382,6 +410,8 @@
 
   /* Shadows */
   --shadow-dock: 0 10px 30px rgb(0 0 0 / 0.35);
+  /* Cookie notice (design: footer 2b) */
+  --shadow-cookie: 0 20px 56px rgb(0 0 0 / 0.5);
   /* Active item of the segment bar (design: works/catalogs pages) */
   --shadow-segment: 0 2px 10px rgb(0 0 0 / 0.35);
   /* Catalog booklet mockup (README §3: mockup shadows; design: catalogs) */
@@ -425,6 +455,7 @@
   --motion-burger: 350ms;
   --motion-fade-reduced: 200ms;
   --motion-dock: 350ms; /* README §5.4 */
+  --motion-accordion: 250ms; /* footer accordion «+» (design: footer 2a) */
   /* Messenger choice (dock and contact buttons): closing, logo stagger, opacity in / out */
   --motion-chooser-out: 220ms;
   --motion-chooser-stagger: 40ms;
@@ -898,7 +929,7 @@
 
 /*
  * Stacking order, the only place z-index values live: content < sticky bar < header over the
- * hero < dock < project viewer < menu < menu header < skip link. Sticky bar 5 (segment filters,
+ * hero < cookie notice < dock < project viewer < menu < menu header < skip link. Sticky bar 5 (segment filters,
  * under the pinned header), header 8 and dock 20: design (dc.html);
  * viewer 50, menu 60 / 61: README §6.4, §5.3. Inside a media block (its own stacking context,
  * `isolate`): text over the media — 1, above the player that follows it in the document.
@@ -913,6 +944,11 @@
 
 @utility z-header {
   z-index: 8;
+}
+
+/* Cookie notice: over the page and the header, under the dock (design: footer 2b) */
+@utility z-cookie {
+  z-index: 15;
 }
 
 @utility z-dock {
@@ -1109,6 +1145,41 @@
   padding-bottom: calc(28px + env(safe-area-inset-bottom));
   @variant md {
     padding-bottom: calc(48px + env(safe-area-inset-bottom));
+  }
+}
+
+/*
+ * Cookie notice (design: footer 2b): below 768 — 12 from the sides and over the dock; from 768 —
+ * at the bottom left, with room for the dock on the right. Safe areas as at the dock.
+ */
+@utility cookie-banner {
+  position: fixed;
+  left: calc(12px + env(safe-area-inset-left));
+  right: calc(12px + env(safe-area-inset-right));
+  bottom: calc(var(--spacing-cookie-bottom) + env(safe-area-inset-bottom));
+  @variant md {
+    left: calc(16px + env(safe-area-inset-left));
+    right: calc(var(--spacing-cookie-dock) + env(safe-area-inset-right));
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    max-width: var(--container-cookie);
+  }
+}
+
+/*
+ * Footer columns (design: footer 1a): 2 × 2 from 768, four in a row from 1280.
+ */
+@utility grid-footer {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  @variant xl {
+    grid-template-columns: 1fr 1fr 1.25fr 1.15fr;
+  }
+}
+
+/* «+» of a footer accordion turns into «×» (design: footer 2a) */
+@utility footer-plus {
+  transition: rotate var(--motion-accordion) ease;
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
   }
 }
 

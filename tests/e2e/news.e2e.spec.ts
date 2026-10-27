@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page, newConsentContext } from '../helpers/test'
 
 import { globals } from '../../src/seed/data/globals'
 import { e2eEditor } from '../helpers/e2eEditor'
@@ -352,7 +352,7 @@ test.describe('news', () => {
   test('without JavaScript: the chosen tab in the markup, the button rendered', async ({
     browser,
   }) => {
-    const context = await browser.newContext({ javaScriptEnabled: false })
+    const context = await newConsentContext(browser, { javaScriptEnabled: false })
     const page = await context.newPage()
     await page.goto(`${URL}?type=new`)
     await expect(cards(page)).toHaveCount(OF.new.length)

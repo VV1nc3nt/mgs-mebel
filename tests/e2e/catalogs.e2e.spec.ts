@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page, newConsentContext } from '../helpers/test'
 
 import { globals } from '../../src/seed/data/globals'
 import { CATALOGS_DRAFT_TITLE, catalogPdfFile, E2E_CATALOGS } from '../helpers/e2eCatalogs'
@@ -119,8 +119,8 @@ test.describe('catalogs', () => {
       await expect(page.locator('main h2')).toHaveCount(COUNT.all)
       await expect(page.locator('main h3')).toHaveCount(0)
       // Columns: the distinct left edges of the cards
-      const lefts = await cards(page).evaluateAll((els) =>
-        [...new Set(els.map((el) => Math.round(el.getBoundingClientRect().left)))].length,
+      const lefts = await cards(page).evaluateAll(
+        (els) => [...new Set(els.map((el) => Math.round(el.getBoundingClientRect().left)))].length,
       )
       expect(lefts).toBe(COLUMNS[width])
       // The grid starts 14 below the bar
@@ -198,7 +198,7 @@ test.describe('catalogs', () => {
   })
 
   test('without JavaScript: only the chosen category in the markup', async ({ browser }) => {
-    const context = await browser.newContext({ javaScriptEnabled: false })
+    const context = await newConsentContext(browser, { javaScriptEnabled: false })
     const page = await context.newPage()
     await page.goto(`${URL}?category=facades`)
     await expect(cards(page)).toHaveCount(COUNT.facades)

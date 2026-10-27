@@ -37,6 +37,8 @@ env:
     tests/e2e/ui-kit.e2e.spec.ts
     tests/e2e/salons.e2e.spec.ts
     tests/e2e/about.e2e.spec.ts
+    tests/e2e/footer.e2e.spec.ts
+    tests/e2e/cookies.e2e.spec.ts
   E2E_SHARD_4: >-
     tests/e2e/menu.e2e.spec.ts
     tests/e2e/news-slug.e2e.spec.ts
@@ -222,7 +224,7 @@ jobs:
       # Fresh database: header and footer must render from empty globals.
       - name: Layout on empty globals
         if: matrix.shard == 1
-        run: pnpm test:e2e tests/e2e/layout.e2e.spec.ts tests/e2e/dock.e2e.spec.ts tests/e2e/not-found.e2e.spec.ts tests/e2e/preview.e2e.spec.ts tests/e2e/home.e2e.spec.ts tests/e2e/about.e2e.spec.ts tests/e2e/news-slug.e2e.spec.ts tests/e2e/salons.e2e.spec.ts tests/e2e/catalogs.e2e.spec.ts tests/e2e/designers.e2e.spec.ts tests/e2e/works.e2e.spec.ts tests/e2e/works-project.e2e.spec.ts tests/e2e/news.e2e.spec.ts tests/e2e/legal.e2e.spec.ts --grep @empty --reporter=list
+        run: pnpm test:e2e tests/e2e/layout.e2e.spec.ts tests/e2e/dock.e2e.spec.ts tests/e2e/not-found.e2e.spec.ts tests/e2e/preview.e2e.spec.ts tests/e2e/home.e2e.spec.ts tests/e2e/about.e2e.spec.ts tests/e2e/news-slug.e2e.spec.ts tests/e2e/salons.e2e.spec.ts tests/e2e/catalogs.e2e.spec.ts tests/e2e/designers.e2e.spec.ts tests/e2e/works.e2e.spec.ts tests/e2e/works-project.e2e.spec.ts tests/e2e/news.e2e.spec.ts tests/e2e/legal.e2e.spec.ts tests/e2e/footer.e2e.spec.ts --grep @empty --reporter=list
         env:
           E2E_EMPTY_DB: 1
 
@@ -279,6 +281,16 @@ jobs:
           for f in $missing; do echo "::error file=$f::$f is in no E2E shard: add it to one of E2E_SHARD_1…E2E_SHARD_4 in .github/workflows/ci.yml"; fail=1; done
           for f in $dupes; do echo "::error file=$f::$f is listed more than once in E2E_SHARD_1…E2E_SHARD_4 / E2E_NOT_IN_CI"; fail=1; done
           for f in $unknown; do echo "::error::$f is listed in .github/workflows/ci.yml but does not exist"; fail=1; done
+          exit $fail
+      # The cookie choice is made by the shared fixture (tests/helpers/test.ts): a spec importing
+      # Playwright directly would meet the cookie notice.
+      - name: Every spec uses the shared test fixture
+        run: |
+          fail=0
+          for f in $(grep -l "from '@playwright/test'" tests/e2e/*.spec.ts); do
+            echo "::error file=$f::$f imports @playwright/test: import from ../helpers/test"
+            fail=1
+          done
           exit $fail
       - name: All shards passed
         run: |

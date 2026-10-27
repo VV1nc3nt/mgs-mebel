@@ -18,7 +18,6 @@ describe('toChrome', () => {
     ])
     expect(chrome.phone).toEqual({ display: '8 800 100-16-58', href: 'tel:88001001658' })
     expect(chrome.messengers.map((m) => m.kind)).toEqual(['max', 'telegram', 'whatsapp'])
-    expect(chrome.footer.sloganAccent).toBe('для жизни')
   })
 
   it('survives empty globals of a fresh database', () => {
@@ -30,12 +29,6 @@ describe('toChrome', () => {
       ctaLabel: undefined,
       menu: { hotlineLabel: undefined, messengersLabel: undefined },
       askLabel: undefined,
-      footer: {
-        sloganText: undefined,
-        sloganAccent: undefined,
-        hotlineLabel: undefined,
-        copyright: undefined,
-      },
     })
   })
 

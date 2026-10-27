@@ -56,14 +56,14 @@ const layoutCached = unstable_cache(
 const settingsCached = unstable_cache(
   async (): Promise<SettingsInput> => {
     const payload = await getPayloadClient()
-    const { contacts, messengers } = await payload.findGlobal({
+    const { contacts, messengers, requisites } = await payload.findGlobal({
       slug: 'settings',
       depth: 0,
-      select: { contacts: true, messengers: true },
+      select: { contacts: true, messengers: true, requisites: true },
     })
-    return { contacts, messengers }
+    return { contacts, messengers, requisites }
   },
-  ['global:settings:public'],
+  ['global:settings:public:v2'],
   { tags: [globalTag('settings')] },
 )
 
@@ -76,7 +76,7 @@ export async function getLayout(): Promise<LayoutInput> {
   return layoutCached()
 }
 
-/** Public contacts and messenger links only. */
+/** Public contacts, messenger links and requisites only. */
 export async function getSettings(): Promise<SettingsInput> {
   await connection()
   return settingsCached()

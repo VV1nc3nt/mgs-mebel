@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
+import { expect, test, type APIRequestContext, type Page, newConsentContext } from '../helpers/test'
 
 import { e2eEditor } from '../helpers/e2eEditor'
 import { E2E_NEWS } from '../helpers/e2eNews'
@@ -276,7 +276,7 @@ test.describe('works: view of an item', () => {
     ).json()
     expect(og).toContain(docs[0].photos[0].filename.replace(/\.[a-z]+$/, ''))
 
-    const context = await browser.newContext({
+    const context = await newConsentContext(browser, {
       javaScriptEnabled: false,
       viewport: { width: 1440, height: 900 },
     })

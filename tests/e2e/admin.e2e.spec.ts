@@ -1,4 +1,4 @@
-import { test, expect, Page } from '@playwright/test'
+import { test, expect, Page, newConsentContext } from '../helpers/test'
 import { login } from '../helpers/login'
 import { seedTestUser, cleanupTestUser, testUser } from '../helpers/seedUser'
 
@@ -8,7 +8,7 @@ test.describe('Admin Panel', () => {
   test.beforeAll(async ({ browser }, testInfo) => {
     await seedTestUser()
 
-    const context = await browser.newContext()
+    const context = await newConsentContext(browser)
     page = await context.newPage()
 
     await login({ page, user: testUser })

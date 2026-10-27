@@ -1,4 +1,4 @@
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
+import { expect, test, type APIRequestContext, type Page } from '../helpers/test'
 
 import { e2eEditor } from '../helpers/e2eEditor'
 import { E2E_REVALIDATE_SECRET } from '../helpers/revalidate'

@@ -124,10 +124,27 @@ export const globals = (id: MediaId): SeedGlobals => ({
       sloganAccent: 'для жизни',
       hotlineLabel: HOTLINE_LABEL,
       copyright: 'MGS MEBEL. Все права защищены.',
+      menuTitle: 'Меню',
+      buyersTitle: 'Покупателям',
+      salonsTitle: 'Салоны',
+      contactsTitle: 'Контакты',
+      contact: { title: 'Расскажем о сроках и стоимости', buttonLabel: 'Рассчитать проект' },
+      // Pages for buyers do not exist yet: no links, no column
+      buyerLinks: [],
+    },
+    cookies: {
+      lead: 'Мы используем cookies',
+      text: '— чтобы сайт работал корректно и становился лучше.',
+      moreLabel: 'Подробнее',
+      rejectLabel: 'Отказаться',
+      necessaryLabel: 'Только необходимые',
+      acceptLabel: 'Принять все',
     },
   },
   settings: {
     contacts: { hotlinePhone: '8 800 100-16-58' },
+    // Requisites and hours come from the client only
+    requisites: { company: null, inn: null, ogrn: null, legalAddress: null, hours: null },
     messengers: {
       max: 'https://max.ru/join/NT3_4HMbMu7LfvccQtmD3eV4-uv7nvlv6tv-Bm2mgaQ',
       whatsapp: 'https://wa.me/79270963555',
