@@ -22,11 +22,13 @@ import {
   stripPlaces,
   toViewerItem,
   typeFeedHref,
+  viewGroups,
   type ViewerItem,
   type ViewerItemRow,
 } from '@/lib/workView'
 import { isOverlay } from '@/lib/overlay'
 import type { Media } from '@/payload-types'
+import { env } from './setup'
 import { photo, video } from './fixtures'
 
 const posterVideo: Media = { ...video, id: 7, poster: photo }
@@ -158,6 +160,35 @@ describe('strip and counter', () => {
       'calc(-1 * (min(100cqh * 1.5, var(--viewer-slide-max)) / 2 + var(--viewer-gap) + ' +
         'min(100cqh * 0.75, var(--viewer-slide-max))))',
     )
+  })
+
+  it('the list below 1280: the start item from its frame round, then the items in order round', () => {
+    // Items 4 (frames 0–2), 9 (3), 11 (4–5)
+    const frames = [
+      ...itemFrames(row()),
+      ...itemFrames({ id: 9, photos: [photo], videos: [] }),
+      ...itemFrames({ id: 11, photos: [photo, tall], videos: [] }),
+    ]
+    expect(viewGroups(frames, 1)).toEqual([
+      { owner: 4, frames: [1, 2, 0] },
+      { owner: 9, frames: [3] },
+      { owner: 11, frames: [4, 5] },
+    ])
+    expect(viewGroups(frames, 3)).toEqual([
+      { owner: 9, frames: [3] },
+      { owner: 11, frames: [4, 5] },
+      { owner: 4, frames: [0, 1, 2] },
+    ])
+    expect(viewGroups(frames, 5)).toEqual([
+      { owner: 11, frames: [5, 4] },
+      { owner: 4, frames: [0, 1, 2] },
+      { owner: 9, frames: [3] },
+    ])
+    // Out of range — the first frame; one item — the frames round as before; none — nothing
+    expect(viewGroups(frames, 9)[0]).toEqual({ owner: 4, frames: [0, 1, 2] })
+    const one = itemFrames(row())
+    expect(viewGroups(one, 2)).toEqual([{ owner: 4, frames: rotate([0, 1, 2], 2) }])
+    expect(viewGroups([], 0)).toEqual([])
   })
 
   it('counts the frames of the current item', () => {
@@ -361,5 +392,113 @@ describe('WorkViewer', () => {
     } finally {
       window.matchMedia = base
     }
+  })
+  describe('< 1280, several items', () => {
+    const items = () => {
+      const a = viewItem()
+      const b = viewItem({ id: 9, type: 'hallways', photos: [photo], videos: [], price: null })
+      const c = viewItem({ id: 11, type: 'kids', photos: [photo, tall], videos: [], price: 90000 })
+      return { a, b, c }
+    }
+    const grouped = (start: number) => {
+      const { a, b, c } = items()
+      return {
+        ...props(a),
+        frames: [...a.frames, ...b.frames, ...c.frames],
+        owners: { [a.id]: a, [b.id]: b, [c.id]: c },
+        start,
+        messengers: [MAX],
+      }
+    }
+    const list = (container: HTMLElement) =>
+      [...container.querySelectorAll<HTMLElement>('[data-view-list] > *')].map((el) =>
+        el.dataset.groupPanel !== undefined ? `panel ${el.dataset.groupPanel}` : el.dataset.frame,
+      )
+    /** The focus line of the list crosses `target` (one entry). */
+    const atLine = (target: Element) =>
+      act(() => {
+        for (const observer of env.observers.filter((o) => o.elements.includes(target))) {
+          observer.callback(
+            [{ target, isIntersecting: true, intersectionRatio: 1 } as IntersectionObserverEntry],
+            {} as IntersectionObserver,
+          )
+        }
+      })
+
+    it('item by item from the start frame: its frames, its panel, the next item', () => {
+      const { container } = render(<WorkViewer {...grouped(1)} />)
+      expect(list(container)).toEqual([
+        '1',
+        '2',
+        '0',
+        'panel 4',
+        '3',
+        'panel 9',
+        '4',
+        '5',
+        'panel 11',
+      ])
+      const panels = [...container.querySelectorAll<HTMLElement>('[data-group-panel]')]
+      expect(panels.map((p) => p.querySelector('h2')?.textContent)).toEqual([
+        'Санузел',
+        'Прихожая',
+        'Детская',
+      ])
+      expect(panels.map((p) => p.className)).toEqual(Array(3).fill('-mx-1.5 xl:hidden'))
+      // Each panel: its price, the CTA
+      expect(panels[0]!.textContent).toContain(formatPrice(1250000)!)
+      expect(within(panels[1]!).queryByText('Стоимость')).toBeNull()
+      expect(panels[2]!.textContent).toContain(formatPrice(90000)!)
+      for (const panel of panels)
+        expect(within(panel).getByRole('link', { name: /Хочу/ })).toBeTruthy()
+      // The panel of the current item for ≥ 1280 only
+      expect(container.querySelector('[data-view-panel]')?.className).toContain('hidden xl:block')
+      // No id twice
+      const ids = [...container.querySelectorAll('[id]')].map((el) => el.id)
+      expect(new Set(ids).size).toBe(ids.length)
+      // Eager / priority by the place in the list, panels not counted
+      const img = (frame: number) =>
+        container.querySelector(`[data-view-list] [data-frame="${frame}"] img`)!
+      expect(img(1).getAttribute('fetchpriority')).toBe('high')
+      expect(img(2).getAttribute('loading')).toBe('eager')
+      expect(img(0).getAttribute('loading')).toBe('lazy')
+      expect(img(3).getAttribute('loading')).toBe('lazy')
+    })
+
+    it('a panel at the focus line: the frame above it is current, no video plays', () => {
+      const p = grouped(1)
+      const { container } = render(<WorkViewer {...p} />)
+      const at = (selector: string) => container.querySelector(`[data-view-list] ${selector}`)!
+      const pause = vi.mocked(HTMLMediaElement.prototype.pause)
+
+      // The video frame of the first item: it plays
+      atLine(at('[data-frame="2"]'))
+      expect(p.onIndex).toHaveBeenLastCalledWith(2)
+      expect(container.querySelector('[data-frame="2"] video')).toBeTruthy()
+      pause.mockClear()
+      // Its panel: the frame above it (0, last in the list) — the address; the video paused
+      atLine(at('[data-group-panel="4"]'))
+      expect(p.onIndex).toHaveBeenLastCalledWith(0)
+      expect(pause).toHaveBeenCalled()
+      // The next item's panel: its frame, the dialog named by it
+      atLine(at('[data-group-panel="9"]'))
+      expect(p.onIndex).toHaveBeenLastCalledWith(3)
+      expect(screen.getByRole('dialog').getAttribute('aria-label')).toBe('Прихожая')
+      atLine(at('[data-group-panel="11"]'))
+      expect(p.onIndex).toHaveBeenLastCalledWith(5)
+      // The same panel again: no new report
+      const calls = p.onIndex.mock.calls.length
+      atLine(at('[data-group-panel="11"]'))
+      expect(p.onIndex).toHaveBeenCalledTimes(calls)
+    })
+
+    it('one item: the list holds the frames only, the panel after it as before', () => {
+      const { container } = render(<WorkViewer {...props(viewItem())} />)
+      expect(list(container)).toEqual(['0', '1', '2'])
+      expect(container.querySelector('[data-group-panel]')).toBeNull()
+      expect(container.querySelector('[data-view-panel]')?.className).toBe(
+        'xl:h-dvh xl:overflow-y-auto xl:overscroll-contain',
+      )
+    })
   })
 })
