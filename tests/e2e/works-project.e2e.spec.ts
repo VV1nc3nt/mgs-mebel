@@ -7,6 +7,7 @@ import { E2E_NEWS } from '../helpers/e2eNews'
 import { E2E_CTA, e2eProject, type E2EProject } from '../helpers/e2eWorks'
 import { motionEnded } from '../helpers/motion'
 import { layoutShifts, settle } from '../helpers/scroll'
+import { PLAYBACK_ATTR, stubPlayback } from '../helpers/video'
 
 // The page of a project of «Наши работы» (works v2 §3): heading, zones, gallery with the CTA tile,
 // «О проекте», the view of the whole project, the answers of its address.
@@ -96,6 +97,23 @@ const ctaIndex = (page: Page) =>
     .evaluateAll((els) => els.findIndex((el) => el.querySelector('h2')))
 const counter = (page: Page) => dialog(page).locator('[data-view-counter]:visible')
 const panelTitle = (page: Page) => dialog(page).locator('[data-view-panel] h2')
+/** Below 1280: the panel of an item in the list, after its frames. */
+const groupPanel = (page: Page, id: number) => dialog(page).locator(`[data-group-panel="${id}"]`)
+/** The list of the view below 1280: `frame <index in the view>` / `panel <item>`, in order. */
+const listOrder = (page: Page) =>
+  dialog(page).evaluate((el) =>
+    [...el.querySelectorAll<HTMLElement>('[data-view-list] > *')].map((child) =>
+      child.dataset.groupPanel !== undefined
+        ? `panel ${child.dataset.groupPanel}`
+        : `frame ${child.dataset.frame}`,
+    ),
+  )
+/** Scrolls the list of the view (below 1280) so that `selector` crosses the focus line (40 %). */
+const listTo = (page: Page, selector: string) =>
+  dialog(page).evaluate((el, s) => {
+    const target = el.querySelector<HTMLElement>(`[data-view-list] > ${s}`)!
+    el.scrollTo({ top: target.offsetTop - el.clientHeight * 0.3, behavior: 'instant' })
+  }, selector)
 /** «← Все работы» over the H1 (the header «←» of mobile has the same name). */
 const backLink = (page: Page) =>
   page.locator('main').getByRole('link', { name: 'Все работы', exact: true })
@@ -396,10 +414,13 @@ test.describe('works: project page', () => {
       await expect(page).toHaveURL(`${BASE}/works/${WARM.slug}?item=${kitchen}&photo=3`)
       expect(await page.evaluate(() => history.length)).toBe(length + 1)
       await expect(counter(page)).toHaveText(`3 / ${zones[0]!.count}`)
-      await expect(panelTitle(page)).toHaveText(zones[0]!.title)
+      // The panel of the item: from 1280 beside the strip, below — after its frames in the list
+      const shown = (id: number) =>
+        width === 1440 ? dialog(page).locator('[data-view-panel]') : groupPanel(page, id)
+      await expect(shown(kitchen).locator('h2')).toHaveText(zones[0]!.title)
 
       // «Весь проект →» is a button here: it closes the view, the focus back on the tile
-      const whole = dialog(page).getByRole('button', { name: /Весь проект/ })
+      const whole = shown(kitchen).getByRole('button', { name: /Весь проект/ })
       await whole.scrollIntoViewIfNeeded()
       await whole.click()
       await expect(dialog(page)).toHaveCount(0)
@@ -411,13 +432,83 @@ test.describe('works: project page', () => {
       await expect(dialog(page)).toBeVisible()
       await expect(page).toHaveURL(`${BASE}/works/${WARM.slug}?item=${hallway}`)
       await expect(counter(page)).toHaveText(`1 / ${zones[1]!.count}`)
-      await expect(panelTitle(page)).toHaveText(zones[1]!.title)
+      await expect(shown(hallway).locator('h2')).toHaveText(zones[1]!.title)
       await page.goBack()
       await expect(dialog(page)).toHaveCount(0)
       await expect(page).toHaveURL(`${BASE}/works/${WARM.slug}`)
       expect(errors).toEqual([])
     })
   }
+
+  test('390: item by item — its frames, its panel, the next item; a panel in focus pauses the video and sets ?item=', async ({
+    page,
+  }) => {
+    await stubPlayback(page)
+    await page.setViewportSize({ width: 390, height: HEIGHTS[390] })
+    const errors = watchConsole(page)
+    const [kitchen, hallway, wardrobe, bathroom] = await itemIds(page.request, WARM.slug)
+    await page.goto(`${BASE}/works/${WARM.slug}`)
+    await hydrated(page)
+    await settle(page)
+
+    // The third frame of the kitchen (tile 3: the video is tile 0). Frames of the view: kitchen
+    // 0–2, hallway 3–4, wardrobe 5–6 + video 7, bathroom 8–9 + video 10
+    await tile(page, 3).getByRole('link').click()
+    await expect(page).toHaveURL(`${BASE}/works/${WARM.slug}?item=${kitchen}&photo=3`)
+    expect(await listOrder(page)).toEqual([
+      'frame 2',
+      'frame 0',
+      'frame 1',
+      `panel ${kitchen}`,
+      'frame 3',
+      'frame 4',
+      `panel ${hallway}`,
+      'frame 5',
+      'frame 6',
+      'frame 7',
+      `panel ${wardrobe}`,
+      'frame 8',
+      'frame 9',
+      'frame 10',
+      `panel ${bathroom}`,
+    ])
+    // After the kitchen's frames — its panel: price, «Весь проект →», the CTA
+    const kitchenPanel = groupPanel(page, kitchen)
+    await expect(kitchenPanel.locator('h2')).toHaveText('Кухня')
+    await expect(kitchenPanel.getByText(/^950\s000\s₽$/)).toBeVisible()
+    await expect(kitchenPanel.getByRole('button', { name: /Весь проект/ })).toBeVisible()
+    await expect(kitchenPanel.getByRole('button', { name: /Хочу такую же/ })).toBeVisible()
+    await expect(groupPanel(page, bathroom).getByText(/^320\s000\s₽$/)).toBeAttached()
+    // The panel beside the strip (≥ 1280) is not there below 1280
+    await expect(dialog(page).locator('[data-view-panel]')).toBeHidden()
+
+    // A panel at the focus line: its item, the frame above it
+    await listTo(page, `[data-group-panel="${hallway}"]`)
+    await expect(page).toHaveURL(`${BASE}/works/${WARM.slug}?item=${hallway}&photo=2`)
+    await expect(dialog(page)).toHaveAccessibleName('Прихожая')
+    // The wardrobe's video: it plays at the line, its panel pauses it
+    const video = dialog(page).locator('[data-frame="7"] video')
+    await listTo(page, '[data-frame="7"]')
+    await expect(page).toHaveURL(`${BASE}/works/${WARM.slug}?item=${wardrobe}&photo=3`)
+    await expect(counter(page)).toHaveText('3 / 3')
+    await expect(video).toHaveAttribute(PLAYBACK_ATTR, 'playing')
+    await listTo(page, `[data-group-panel="${wardrobe}"]`)
+    await expect(video).toHaveAttribute(PLAYBACK_ATTR, 'paused')
+    await listTo(page, '[data-frame="8"]')
+    await expect(page).toHaveURL(`${BASE}/works/${WARM.slug}?item=${bathroom}`)
+    // Back up: the panel above is of the wardrobe again, the video stays paused
+    await listTo(page, `[data-group-panel="${wardrobe}"]`)
+    await expect(page).toHaveURL(`${BASE}/works/${WARM.slug}?item=${wardrobe}&photo=3`)
+    await expect(video).toHaveAttribute(PLAYBACK_ATTR, 'paused')
+    // The kitchen's panel: the last frame of the kitchen in the list (its second photo)
+    await listTo(page, `[data-group-panel="${kitchen}"]`)
+    await expect(page).toHaveURL(`${BASE}/works/${WARM.slug}?item=${kitchen}&photo=2`)
+    await expect(counter(page)).toHaveText('2 / 3')
+
+    expect(await layoutShifts(page)).toEqual([])
+    expect(await axe(page)).toEqual([])
+    expect(errors).toEqual([])
+  })
 
   test('1440: the strip goes through the whole project, the panel changes at the item border', async ({
     page,

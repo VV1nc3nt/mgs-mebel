@@ -27,9 +27,9 @@ import { wrapIndex } from '@/lib/slider'
 import { initialStepState, wheelGesture } from '@/lib/wheelGesture'
 import {
   frameCounter,
-  rotate,
   slideOffset,
   stripPlaces,
+  viewGroups,
   type ViewerFrame,
   type ViewerItem,
 } from '@/lib/workView'
@@ -103,9 +103,10 @@ function FrameImage({ frame, eager, priority, hidden }: FrameImageProps) {
  * full-screen dialog over the works page with the frames (photos, then videos) and the panel of
  * the current frame's item. From 1280 — a strip that goes round: the current frame in the centre,
  * the neighbours dimmed at the sides (a click steps), arrows, ← / →, one frame per wheel gesture.
- * Below — the frames one under another from the current one round, then the panel; the frame at
- * 40 % of the screen is the current one. Built for several items (PR c: a whole project); the
- * page under it is inert and frozen, its background videos pause.
+ * Below — the frames one under another, item by item, each item's panel after its frames: the
+ * current item first from the current frame round, then the others in order round; the frame at
+ * 40 % of the screen is the current one, a panel there — the last frame above it. Built for
+ * several items (a whole project); the page under it is inert and frozen, its videos pause.
  */
 export function WorkViewer({
   frames,
@@ -131,14 +132,11 @@ export function WorkViewer({
 
   // ≥ 1280: the place in an endless row (the frame is `place` mod count) — no seam going round
   const [place, setPlace] = useState(start)
-  // < 1280: the frames from the start one round (the first one is right without script); the one
-  // at the focus line, and whether the panel has reached it
-  const [order] = useState(() =>
-    rotate(
-      frames.map((_, i) => i),
-      start,
-    ),
-  )
+  // < 1280: the frames item by item from the start one round (the first one is right without
+  // script), a panel after each item's frames; the one at the focus line, and whether a panel is
+  const [groups] = useState(() => viewGroups(frames, start))
+  // One item: the list and the panel as on /works; several — a panel in the list after each item
+  const grouped = groups.length > 1
   const [focused, setFocused] = useState(start)
   const [onPanel, setOnPanel] = useState(false)
   const [muted, setMuted] = useState(true)
@@ -248,7 +246,11 @@ export function WorkViewer({
           if (!entry.isIntersecting) continue
           const target = entry.target as HTMLElement
           if (target === panelRef.current) setOnPanel(true)
-          else {
+          else if (target.dataset.groupPanel !== undefined) {
+            // A panel of a group: the frame above it is the current one (the address — its item)
+            setOnPanel(true)
+            setFocused(Number(target.dataset.lastFrame))
+          } else {
             setOnPanel(false)
             setFocused(Number(target.dataset.frame))
           }
@@ -256,10 +258,12 @@ export function WorkViewer({
       },
       { root: dialog, rootMargin: '-40% 0% -59% 0%' },
     )
-    dialog.querySelectorAll('[data-frame]').forEach((el) => observer.observe(el))
-    if (panelRef.current) observer.observe(panelRef.current)
+    dialog
+      .querySelectorAll('[data-frame], [data-group-panel]')
+      .forEach((el) => observer.observe(el))
+    if (panelRef.current && !grouped) observer.observe(panelRef.current)
     return () => observer.disconnect()
-  }, [xl])
+  }, [xl, grouped])
 
   // < 1280: a swipe down from the top of the list closes (the list cannot scroll further up)
   const swipe = useRef<{ x: number; y: number } | null>(null)
@@ -405,36 +409,64 @@ export function WorkViewer({
         )}
       </div>
 
-      {/* < 1280: the frames one under another */}
+      {/* < 1280: the frames one under another, item by item */}
       <div data-view-list="" className="flex flex-col gap-1.5 p-1.5 xl:hidden">
-        {order.map((i, n) => {
-          const f = frames[i]
-          if (!f) return null
-          return (
-            <div
-              key={f.key}
-              data-frame={i}
-              className="relative work-view-frame w-full overflow-hidden rounded-thumb bg-surface-2"
-              style={{ '--r': f.ratio } as CSSProperties}
-            >
-              <FrameImage frame={f} eager={n < 2} priority={n === 0} />
-              {f.video && (
-                <WorkViewVideo
-                  layout="list"
-                  source={f.video}
-                  active={!xl && !onPanel && focused === i}
-                  muted={muted}
-                  onMuted={setMuted}
+        {groups.flatMap((group, g) => {
+          // Eager and priority by the frame's place in the whole list (panels are not counted)
+          const before = groups.slice(0, g).reduce((sum, { frames: own }) => sum + own.length, 0)
+          const item = owners[group.owner]
+          return [
+            ...group.frames.map((i, m) => {
+              const f = frames[i]
+              if (!f) return null
+              const n = before + m
+              return (
+                <div
+                  key={f.key}
+                  data-frame={i}
+                  className="relative work-view-frame w-full overflow-hidden rounded-thumb bg-surface-2"
+                  style={{ '--r': f.ratio } as CSSProperties}
+                >
+                  <FrameImage frame={f} eager={n < 2} priority={n === 0} />
+                  {f.video && (
+                    <WorkViewVideo
+                      layout="list"
+                      source={f.video}
+                      active={!xl && !onPanel && focused === i}
+                      muted={muted}
+                      onMuted={setMuted}
+                    />
+                  )}
+                </div>
+              )
+            }),
+            grouped && item && (
+              // The list's padding taken back: the fields of the panel as below the list
+              <div
+                key={`panel-${group.owner}`}
+                data-group-panel={group.owner}
+                data-last-frame={group.frames.at(-1)}
+                className="-mx-1.5 xl:hidden"
+              >
+                <WorkViewPanel
+                  item={item}
+                  priceDate={priceDate}
+                  messengers={messengers}
+                  onProject={onProject}
                 />
-              )}
-            </div>
-          )
+              </div>
+            ),
+          ]
         })}
       </div>
 
       <div
         ref={panelRef}
-        className={cn('xl:h-dvh xl:overflow-y-auto xl:overscroll-contain')}
+        className={cn(
+          'xl:h-dvh xl:overflow-y-auto xl:overscroll-contain',
+          // Several items: below 1280 their panels are in the list
+          grouped && 'hidden xl:block',
+        )}
         data-view-panel=""
       >
         {owner && (

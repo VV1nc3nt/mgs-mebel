@@ -243,6 +243,31 @@ export function toViewerItem(row: ViewerItemRow | null | undefined): ViewerItem 
 export const rotate = <T>(list: readonly T[], start: number): T[] =>
   list.length ? [...list.slice(start), ...list.slice(0, start)] : []
 
+/** A group of the list of a view (< 1280): the frames of an item (indexes in the view), then its panel. */
+export type ViewGroup = { owner: number; frames: number[] }
+
+/**
+ * The list of a view below 1280, item by item: the item of the start frame first — from that
+ * frame round, then the other items in their order round, each from its first frame.
+ */
+export function viewGroups(frames: readonly ViewerFrame[], start: number): ViewGroup[] {
+  const groups: ViewGroup[] = []
+  frames.forEach((frame, i) => {
+    const last = groups.at(-1)
+    if (last?.owner === frame.owner) last.frames.push(i)
+    else groups.push({ owner: frame.owner, frames: [i] })
+  })
+  const from = frames[start] ? start : 0
+  const k = groups.findIndex((group) => group.frames.includes(from))
+  if (k < 0) return []
+  const first = groups[k]!
+  return rotate(groups, k).map((group) =>
+    group === first
+      ? { ...group, frames: rotate(group.frames, group.frames.indexOf(from)) }
+      : group,
+  )
+}
+
 /** «2 / 5»: the frame's number among the frames of its item. */
 export const frameCounter = (frames: readonly ViewerFrame[], index: number): string => {
   const frame = frames[index]

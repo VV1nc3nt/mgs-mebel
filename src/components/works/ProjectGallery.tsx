@@ -45,10 +45,11 @@ const itemOf = (href: string): number | null =>
 
 /**
  * The project page under its heading (works v2 §3.2–§3.4): zone chips, «О проекте», the masonry
- * of the frames with the CTA tile among them, and the view of the whole project over them — every frame item after
- * item, the panel of the current frame's item. A chip opens the view at the first frame of its
- * item, a tile at its frame; the address is `?item=&photo=` (pushState, then replaceState), the
- * data of every item is on the page.
+ * of the frames with the CTA tile among them, and the view of the whole project over them — every
+ * frame item after item, the panel of the current frame's item (below 1280 — each item's panel
+ * after its frames). A chip opens the view at the first frame of its item, a tile at its frame;
+ * the address is `?item=&photo=` (pushState, then replaceState), the data of every item is on
+ * the page.
  */
 export function ProjectGallery({
   slug,
