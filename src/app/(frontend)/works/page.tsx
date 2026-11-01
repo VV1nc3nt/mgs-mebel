@@ -1,9 +1,12 @@
 import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
 
 import { FirstScreenEnd } from '@/components/app/FirstScreenEnd'
 import { PageHeading } from '@/components/app/PageHeading'
 import { PreviewRefresh } from '@/components/app/PreviewRefresh'
 import { JsonLd } from '@/components/seo/JsonLd'
+import { ReelsScope } from '@/components/works/ReelsScope'
+import { address, normalizeReel, searchOf } from '@/lib/reelView'
 import { WorksFeeds } from '@/components/works/WorksFeeds'
 import { toChrome } from '@/lib/chrome'
 import { breadcrumbJsonLd, itemListJsonLd } from '@/lib/jsonld'
@@ -23,7 +26,8 @@ type SearchParams = Record<string, string | string[] | undefined>
 type Props = { searchParams: Promise<SearchParams> }
 
 /** `?item=` of the address: an id, else null (no query). */
-const itemParam = (params: SearchParams): number | null => parseItemId(params[ITEM_PARAM])
+const itemParam = (params: SearchParams): number | null =>
+  params.reel !== undefined ? null : parseItemId(params[ITEM_PARAM])
 
 // The feed (`?category=`) and the view of an item (`?item=`) are the same page: canonical is
 // always /works, the title stays; the view shares the first photo of its item.
@@ -56,6 +60,9 @@ export default async function WorksPage({ searchParams }: Props) {
     getSettings(),
     searchParams,
   ])
+  const reels = feeds.reels.filter((tile) => tile.kind === 'reel')
+  const normalized = normalizeReel(searchOf(params), reels)
+  if (normalized.changed) redirect(address(PATH, normalized.search))
   const id = itemParam(params)
   const item = id === null ? null : await getWorkItem(id)
   const { nav, messengers } = toChrome(layout, settings)
@@ -96,18 +103,20 @@ export default async function WorksPage({ searchParams }: Props) {
       )}
       {itemList && <JsonLd data={itemList} />}
       {fallback && feed ? (
-        <WorksFeeds
-          label={page.hero?.label}
-          title={title}
-          chips={chips}
-          counts={counts}
-          fallback={fallback}
-          initial={{ feed, tiles: feeds[feed] }}
-          priority={PRIORITY_TILES}
-          initialView={id === null ? null : { id, item }}
-          priceDate={page.prices?.priceDate?.trim() || null}
-          messengers={messengers}
-        />
+        <ReelsScope reels={reels} path={PATH} initialSearch={normalized.search.toString()}>
+          <WorksFeeds
+            label={page.hero?.label}
+            title={title}
+            chips={chips}
+            counts={counts}
+            fallback={fallback}
+            initial={{ feed, tiles: feeds[feed] }}
+            priority={PRIORITY_TILES}
+            initialView={id === null ? null : { id, item }}
+            priceDate={page.prices?.priceDate?.trim() || null}
+            messengers={messengers}
+          />
+        </ReelsScope>
       ) : (
         <PageHeading label={page.hero?.label} title={title} />
       )}

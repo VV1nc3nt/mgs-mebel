@@ -28,6 +28,7 @@ const pushedByView = () => (window.history.state as HistoryState)?.workView === 
 /** The address of now with params changed (null — removed). */
 const withParams = (params: Record<string, string | null>): string => {
   const url = new URL(window.location.href)
+  if (params[ITEM_PARAM]) url.searchParams.delete('reel')
   for (const [name, value] of Object.entries(params)) {
     if (value === null) url.searchParams.delete(name)
     else url.searchParams.set(name, value)
@@ -94,7 +95,9 @@ export function useWorkView(
   { items: fixed }: WorkViewOptions = {},
 ): WorkView {
   const search = useSearchParams()
-  const { item: itemId, photo: rawPhoto } = readItemView(search)
+  const read = readItemView(search)
+  const itemId = search.has('reel') ? null : read.item
+  const rawPhoto = read.photo
   const lite = useLiteNetwork()
   const liteRef = useRef(lite)
   useEffect(() => {

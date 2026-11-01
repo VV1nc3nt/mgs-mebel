@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { notFound, permanentRedirect } from 'next/navigation'
+import { notFound, permanentRedirect, redirect } from 'next/navigation'
 
 import { FirstScreenEnd } from '@/components/app/FirstScreenEnd'
 import { PreviewRefresh } from '@/components/app/PreviewRefresh'
@@ -7,6 +7,8 @@ import { JsonLd } from '@/components/seo/JsonLd'
 import { BackToWorks } from '@/components/works/BackToWorks'
 import { ProjectAbout } from '@/components/works/ProjectAbout'
 import { ProjectCtaTile } from '@/components/works/ProjectCtaTile'
+import { ReelsScope } from '@/components/works/ReelsScope'
+import { address, normalizeReel, searchOf } from '@/lib/reelView'
 import { ProjectGallery } from '@/components/works/ProjectGallery'
 import { toChrome } from '@/lib/chrome'
 import { breadcrumbJsonLd } from '@/lib/jsonld'
@@ -35,6 +37,7 @@ async function projectPage(slug: string): Promise<WorkProject> {
 
 /** The item of `?item=` when it is one of the project's. */
 const viewedItem = (project: WorkProject, params: SearchParams) => {
+  if (params.reel !== undefined) return null
   const id = parseItemId(params[ITEM_PARAM])
   return id === null ? null : { id, item: project.items[id] ?? null }
 }
@@ -67,6 +70,8 @@ export default async function WorkProjectPage({ params, searchParams }: Props) {
     getSettings(),
     searchParams,
   ])
+  const normalized = normalizeReel(searchOf(query), project.reels)
+  if (normalized.changed) redirect(address(projectHrefOf(project.slug), normalized.search))
   const { nav, messengers } = toChrome(layout, settings)
   const worksName = nav.find((item) => item.href === WORKS_PATH)?.label || page.hero?.title
   const priceDate = page.prices?.priceDate?.trim() || null
@@ -81,39 +86,46 @@ export default async function WorkProjectPage({ params, searchParams }: Props) {
           { name: project.title, path: projectHrefOf(project.slug) },
         ])}
       />
-      <ProjectGallery
-        slug={project.slug}
-        heading={
-          <div className="page-container flex flex-col gap-3.5 pt-7 xl:pt-18">
-            <BackToWorks />
-            <h1 className="text-article-title text-balance md:text-article-title-md xl:text-article-title-xl">
-              {project.title}
-            </h1>
-            {project.meta.length > 0 && (
-              <ul className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-body-s font-semibold text-text-4">
-                {project.meta.map((part, i) => (
-                  <li key={i} className="flex items-center gap-2.5">
-                    {i > 0 && (
-                      <span aria-hidden="true" className="size-0.75 rounded-full bg-text-5" />
-                    )}
-                    {part}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        }
-        zones={project.zones}
-        tiles={withCta(project.gallery, cta !== null)}
-        frames={project.frames}
-        items={project.items}
-        about={project.about && <ProjectAbout about={project.about} priceDate={priceDate} />}
-        cta={cta && <ProjectCtaTile cta={cta} messengers={messengers} />}
-        priority={PRIORITY_TILES}
-        initialView={viewedItem(project, query)}
-        priceDate={priceDate}
-        messengers={messengers}
-      />
+      <ReelsScope
+        reels={project.reels}
+        path={projectHrefOf(project.slug)}
+        initialSearch={normalized.search.toString()}
+      >
+        <ProjectGallery
+          slug={project.slug}
+          heading={
+            <div className="page-container flex flex-col gap-3.5 pt-7 xl:pt-18">
+              <BackToWorks />
+              <h1 className="text-article-title text-balance md:text-article-title-md xl:text-article-title-xl">
+                {project.title}
+              </h1>
+              {project.meta.length > 0 && (
+                <ul className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-body-s font-semibold text-text-4">
+                  {project.meta.map((part, i) => (
+                    <li key={i} className="flex items-center gap-2.5">
+                      {i > 0 && (
+                        <span aria-hidden="true" className="size-0.75 rounded-full bg-text-5" />
+                      )}
+                      {part}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          }
+          reels={project.reels}
+          zones={project.zones}
+          tiles={withCta(project.gallery, cta !== null)}
+          frames={project.frames}
+          items={project.items}
+          about={project.about && <ProjectAbout about={project.about} priceDate={priceDate} />}
+          cta={cta && <ProjectCtaTile cta={cta} messengers={messengers} />}
+          priority={PRIORITY_TILES}
+          initialView={viewedItem(project, query)}
+          priceDate={priceDate}
+          messengers={messengers}
+        />
+      </ReelsScope>
       <FirstScreenEnd />
       <PreviewRefresh />
     </>

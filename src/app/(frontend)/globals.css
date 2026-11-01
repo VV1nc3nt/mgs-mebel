@@ -1640,3 +1640,29 @@
   transform-origin: left;
   transform: scaleX(var(--p, 0));
 }
+
+/* One portrait stage for REELS; landscape footage keeps its full frame inside it. */
+@utility reels-view {
+  background: #0b0b0a;
+  animation: work-view-in var(--motion-viewer-in) ease-out;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@utility reels-slide {
+  --reel-width: min(80vw, calc((100dvh - 64px) * 9 / 16));
+  width: var(--reel-width);
+  aspect-ratio: 9 / 16;
+  translate: calc(var(--reel-offset) * (var(--reel-width) + 20px)) 0;
+  opacity: 1;
+  transition:
+    translate var(--motion-viewer-slide) var(--ease-soft),
+    opacity var(--motion-viewer-slide) var(--ease-soft);
+  &[aria-hidden='true'] {
+    opacity: 0.35;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}

@@ -143,22 +143,29 @@ test.describe('works: project page', () => {
       ])
 
       // Chips: the zones in the editor's order with their frame counts
-      const chips = zoneChips(page).getByRole('link')
+      const chips = zoneChips(page).locator('a[href*="item="]')
       await expect(chips).toHaveCount(zones.length)
       for (const [i, zone] of zones.entries()) {
         await expect(chips.nth(i)).toHaveAccessibleName(`${zone.title} ${zone.count}`)
       }
 
-      // Gallery: the project video first, then the frames item after item, each with its zone;
-      // the CTA before the middle frame (11 frames → before the 6th, after the video — tile 6)
-      const frames = zones.flatMap((zone) => Array.from({ length: zone.count }, () => zone.title))
+      // Photo tiles keep the item order; all available videos have REELS links.
+      const frames = WARM.items
+        .filter((item) => !item.hidden)
+        .flatMap((item) =>
+          Array.from({ length: item.photos.length }, () => item.title ?? TYPE_LABELS[item.type]!),
+        )
       const middle = Math.floor(frames.length / 2)
-      await expect(grid(page).locator(':scope > li')).toHaveCount(frames.length + 2)
+      await expect(grid(page).locator(':scope > li')).toHaveCount(frames.length + videos + 1)
       await expect(tile(page, 0)).toContainText('REELS')
-      await expect(tile(page, 0).getByRole('link')).toHaveCount(0)
+      await expect(tile(page, 0).getByRole('link')).toHaveAccessibleName(
+        `Смотреть REELS: ${WARM.title}`,
+      )
       expect(await ctaIndex(page)).toBe(middle + 1)
       for (const [i, zone] of frames.entries()) {
-        await expect(tile(page, i + (i < middle ? 1 : 2))).toContainText(zone)
+        await expect(grid(page).locator(':scope > li:has(a[href*="item="])').nth(i)).toContainText(
+          zone,
+        )
       }
       // A frame tile is named by its photo's alt (the badges are hidden from it)
       await expect(tile(page, 1).getByRole('link')).toHaveAccessibleName('Тестовое изображение')
