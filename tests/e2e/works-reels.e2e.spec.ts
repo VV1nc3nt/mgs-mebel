@@ -91,6 +91,9 @@ test.describe('REELS', () => {
   test('pushes once, replaces while stepping without RSC, and restores Back/Forward and focus', async ({
     page,
   }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(crypto, 'randomUUID', { value: undefined })
+    })
     await page.goto(`${BASE}/works?category=reels`)
     await hydrated(page)
     const tile = page.locator('[data-works-grid] a[href*="reel="]').first()
@@ -341,6 +344,9 @@ test.describe('REELS', () => {
     }
     await swipe(280, 350, 100, 350)
     await expect(page.locator(DIALOG)).toContainText('2 / 3')
+    await page
+      .locator(`${DIALOG} [data-reel]:not([aria-hidden]) [data-reel-toggle]`)
+      .dispatchEvent('click', { detail: 1 })
     await expect(active(page)).toHaveAttribute(PLAYBACK_ATTR, 'playing')
     await page.evaluate(() => {
       const video = document.querySelector(

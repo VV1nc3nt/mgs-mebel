@@ -99,7 +99,8 @@ export function ReelsScope({
     opener.current = from
     const next = withoutView(new URLSearchParams(window.location.search))
     next.set('reel', key)
-    token.current = crypto.randomUUID()
+    // A history marker, not a credential; also works on an HTTP device-preview origin.
+    token.current = `${Date.now()}-${Math.random()}`
     window.history.pushState({ reelsOpen: token.current }, '', address(path, next))
   }
   const change = (nextIndex: number) => {

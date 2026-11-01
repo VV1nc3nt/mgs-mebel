@@ -29,6 +29,7 @@ export function ReelsViewer({
 }) {
   const root = useRef<HTMLDivElement>(null)
   const closeRef = useRef<HTMLAnchorElement>(null)
+  const suppressClick = useRef(false)
   const gesture = useRef<{ id: number; x: number; y: number } | null>(null)
   const [muted, setMuted] = useState(true)
   const reduced = useReducedMotion()
@@ -100,6 +101,7 @@ export function ReelsViewer({
   }, [index])
 
   const pointerDown = (event: PointerEvent) => {
+    suppressClick.current = false
     if (
       !event.isPrimary ||
       event.button !== 0 ||
@@ -115,6 +117,7 @@ export function ReelsViewer({
     if (!start || start.id !== event.pointerId) return
     const dx = event.clientX - start.x
     const dy = event.clientY - start.y
+    if (Math.hypot(dx, dy) > 8) suppressClick.current = true
     if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy))
       onIndex(Math.max(0, Math.min(reels.length - 1, index + (dx < 0 ? 1 : -1))))
     else if (dy > 120 && dy > Math.abs(dx)) onClose()
@@ -150,6 +153,14 @@ export function ReelsViewer({
       </a>
       <div
         className="absolute inset-0 flex touch-none items-center justify-center overflow-hidden"
+        onClickCapture={(event) => {
+          // A compatibility click can target the newly active slide after the old one unmounts.
+          if (suppressClick.current && event.detail !== 0) {
+            event.preventDefault()
+            event.stopPropagation()
+            suppressClick.current = false
+          }
+        }}
         onPointerDown={pointerDown}
         onPointerUp={pointerUp}
         onPointerCancel={() => {

@@ -37,6 +37,7 @@ export function ReelVideo({
   const [attempt, setAttempt] = useState(0)
   const [time, setTime] = useState(0)
   const [duration, setDuration] = useState(0)
+  const toggle = useRef<HTMLButtonElement>(null)
   const progress = useRef<HTMLDivElement>(null)
   const seeking = useRef(false)
   const pointer = useRef<{ x: number; y: number; moved: boolean } | null>(null)
@@ -138,6 +139,10 @@ export function ReelVideo({
       old.pause()
       old.currentTime = 0
     }
+    if (video) {
+      video.defaultMuted = true
+      video.setAttribute('muted', '')
+    }
     ref.current = video
   }, [])
 
@@ -175,6 +180,7 @@ export function ReelVideo({
     seek(next)
   }
   const launch = () => {
+    toggle.current?.focus({ preventScroll: true })
     setPaused(false)
     setBlocked(false)
     setAttempt((n) => n + 1)
@@ -208,6 +214,7 @@ export function ReelVideo({
       <button
         type="button"
         aria-label={paused || blocked ? 'Воспроизвести' : 'Пауза'}
+        ref={toggle}
         data-reel-toggle=""
         className="absolute inset-0 touch-none rounded-media focus-visible:-outline-offset-2"
         onPointerDown={(event) => {
