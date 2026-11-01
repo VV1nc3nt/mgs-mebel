@@ -401,16 +401,17 @@ test('native landscape video plays inline, pauses, and fits the portrait stage a
   request,
 }, info) => {
   test.skip(EMPTY, 'Needs the isolated works fixture')
-  const bytes = await page.evaluate(async () => {
+  // Keep the browser script independent of helpers inserted by the Node TypeScript loader.
+  const bytes = await page.evaluate<number[]>(`(async () => {
     const canvas = document.createElement('canvas')
     canvas.width = 640
     canvas.height = 360
-    const context = canvas.getContext('2d')!
+    const context = canvas.getContext('2d')
     const stream = canvas.captureStream(20)
     const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' })
-    const chunks: Blob[] = []
+    const chunks = []
     recorder.ondataavailable = (event) => chunks.push(event.data)
-    const done = new Promise<void>((resolve) => {
+    const done = new Promise((resolve) => {
       recorder.onstop = () => resolve()
     })
     recorder.start()
@@ -432,7 +433,7 @@ test('native landscape video plays inline, pauses, and fits the portrait stage a
     await done
     stream.getTracks().forEach((track) => track.stop())
     return [...new Uint8Array(await new Blob(chunks, { type: 'video/webm' }).arrayBuffer())]
-  })
+  })()`)
   await page.route('**/*.mp4', (route) =>
     route.fulfill({ body: Buffer.from(bytes), contentType: 'video/webm' }),
   )
