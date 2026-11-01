@@ -435,7 +435,7 @@ test.describe('works: project page', () => {
       await expect(link).toBeFocused()
 
       // A chip: the first frame of its zone; «Назад» of the browser closes
-      await zoneChips(page).getByRole('link').nth(1).click()
+      await zoneChips(page).locator('a[href*="item="]').nth(1).click()
       await expect(dialog(page)).toBeVisible()
       await expect(page).toHaveURL(`${BASE}/works/${WARM.slug}?item=${hallway}`)
       await expect(counter(page)).toHaveText(`1 / ${zones[1]!.count}`)
