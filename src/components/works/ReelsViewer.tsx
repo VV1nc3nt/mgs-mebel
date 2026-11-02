@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { ChevronUp, ChevronDown, X } from 'lucide-react'
 import Image from 'next/image'
 import { useEffect, useEffectEvent, useRef, useState, type PointerEvent } from 'react'
 
@@ -9,6 +9,7 @@ import { useLiteNetwork } from '@/hooks/useLiteNetwork'
 import { useScrollLock } from '@/hooks/useScrollLock'
 import { imageSource } from '@/lib/media'
 import { setOverlay } from '@/lib/overlay'
+import { initialStepState, wheelGesture, type StepState } from '@/lib/wheelGesture'
 import type { ReelTile } from '@/lib/works'
 import { ReelVideo } from './ReelVideo'
 
@@ -40,6 +41,17 @@ export function ReelsViewer({
   const close = useEffectEvent(onClose)
   const step = useEffectEvent((direction: number) => {
     if (reels[index + direction]) onIndex(index + direction)
+  })
+  const wheelStep = useEffectEvent((state: StepState, dy: number) => {
+    const result = wheelGesture(state, {
+      dy,
+      now: Date.now(),
+      rm: reduced,
+      active: true,
+      wants: Boolean(reels[index + (dy > 0 ? 1 : -1)]),
+    })
+    if (result.step) onIndex(index + result.step)
+    return result.state
   })
   const ended = () => {
     if (reduced) return
@@ -76,9 +88,9 @@ export function ReelsViewer({
         event.target.closest('[data-view-control], input, textarea, select, [contenteditable]')
       )
         return
-      if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
         event.preventDefault()
-        step(event.key === 'ArrowRight' ? 1 : -1)
+        step(event.key === 'ArrowDown' ? 1 : -1)
       }
     }
     const focus = (event: FocusEvent) => {
@@ -100,6 +112,24 @@ export function ReelsViewer({
       closeRef.current?.focus({ preventScroll: true })
   }, [index])
 
+  useEffect(() => {
+    const dialog = root.current
+    if (!dialog) return
+    let state = initialStepState()
+    const wheel = (event: WheelEvent) => {
+      if (event.ctrlKey || Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return
+      if (
+        event.target instanceof Element &&
+        event.target.closest('[data-view-control], input, textarea, select, [contenteditable]')
+      )
+        return
+      event.preventDefault()
+      state = wheelStep(state, event.deltaY)
+    }
+    dialog.addEventListener('wheel', wheel, { passive: false })
+    return () => dialog.removeEventListener('wheel', wheel)
+  }, [])
+
   const pointerDown = (event: PointerEvent) => {
     suppressClick.current = false
     if (
@@ -118,9 +148,8 @@ export function ReelsViewer({
     const dx = event.clientX - start.x
     const dy = event.clientY - start.y
     if (Math.hypot(dx, dy) > 8) suppressClick.current = true
-    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy))
-      onIndex(Math.max(0, Math.min(reels.length - 1, index + (dx < 0 ? 1 : -1))))
-    else if (dy > 120 && dy > Math.abs(dx)) onClose()
+    if (Math.abs(dy) > 50 && Math.abs(dy) > Math.abs(dx))
+      onIndex(Math.max(0, Math.min(reels.length - 1, index + (dy < 0 ? 1 : -1))))
   }
 
   return (
@@ -197,26 +226,28 @@ export function ReelsViewer({
           )
         })}
       </div>
-      {previous && (
-        <button
-          type="button"
-          aria-label="Предыдущий ролик"
-          onClick={() => onIndex(index - 1)}
-          className="absolute top-1/2 left-4 z-10 flex size-13 -translate-y-1/2 items-center justify-center rounded-full glass"
-        >
-          <ChevronLeft aria-hidden="true" />
-        </button>
-      )}
-      {next && (
-        <button
-          type="button"
-          aria-label="Следующий ролик"
-          onClick={() => onIndex(index + 1)}
-          className="absolute top-1/2 right-4 z-10 flex size-13 -translate-y-1/2 items-center justify-center rounded-full glass"
-        >
-          <ChevronRight aria-hidden="true" />
-        </button>
-      )}
+      <div className="absolute top-1/2 right-4 z-10 flex -translate-y-1/2 flex-col gap-3">
+        {previous && (
+          <button
+            type="button"
+            aria-label="Предыдущий ролик"
+            onClick={() => onIndex(index - 1)}
+            className="flex size-13 items-center justify-center rounded-full glass"
+          >
+            <ChevronUp aria-hidden="true" />
+          </button>
+        )}
+        {next && (
+          <button
+            type="button"
+            aria-label="Следующий ролик"
+            onClick={() => onIndex(index + 1)}
+            className="flex size-13 items-center justify-center rounded-full glass"
+          >
+            <ChevronDown aria-hidden="true" />
+          </button>
+        )}
+      </div>
       <p
         aria-live="polite"
         className="absolute bottom-3 left-4 rounded-pill glass px-3 py-1.5 text-caption"

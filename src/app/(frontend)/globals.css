@@ -1653,8 +1653,9 @@
 @utility reels-slide {
   --reel-width: min(80vw, calc((100dvh - 64px) * 9 / 16));
   width: var(--reel-width);
-  aspect-ratio: 9 / 16;
-  translate: calc(var(--reel-offset) * (var(--reel-width) + 20px)) 0;
+  --reel-height: calc(var(--reel-width) * 16 / 9);
+  height: var(--reel-height);
+  translate: 0 calc(var(--reel-offset) * (var(--reel-height) + 20px));
   opacity: 1;
   transition:
     translate var(--motion-viewer-slide) var(--ease-soft),

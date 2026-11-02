@@ -107,10 +107,10 @@ test.describe('REELS', () => {
         requests.push(req.url())
     })
     const length = await page.evaluate(() => history.length)
-    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('ArrowDown')
     await expect(page.locator(DIALOG)).toContainText('2 /')
     expect(await page.evaluate(() => history.length)).toBe(length)
-    await page.keyboard.press('ArrowLeft')
+    await page.keyboard.press('ArrowUp')
     await page.getByRole('link', { name: 'Закрыть просмотр REELS' }).click()
     await expect(page).toHaveURL(`${BASE}/works?category=reels`)
     await expect(tile).toBeFocused()
@@ -224,6 +224,10 @@ test.describe('REELS', () => {
     await page.getByRole('slider', { name: 'Перемотка' }).focus()
     await page.keyboard.press('ArrowRight')
     expect(await active(page).evaluate((el: HTMLVideoElement) => el.currentTime)).toBe(35)
+    await page.keyboard.press('ArrowDown')
+    expect(await active(page).evaluate((el: HTMLVideoElement) => el.currentTime)).toBe(30)
+    await page.keyboard.press('ArrowUp')
+    expect(await active(page).evaluate((el: HTMLVideoElement) => el.currentTime)).toBe(35)
     await expect(page.locator(DIALOG)).toContainText('1 / 3')
     await page.getByRole('button', { name: 'Пауза', exact: true }).click()
     await page.evaluate(() => {
@@ -241,6 +245,37 @@ test.describe('REELS', () => {
     expect(result.violations).toEqual([])
   })
 
+  test('vertical wheel gestures step once, ignore inertia and horizontal movement, and stop at edges', async ({
+    page,
+    request,
+  }) => {
+    await page.goto(`${BASE}${PROJECT}?reel=${await key(request)}`)
+    await expect(active(page)).toHaveAttribute(PLAYBACK_ATTR, 'playing')
+    await page.clock.install()
+    const dialog = page.locator(DIALOG)
+    await dialog.dispatchEvent('wheel', { deltaY: -100 })
+    await expect(dialog).toContainText('1 / 3')
+    await dialog.dispatchEvent('wheel', { deltaX: 100, deltaY: 0 })
+    await expect(dialog).toContainText('1 / 3')
+    await dialog.dispatchEvent('wheel', { deltaY: 100 })
+    await expect(dialog).toContainText('2 / 3')
+    for (const deltaY of [80, 60, 40, 20, 5]) await dialog.dispatchEvent('wheel', { deltaY })
+    await expect(dialog).toContainText('2 / 3')
+    await page.clock.fastForward(900)
+    await dialog.dispatchEvent('wheel', { deltaY: 100 })
+    await expect(dialog).toContainText('3 / 3')
+    await page.clock.fastForward(900)
+    await dialog.dispatchEvent('wheel', { deltaY: 100 })
+    await expect(dialog).toContainText('3 / 3')
+    await page.clock.fastForward(900)
+    await dialog.dispatchEvent('wheel', { deltaY: -100 })
+    await expect(dialog).toContainText('2 / 3')
+    await page.keyboard.press('ArrowRight')
+    await expect(dialog).toContainText('2 / 3')
+    await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0)
+  })
+
   test('sound autoplay refusal offers explicit launch; errors offer reload', async ({
     page,
     request,
@@ -255,10 +290,10 @@ test.describe('REELS', () => {
         return original.call(this)
       }
     })
-    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('ArrowDown')
     await expect(page.getByRole('status')).toHaveText(/Не удалось запустить видео автоматически/)
     await page.getByRole('link', { name: 'Закрыть просмотр REELS' }).focus()
-    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('ArrowDown')
     await expect(page.locator(DIALOG)).toContainText('3 / 3')
     await active(page).dispatchEvent('error')
     await expect(page.getByRole('status')).toContainText('Не удалось загрузить видео.')
@@ -280,7 +315,7 @@ test.describe('REELS', () => {
         .first()
         .evaluate((el) => getComputedStyle(el).transitionDuration),
     ).toBe('0s')
-    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('ArrowDown')
     await expect(page.locator(DIALOG)).toContainText('2 / 3')
     await page.keyboard.press('Escape')
     await expect(page.locator(DIALOG)).toHaveCount(0)
@@ -342,7 +377,7 @@ test.describe('REELS', () => {
         })
       await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
     }
-    await swipe(280, 350, 100, 350)
+    await swipe(190, 480, 190, 300)
     await expect(page.locator(DIALOG)).toContainText('2 / 3')
     await page
       .locator(`${DIALOG} [data-reel]:not([aria-hidden]) [data-reel-toggle]`)
@@ -374,6 +409,9 @@ test.describe('REELS', () => {
       await active(page).evaluate((video: HTMLVideoElement) => video.currentTime),
     ).toBeGreaterThan(70)
     await swipe(190, 300, 190, 480)
+    await expect(page.locator(DIALOG)).toContainText('1 / 3')
+    await expect(active(page)).toHaveAttribute(PLAYBACK_ATTR, 'playing')
+    await page.getByRole('link', { name: 'Закрыть просмотр REELS' }).click()
     await expect(page.locator(DIALOG)).toHaveCount(0)
     await context.close()
   })

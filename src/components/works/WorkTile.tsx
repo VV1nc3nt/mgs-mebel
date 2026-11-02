@@ -101,12 +101,6 @@ export function WorkTile({ tile, heading: Heading = 'h2', priority }: Props) {
         <span id={titleId} className="sr-only">
           Смотреть REELS: {tile.title}
         </span>
-        <span
-          aria-hidden="true"
-          className="absolute top-1/2 left-1/2 flex size-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full glass"
-        >
-          <span className="size-0 border-y-6 border-l-10 border-y-transparent border-l-text" />
-        </span>
       </MediaCard>
     )
   }
