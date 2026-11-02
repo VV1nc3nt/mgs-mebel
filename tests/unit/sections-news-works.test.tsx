@@ -122,7 +122,7 @@ describe('home works chips', () => {
       category: 'Санузел',
       title: 'Санузел',
     })
-    expect(by('reels')).toMatchObject({ href: '/works?category=reels', kind: 'video' })
+    expect(by('reels')).toMatchObject({ href: '/works?category=reels&reel=i-1-2', kind: 'video' })
   })
 })
 
@@ -261,7 +261,9 @@ describe('WorksSection', () => {
     expect(chips[0]!.getAttribute('aria-controls')).toBe('works-reels')
     expect(reels.hidden).toBe(false)
     expect(complex.hidden).toBe(true)
-    expect(within(reels).getByRole('link').getAttribute('href')).toBe('/works?category=reels')
+    expect(within(reels).getByRole('link').getAttribute('href')).toBe(
+      '/works?category=reels&reel=i-1-2',
+    )
     expect(within(reels).getByText('Видео')).toBeTruthy()
   })
 

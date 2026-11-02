@@ -96,6 +96,10 @@ const frame = (owner: number, n: number): ViewerFrame => ({
 const reel = (n: number): ReelTile => ({
   kind: 'reel',
   key: `r-${n}`,
+  reel: `p-1-${n}`,
+  href: `/works/kvartira?reel=p-1-${n}`,
+  video: { src: '/video.mp4', type: 'video/mp4' },
+  projectId: 1,
   title: 'Проект',
   type: null,
   image: photo,
@@ -204,7 +208,8 @@ describe('CTA tile of the gallery', () => {
       items,
       Array.from({ length: reels }, (_, n) => reel(n + 1)),
     )
-  const keys = (frames: number, reels = 0) => withCta(gallery(frames, reels), true).map((t) => t.key)
+  const keys = (frames: number, reels = 0) =>
+    withCta(gallery(frames, reels), true).map((t) => t.key)
 
   it('stands before the middle frame, floor(n / 2), never last', () => {
     expect(keys(3)).toEqual(['f-p-3-0', 'cta', 'f-p-3-1', 'f-p-3-2'])

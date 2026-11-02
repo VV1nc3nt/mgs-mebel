@@ -138,7 +138,7 @@ describe('home page and news queries', () => {
     expect(reel).toMatchObject({
       kind: 'video',
       category: 'Детская',
-      href: '/works?category=reels',
+      href: expect.stringMatching(/^\/works\?category=reels&reel=i-\d+-\d+$/),
     })
     expect(reel!.image?.mimeType).toMatch(/^image\//)
     expect(reels.works.map((w) => w.title)).not.toContain(`${PREFIX} featured`)

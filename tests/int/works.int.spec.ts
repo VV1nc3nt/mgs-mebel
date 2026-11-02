@@ -327,7 +327,7 @@ describe('page of a project', () => {
     expect(page!.meta[0]).toBe('2 зоны')
     expect(page!.meta[1]).toBe('2 фото + 2 видео')
     // The project video first (place 0), then the frames
-    expect(page!.gallery.map((tile) => tile.kind)).toEqual(['reel', 'frame', 'frame', 'frame'])
+    expect(page!.gallery.map((tile) => tile.kind)).toEqual(['reel', 'frame', 'frame', 'reel'])
     expect(page!.about?.designer).toBe('Анна')
     expect(page!.items[first.id]!.project?.slug).toBe(project.slug)
   })
@@ -419,5 +419,74 @@ describe('works cache tags', () => {
     await payload.update({ collection: 'projects', id: project.id, data: { complex: true } })
     const after = revalidateTag.mock.calls.map(([tag]) => tag)
     expect(after).toEqual(expect.arrayContaining(['collection:items', 'collection:projects']))
+  })
+})
+
+describe('REELS identities and project scope', () => {
+  it('persists repeated uploads, deduplicates per owner, and keeps links across reordering', async () => {
+    const other = await createVideo(payload, undefined, image.id)
+    const project = await createProject('REELS повторы', {
+      complex: true,
+      videos: [video.id, other.id, video.id],
+    })
+    const own = await createItem({ project: project.id, videos: [video.id, video.id] })
+    const saved = await payload.findByID({ collection: 'projects', id: project.id, depth: 0 })
+    expect(saved.videos).toEqual([video.id, other.id, video.id])
+    const answer = await getWorkProject(project.slug)
+    expect(answer && 'page' in answer).toBe(true)
+    if (!answer || !('page' in answer)) throw new Error('Expected project')
+    const keys = answer.page.reels.map((r) => r.reel)
+    expect(keys).toEqual([
+      `p-${project.id}-${video.id}`,
+      `p-${project.id}-${other.id}`,
+      `i-${own.id}-${video.id}`,
+    ])
+    expect(answer.page.gallery.filter((t) => t.kind === 'reel')).toHaveLength(keys.length)
+    await payload.update({
+      collection: 'projects',
+      id: project.id,
+      data: { videos: [other.id, video.id] },
+    })
+    const reordered = await getWorkProject(project.slug)
+    if (!reordered || !('page' in reordered)) throw new Error('Expected project')
+    expect(reordered.page.reels.map((r) => r.reel)).toEqual([keys[1], keys[0], keys[2]])
+    const feed = (await getWorkFeeds()).reels.filter(
+      (t) => t.kind === 'reel' && t.projectId === project.id,
+    )
+    expect(feed.map((t) => t.kind === 'reel' && t.reel)).toEqual(
+      reordered.page.reels.map((r) => r.reel),
+    )
+  })
+
+  it('cannot resolve another project, a hidden owner or a video with a removed poster', async () => {
+    const { normalizeReel } = await import('@/lib/reelView')
+    const ownVideo = await createVideo(payload, undefined, image.id)
+    const project = await createProject('REELS границы', { complex: true, videos: [ownVideo.id] })
+    await createItem({ project: project.id })
+    const hidden = await createItem({ project: project.id, hidden: true, videos: [video.id] })
+    const another = await createProject('REELS чужой', { videos: [video.id] })
+    const answer = await getWorkProject(project.slug)
+    if (!answer || !('page' in answer)) throw new Error('Expected project')
+    for (const key of [`i-${hidden.id}-${video.id}`, `p-${another.id}-${video.id}`]) {
+      const normalized = normalizeReel(
+        new URLSearchParams({ reel: key, category: 'reels' }),
+        answer.page.reels,
+      )
+      expect(normalized.key).toBeNull()
+      expect(normalized.search.toString()).toBe('category=reels')
+    }
+    await payload.update({ collection: 'media', id: ownVideo.id, data: { poster: null } })
+    const withoutPoster = await getWorkProject(project.slug)
+    if (!withoutPoster || !('page' in withoutPoster)) throw new Error('Expected project')
+    expect(withoutPoster.page.reels).toEqual([])
+    expect(revalidateTag).toHaveBeenCalledWith('collection:projects', { expire: 0 })
+    await payload.update({
+      collection: 'projects',
+      id: project.id,
+      data: { hidden: true, videos: [] },
+    })
+    expect(
+      (await getWorkFeeds()).reels.some((t) => t.kind === 'reel' && t.projectId === project.id),
+    ).toBe(false)
   })
 })

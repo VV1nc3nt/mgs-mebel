@@ -518,7 +518,7 @@ const worksDataCached = unstable_cache(
     return buildWorks(projects.docs, items.docs)
   },
   // v2: the entry carries the index of projects next to the feeds
-  ['collection:works:feeds:v2'],
+  ['collection:works:feeds:v3'],
   { tags: worksTags },
 )
 
@@ -635,7 +635,7 @@ const workProjectCached = unstable_cache(
     ])
     return toWorkProject(projects[0] as WorkProjectRow | undefined, items as ViewerItemRow[])
   },
-  ['collection:works:project'],
+  ['collection:works:project:v2'],
   { tags: worksTags },
 )
 

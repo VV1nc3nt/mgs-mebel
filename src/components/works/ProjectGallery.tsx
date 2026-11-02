@@ -5,6 +5,8 @@ import { useCallback, useMemo, useRef, type ReactNode } from 'react'
 
 import { useWorkView, type InitialView } from '@/hooks/useWorkView'
 import type { Messenger } from '@/lib/chrome'
+import type { ReelTile } from '@/lib/works'
+import { ReelLink } from './ReelsScope'
 import type { GalleryTile, ProjectZone } from '@/lib/workProject'
 import {
   frameAt,
@@ -22,6 +24,7 @@ type Props = {
   slug: string
   /** Back link, H1 and meta (server). */
   heading: ReactNode
+  reels: ReelTile[]
   zones: ProjectZone[]
   tiles: GalleryTile[]
   /** Frames of the view: every frame of the project, item after item. */
@@ -55,6 +58,7 @@ export function ProjectGallery({
   slug,
   heading,
   zones,
+  reels,
   tiles,
   frames,
   items,
@@ -118,6 +122,18 @@ export function ProjectGallery({
         {heading}
         {/* Vertical padding keeps the chips' focus ring inside the scroller */}
         <ul className="page-container no-scrollbar flex gap-2 overflow-x-auto pt-6 pb-5 md:flex-wrap md:overflow-visible">
+          {reels.length > 0 && (
+            <li className="shrink-0">
+              <ReelLink
+                href={reels[0]!.href}
+                prefetch={false}
+                data-reels-fallback=""
+                className="inline-flex h-11 items-center gap-1.5 rounded-pill border border-border bg-surface px-4.5 text-button-s font-semibold whitespace-nowrap text-text transition-colors hover:bg-surface-3"
+              >
+                REELS · {reels.length}
+              </ReelLink>
+            </li>
+          )}
           {zones.map((zone) => (
             <li key={zone.id} className="shrink-0">
               <WorkViewLink

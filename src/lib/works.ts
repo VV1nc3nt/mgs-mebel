@@ -1,9 +1,10 @@
 import type { Item, Media, Project } from '@/payload-types'
-import { asMedia, isImage, isVideo, type MediaValue } from './media'
+import { asMedia, isImage, isVideo, videoSource, type VideoSource, type MediaValue } from './media'
 import { tileRatio } from './masonry'
 import { plural } from './plural'
 import { itemTitle } from './workItems'
 import { itemViewHref } from './workView'
+import { reelHref } from './reelView'
 import {
   COMPLEX,
   REELS,
@@ -60,6 +61,10 @@ export type ItemTile = TileBase & {
 /** REELS: a video of a project or of an item (its type is the zone badge). */
 export type ReelTile = TileBase & {
   kind: 'reel'
+  reel: string
+  href: string
+  video: VideoSource
+  projectId: number | null
   /** Project or item the video belongs to (accessible name of the tile). */
   title: string
   type: WorkType | null
@@ -79,8 +84,14 @@ const images = (values: readonly MediaValue[] | null | undefined): Media[] =>
   (values ?? []).filter(isImage)
 
 /** Videos the site can show: a populated video with a populated image poster. */
-export const showableVideos = (values: readonly MediaValue[] | null | undefined): Media[] =>
-  (values ?? []).filter(isVideo).filter((video) => isImage(video.poster))
+export const showableVideos = (values: readonly MediaValue[] | null | undefined): Media[] => [
+  ...new Map(
+    (values ?? [])
+      .filter(isVideo)
+      .filter((video) => isImage(video.poster) && videoSource(video))
+      .map((video) => [video.id, video]),
+  ).values(),
+]
 
 const relId = (value: ItemRow['project']): number | null =>
   value && typeof value === 'object' ? value.id : (value ?? null)
@@ -175,26 +186,25 @@ export function buildFeeds(projects: readonly ProjectRow[], items: readonly Item
     })
   }
 
-  const reel =
-    (owner: string, title: string, type: WorkType | null, featured: boolean) =>
-    (video: Media): ReelTile => ({
-      kind: 'reel',
-      key: `r-${owner}-${video.id}`,
-      title,
-      type,
-      image: asMedia(video.poster),
-      ratio: REEL_RATIO,
-      featured,
-    })
   const itemReels = (item: ItemRow) =>
-    showableVideos(item.videos).map(
-      reel(`i-${item.id}`, itemTitle(item), item.type, Boolean(item.featured)),
-    )
+    ownerReels({
+      owner: `i-${item.id}`,
+      title: itemTitle(item),
+      type: item.type,
+      featured: Boolean(item.featured),
+      projectId: relId(item.project),
+      videos: item.videos,
+    })
   for (const project of shown) {
     feeds[REELS].push(
-      ...showableVideos(project.videos).map(
-        reel(`p-${project.id}`, project.title, null, Boolean(project.featured)),
-      ),
+      ...ownerReels({
+        owner: `p-${project.id}`,
+        title: project.title,
+        type: null,
+        featured: Boolean(project.featured),
+        projectId: project.id,
+        videos: project.videos,
+      }),
       ...(byProject.get(project.id) ?? []).flatMap(itemReels),
     )
   }
@@ -203,6 +213,42 @@ export function buildFeeds(projects: readonly ProjectRow[], items: readonly Item
   )
 
   return feeds
+}
+
+/** One entry per owner/media pair; retaining the first position of a repeated media file. */
+export function ownerReels({
+  owner,
+  title,
+  type,
+  featured = false,
+  projectId,
+  videos,
+  path,
+}: {
+  owner: string
+  title: string
+  type: WorkType | null
+  featured?: boolean
+  projectId: number | null
+  videos: readonly MediaValue[] | null | undefined
+  path?: string
+}): ReelTile[] {
+  return showableVideos(videos).map((video) => {
+    const reel = `${owner}-${video.id}`
+    return {
+      kind: 'reel',
+      key: `r-${reel}`,
+      reel,
+      href: reelHref(reel, path),
+      video: videoSource(video)!,
+      projectId,
+      title,
+      type,
+      image: asMedia(video.poster),
+      ratio: REEL_RATIO,
+      featured,
+    }
+  })
 }
 
 /**
@@ -293,8 +339,6 @@ export type WorkPreview = {
 
 export type WorkPanel = { key: WorkFeed; label: string; works: WorkPreview[] }
 
-const feedHref = (feed: WorkFeed) => (feed === COMPLEX ? '/works' : `/works?category=${feed}`)
-
 /** Home preview of a tile: a project leads to its page, an item to its view, a reel to REELS. */
 export const toWorkPreview = (tile: WorkTile): WorkPreview => {
   switch (tile.kind) {
@@ -322,7 +366,7 @@ export const toWorkPreview = (tile: WorkTile): WorkPreview => {
         key: tile.key,
         title: tile.title,
         category: workTypeLabel(tile.type) ?? '',
-        href: feedHref(REELS),
+        href: tile.href,
         image: tile.image,
         kind: 'video',
       }

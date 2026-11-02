@@ -3,7 +3,8 @@ import type { Messenger } from './chrome'
 import { asMedia, isImage } from './media'
 import { plural } from './plural'
 import { paragraphs } from './text'
-import { mediaBadge, REEL_RATIO, showableVideos, type ReelTile } from './works'
+import { itemTitle } from './workItems'
+import { mediaBadge, ownerReels, type ReelTile } from './works'
 import {
   formatPrice,
   projectViewHref,
@@ -79,6 +80,7 @@ export type WorkProject = {
   items: Record<number, ViewerItem>
   /** Frames of the view: item after item, photos then videos of each. */
   frames: ViewerFrame[]
+  reels: ReelTile[]
   gallery: GalleryTile[]
   about: ProjectAbout | null
   cover: Media | null
@@ -128,19 +130,22 @@ export function projectGallery(
   reels: readonly ReelTile[],
 ): GalleryTile[] {
   const counts = new Map<number, number>()
-  const tiles: GalleryTile[] = frames.map((frame, index) => {
+  const tiles: GalleryTile[] = frames.flatMap((frame, index) => {
+    if (frame.kind === 'video') return []
     const photo = (counts.get(frame.owner) ?? 0) + 1
     counts.set(frame.owner, photo)
-    return {
-      kind: 'frame',
-      key: `f-${frame.key}`,
-      image: frame.image,
-      ratio: 1 / frame.ratio,
-      featured: false,
-      href: projectViewHref({ slug, id: frame.owner, photo }),
-      zone: items[frame.owner]?.title ?? '',
-      frame: index,
-    }
+    return [
+      {
+        kind: 'frame',
+        key: `f-${frame.key}`,
+        image: frame.image,
+        ratio: 1 / frame.ratio,
+        featured: false,
+        href: projectViewHref({ slug, id: frame.owner, photo }),
+        zone: items[frame.owner]?.title ?? '',
+        frame: index,
+      },
+    ]
   })
   const placed: GalleryTile[] = [...tiles]
   const tail: ReelTile[] = []
@@ -167,7 +172,8 @@ export function ctaPlace(gallery: readonly GalleryTile[]): number {
     return last + 1
   }
   const middle = Math.floor(frames / 2)
-  return gallery.findIndex((tile) => tile.kind === 'frame' && tile.frame === middle)
+  const target = gallery.filter((tile) => tile.kind === 'frame')[middle]
+  return gallery.indexOf(target!)
 }
 
 /** The gallery with the CTA tile at its place; no CTA — the same list. */
@@ -228,17 +234,31 @@ export function toWorkProject(
 
   const byId = Object.fromEntries(visible.map((item) => [item.id, item]))
   const frames = visible.flatMap((item) => item.frames)
-  const reels: ReelTile[] = showableVideos(project.videos).map((video, n) => ({
-    kind: 'reel',
-    key: `r-p-${project.id}-${n}`,
-    title: project.title,
-    type: null,
-    image: asMedia(video.poster),
-    ratio: REEL_RATIO,
-    featured: false,
-  }))
+  const path = `/works/${project.slug}`
+  const reels: ReelTile[] = [
+    ...ownerReels({
+      owner: `p-${project.id}`,
+      title: project.title,
+      type: null,
+      projectId: project.id,
+      videos: project.videos,
+      path,
+    }),
+    ...items
+      .filter((item) => !item.hidden && byId[item.id])
+      .flatMap((item) =>
+        ownerReels({
+          owner: `i-${item.id}`,
+          title: itemTitle(item),
+          type: item.type,
+          projectId: project.id,
+          videos: item.videos,
+          path,
+        }),
+      ),
+  ]
   const photos = frames.filter((f) => f.kind === 'photo').length
-  const videos = frames.length - photos + reels.length
+  const videos = reels.length
   const cover = asMedia(project.cover)
   const about = projectAbout(project)
 
@@ -255,6 +275,7 @@ export function toWorkProject(
     })),
     items: byId,
     frames,
+    reels,
     gallery: projectGallery(project.slug, frames, byId, reels),
     about,
     cover: cover && isImage(cover) ? cover : null,

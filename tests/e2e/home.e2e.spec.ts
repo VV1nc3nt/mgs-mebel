@@ -519,7 +519,7 @@ test.describe('home', () => {
     // Videos: ▶ marker, the link to the REELS feed of the works page
     const first = panel.getByRole('link').first()
     await expect(first).toContainText('Видео')
-    await expect(first).toHaveAttribute('href', '/works?category=reels')
+    await expect(first).toHaveAttribute('href', /^\/works\?category=reels&reel=[pi]-\d+-\d+$/)
 
     // An item leads to its view; a project of «Комплекс» — to its page
     await works.getByRole('button', { name: 'Кухни' }).click()
