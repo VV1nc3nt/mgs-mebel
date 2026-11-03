@@ -265,15 +265,16 @@ export function ReelVideo({
       <button
         type="button"
         aria-pressed={!muted}
+        aria-label={muted ? 'Звук выкл' : 'Звук вкл'}
         onClick={() => onMuted(!muted)}
-        className="absolute right-3 bottom-12 inline-flex min-h-11 items-center gap-2 rounded-pill glass px-3 text-caption"
+        className="reels-sound absolute right-3 bottom-12 inline-flex min-h-11 items-center gap-2 rounded-pill glass px-3 text-caption"
       >
         {muted ? (
           <VolumeX aria-hidden="true" className="size-4" />
         ) : (
           <Volume2 aria-hidden="true" className="size-4" />
         )}
-        {muted ? 'Звук выкл' : 'Звук вкл'}
+        <span>{muted ? 'Звук выкл' : 'Звук вкл'}</span>
       </button>
       <div
         ref={progress}
@@ -285,7 +286,7 @@ export function ReelVideo({
         aria-valuenow={time}
         aria-valuetext={`${formatTime(time)} / ${formatTime(duration)}`}
         data-view-control=""
-        className="absolute inset-x-3 bottom-0 flex h-11 cursor-pointer touch-none items-center"
+        className="reels-seek absolute inset-x-3 bottom-0 flex h-11 cursor-pointer touch-none items-center"
         onKeyDown={seekKey}
         onPointerDown={(event) => {
           event.stopPropagation()

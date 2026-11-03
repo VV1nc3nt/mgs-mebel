@@ -416,15 +416,73 @@ test.describe('REELS', () => {
     await context.close()
   })
 
-  for (const width of [390, 834, 1440])
-    test(`layout ${width}: full frame, no overflow, screenshot`, async ({
+  test('mobile fills the viewport after resize, retains seeking and traps focus around visible controls', async ({
+    page,
+    request,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto(`${BASE}${PROJECT}?reel=${await key(request)}`)
+    await hydrated(page)
+    const close = page.getByRole('link', { name: 'Закрыть просмотр REELS' })
+    const slider = page.getByRole('slider', { name: 'Перемотка' })
+    await expect(close).toBeFocused()
+    await page.keyboard.press('Shift+Tab')
+    await expect(slider).toBeFocused()
+    await page.keyboard.press('Tab')
+    await expect(close).toBeFocused()
+    for (const viewport of [
+      { width: 390, height: 700 },
+      { width: 667, height: 375 },
+      { width: 390, height: 844 },
+    ]) {
+      await page.setViewportSize(viewport)
+      await expect(active(page)).toHaveCSS('object-fit', 'cover')
+      await expect.poll(() => active(page).boundingBox()).toEqual({ x: 0, y: 0, ...viewport })
+      for (const control of [close, slider, page.getByRole('button', { name: 'Звук выкл' })]) {
+        const rect = (await control.boundingBox())!
+        expect(rect.x).toBeGreaterThanOrEqual(0)
+        expect(rect.y).toBeGreaterThanOrEqual(0)
+        expect(rect.x + rect.width).toBeLessThanOrEqual(viewport.width)
+        expect(rect.y + rect.height).toBeLessThanOrEqual(viewport.height)
+      }
+    }
+    const result = await new AxeBuilder({ page })
+      .include(DIALOG)
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
+      .analyze()
+    expect(result.violations).toEqual([])
+  })
+
+  for (const width of [390, 767, 768, 834, 1440])
+    test(`layout ${width}: responsive frame, no overflow, screenshot`, async ({
       page,
       request,
     }, info) => {
       await page.setViewportSize({ width, height: width === 390 ? 844 : 1000 })
       await page.goto(`${BASE}${PROJECT}?reel=${await key(request)}`)
       await expect(active(page)).toHaveAttribute(PLAYBACK_ATTR, 'playing')
-      await expect(active(page)).toHaveCSS('object-fit', 'contain')
+      const mobile = width < 768
+      await expect(active(page)).toHaveCSS('object-fit', mobile ? 'cover' : 'contain')
+      const slide = page.locator(`${DIALOG} [data-reel]:not([aria-hidden])`)
+      if (mobile) {
+        await expect(slide).toHaveCSS('border-radius', '0px')
+        await expect
+          .poll(() => active(page).boundingBox())
+          .toEqual({
+            x: 0,
+            y: 0,
+            width,
+            height: width === 390 ? 844 : 1000,
+          })
+        await expect(page.getByRole('button', { name: 'Следующий ролик' })).toHaveCount(0)
+        await expect(page.locator(`${DIALOG} .reels-count`)).toHaveCSS('clip-path', 'inset(50%)')
+      } else {
+        const rect = (await slide.boundingBox())!
+        expect(rect.width / rect.height).toBeCloseTo(9 / 16, 2)
+        expect(rect.x).toBeGreaterThan(0)
+        await expect(page.getByRole('button', { name: 'Следующий ролик' })).toBeVisible()
+      }
+      await expect(page.getByRole('slider', { name: 'Перемотка' })).toBeVisible()
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
         true,
       )
@@ -434,7 +492,7 @@ test.describe('REELS', () => {
 
 // A playable recording exercises native decode/playback as well as the deterministic policy stubs.
 // It is generated in Chromium, with no encoder tooling or production media changes.
-test('native landscape video plays inline, pauses, and fits the portrait stage at all three widths', async ({
+test('native landscape video plays inline, pauses, covers mobile and fits the desktop stage', async ({
   page,
   request,
 }, info) => {
@@ -487,7 +545,7 @@ test('native landscape video plays inline, pauses, and fits the portrait stage a
     await expect(active(page)).toHaveJSProperty('videoWidth', 640)
     await expect(active(page)).toHaveJSProperty('videoHeight', 360)
     await expect(active(page)).toHaveJSProperty('playsInline', true)
-    await expect(active(page)).toHaveCSS('object-fit', 'contain')
+    await expect(active(page)).toHaveCSS('object-fit', width < 768 ? 'cover' : 'contain')
     await page.screenshot({ path: info.outputPath(`reels-native-${width}.png`) })
   }
 })

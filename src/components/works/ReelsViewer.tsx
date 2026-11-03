@@ -71,7 +71,9 @@ export function ReelsViewer({
         return
       }
       if (event.key === 'Tab') {
-        const nodes = [...(root.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])]
+        const nodes = [...(root.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])].filter(
+          (node) => node.getClientRects().length > 0,
+        )
         const first = nodes[0]
         const last = nodes.at(-1)
         if (event.shiftKey && document.activeElement === first) {
@@ -164,7 +166,7 @@ export function ReelsViewer({
         ref={closeRef}
         href={closeHref}
         aria-label="Закрыть просмотр REELS"
-        className="absolute top-4 right-4 z-20 flex size-11 items-center justify-center rounded-full glass"
+        className="reels-close absolute top-4 right-4 z-20 flex size-11 items-center justify-center rounded-full glass"
         onClick={(event) => {
           if (
             event.button === 0 &&
@@ -212,7 +214,7 @@ export function ReelsViewer({
                   src={image.src}
                   alt=""
                   fill
-                  sizes="80vw"
+                  sizes="(width < 48rem) 100vw, 80vw"
                   priority={n === index}
                   className="object-contain"
                 />
@@ -226,7 +228,7 @@ export function ReelsViewer({
           )
         })}
       </div>
-      <div className="absolute top-1/2 right-4 z-10 flex -translate-y-1/2 flex-col gap-3">
+      <div className="reels-nav absolute top-1/2 right-4 z-10 flex -translate-y-1/2 flex-col gap-3">
         {previous && (
           <button
             type="button"
@@ -250,7 +252,7 @@ export function ReelsViewer({
       </div>
       <p
         aria-live="polite"
-        className="absolute bottom-3 left-4 rounded-pill glass px-3 py-1.5 text-caption"
+        className="reels-count absolute bottom-3 left-4 rounded-pill glass px-3 py-1.5 text-caption"
       >
         {index + 1} / {reels.length}
       </p>
