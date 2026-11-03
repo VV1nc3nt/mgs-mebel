@@ -1669,9 +1669,12 @@
 }
 
 @media (width < 768px) {
+  /* A fullscreen mobile reel must also cover the page's reserved scrollbar gutter. */
+  html:has(.reels-view) {
+    scrollbar-gutter: auto;
+  }
+
   .reels-view {
-    /* Fill the viewport even when the page reserves space for its scrollbar. */
-    width: 100vw;
     background: #000;
   }
 

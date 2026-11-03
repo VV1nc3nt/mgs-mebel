@@ -465,6 +465,7 @@ test.describe('REELS', () => {
       await expect(active(page)).toHaveCSS('object-fit', mobile ? 'cover' : 'contain')
       const slide = page.locator(`${DIALOG} [data-reel]:not([aria-hidden])`)
       if (mobile) {
+        expect(await page.evaluate(() => document.documentElement.clientWidth)).toBe(width)
         await expect(slide).toHaveCSS('border-radius', '0px')
         await expect
           .poll(() => active(page).boundingBox())
