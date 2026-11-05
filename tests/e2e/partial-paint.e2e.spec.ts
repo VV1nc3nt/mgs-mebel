@@ -1,6 +1,10 @@
 import { expect, test, type Page } from '../helpers/test'
 
-import { FIRST_SCREEN_END_ID, HEADER_END_ID } from '../../src/components/app/FirstScreenEnd'
+import {
+  FIRST_SCREEN_END_ID,
+  HEADER_END_ID,
+  FOOTER_END_ID,
+} from '../../src/components/app/FirstScreenEnd'
 import { E2E_ARTICLE } from '../helpers/e2eArticle'
 import { E2E_WORK_PROJECTS } from '../helpers/e2eWorks'
 import { layoutShifts } from '../helpers/scroll'
@@ -10,7 +14,7 @@ import { slowHtmlProxy } from '../helpers/slowHtml'
 // the rest arrives. Chromium waits for the markers (FirstScreenEnd): after the header on every
 // page, after the first screen on these; blocks centred in their row keep heights reserved from
 // the type scale.
-const BASE = 'http://localhost:3000'
+const BASE = process.env.E2E_BASE_URL || 'http://localhost:3000'
 const EMPTY_DB = !!process.env.E2E_EMPTY_DB
 // A news article with its body: the cover ends the first screen
 const ARTICLE = `/news/${E2E_ARTICLE.slug}`
@@ -27,7 +31,7 @@ const PAGES = [
   PROJECT,
   '/news',
   ARTICLE,
-  // Legal documents: the heading ends the first screen (the published ones of seedHome)
+  // Compact legal documents can expose the footer on the first screen.
   '/privacy',
   '/offer',
 ] as const
@@ -143,8 +147,8 @@ test.describe('partial paint', () => {
     [PROJECT, [HEADER_END_ID, FIRST_SCREEN_END_ID]],
     ['/news', [HEADER_END_ID, FIRST_SCREEN_END_ID]],
     [ARTICLE, [HEADER_END_ID, FIRST_SCREEN_END_ID]],
-    ['/privacy', [HEADER_END_ID, FIRST_SCREEN_END_ID]],
-    ['/offer', [HEADER_END_ID, FIRST_SCREEN_END_ID]],
+    ['/privacy', [HEADER_END_ID, FIRST_SCREEN_END_ID, FOOTER_END_ID]],
+    ['/offer', [HEADER_END_ID, FIRST_SCREEN_END_ID, FOOTER_END_ID]],
     ['/ui-kit', [HEADER_END_ID]],
     ['/nesushchestvuet', [HEADER_END_ID]],
   ] as const) {
@@ -185,6 +189,18 @@ test.describe('partial paint', () => {
     await page.waitForURL(`${BASE}/`)
     await expect(page.locator('section[data-hero]')).toBeVisible()
     await expectLinks()
+  })
+
+  test('the footer marker only blocks the initial paint of legal documents', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.goto(`${BASE}/privacy`)
+    await hydrated(page)
+    await expect(page.locator(`head > link[rel="expect"][href="#${FOOTER_END_ID}"]`)).toHaveCount(1)
+    await page.locator('footer [data-footer-column="menu"] a[href="/salons"]').click()
+    await page.waitForURL(`${BASE}/salons`)
+    await expect(page.locator('h1')).toBeVisible()
+    await expect(page.locator('link[rel="expect"]')).toHaveCount(2)
+    await expect(page.locator(`link[rel="expect"][href="#${FOOTER_END_ID}"]`)).toHaveCount(0)
   })
 
   // Reserved heights (globals.css: min-h-logo, min-h-label, min-h-header-row) mirror the sizes of

@@ -1,12 +1,13 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
-import { ARTICLE_BODY } from '@/components/article/articleStyles'
+import { ARTICLE_COLUMN } from '@/components/article/articleStyles'
 import { ArticleRichText } from '@/components/article/ArticleRichText'
-import { FirstScreenEnd } from '@/components/app/FirstScreenEnd'
-import { PageHeading } from '@/components/app/PageHeading'
+import { FirstScreenEnd, FOOTER_END_ID } from '@/components/app/FirstScreenEnd'
 import { PreviewRefresh } from '@/components/app/PreviewRefresh'
 import { JsonLd } from '@/components/seo/JsonLd'
+import { SectionLabel } from '@/components/ui/SectionLabel'
+import { cn } from '@/lib/cn'
 import { linkedIdsIn } from '@/lib/article'
 import { breadcrumbJsonLd } from '@/lib/jsonld'
 import { LEGAL_DOCS, richTextPlain, type LegalKey } from '@/lib/legal'
@@ -51,10 +52,16 @@ export async function LegalPage({ docKey }: { docKey: LegalKey }) {
         ])}
       />
       <article className="pb-section xl:pb-section-xl">
-        <PageHeading title={doc.title} hyphenate />
-        {/* The heading ends the first screen; the text grows below it and moves nothing above */}
+        <div className="page-container pt-7 md:pt-8 xl:pt-12">
+          <header className={cn(ARTICLE_COLUMN, 'flex flex-col gap-3')}>
+            <SectionLabel>Документы</SectionLabel>
+            <h1 className="text-h2 wrap-anywhere hyphens-auto md:text-h2-md">{doc.title}</h1>
+          </header>
+        </div>
         <FirstScreenEnd />
-        <div className={ARTICLE_BODY}>
+        {/* A short document exposes the footer: its grid must be parsed before the first paint. */}
+        <link rel="expect" href={`#${FOOTER_END_ID}`} blocking="render" />
+        <div className="page-container flex flex-col gap-6 pt-6 md:pt-8">
           <ArticleRichText data={doc.body} links={{ items, projects }} />
         </div>
       </article>

@@ -3,10 +3,16 @@ import { expect, test, type APIRequestContext, type Page } from '../helpers/test
 
 import { news } from '../../src/seed/data/news'
 import { e2eEditor } from '../helpers/e2eEditor'
-import { E2E_LEGAL, LEGAL_EXTERNAL_URL, LEGAL_TEXT } from '../helpers/e2eLegal'
+import {
+  E2E_LEGAL,
+  LEGAL_EXTERNAL_URL,
+  LEGAL_TEXT,
+  legalText,
+  paragraph,
+} from '../helpers/e2eLegal'
 import { layoutShifts, settle } from '../helpers/scroll'
 
-const BASE = 'http://localhost:3000'
+const BASE = process.env.E2E_BASE_URL || 'http://localhost:3000'
 const EMPTY_DB = !!process.env.E2E_EMPTY_DB
 const NOT_FOUND = 'Страница не найдена'
 const NOT_FOUND_TITLE = `${NOT_FOUND} — MGS MEBEL`
@@ -113,6 +119,14 @@ test.describe('legal documents', () => {
 
       await expect(page.locator('h1')).toHaveCount(1)
       await expect(article.locator('h1')).toHaveText(PRIVACY.title)
+      await expect(article.locator('header')).toContainText('Документы')
+      expect(await fontSize(page, 'main article h1')).toBe(width < 768 ? 32 : 44)
+      const titleBox = (await article.locator('h1').boundingBox())!
+      const bodyBox = (await article.locator(':scope > div:last-child p').first().boundingBox())!
+      expect(Math.abs(titleBox.x - bodyBox.x)).toBeLessThanOrEqual(1)
+      expect(Math.abs(titleBox.width - bodyBox.width)).toBeLessThanOrEqual(1)
+      expect(bodyBox.y - titleBox.y - titleBox.height).toBe(width < 768 ? 24 : 32)
+      await page.screenshot({ path: `test-results/legal/privacy-${width}.png`, fullPage: false })
       await expect(article.locator('h2')).toHaveText([LEGAL_TEXT.h2])
       await expect(article.locator('h3')).toHaveText([LEGAL_TEXT.h3])
       // H3 is a step below H2 at every width
@@ -123,7 +137,9 @@ test.describe('legal documents', () => {
       await expect(article.locator('ol > li')).toHaveText(
         LEGAL_TEXT.numbers.map((text, i) => `${i + 1}.${text}`),
       )
-      await expect(article.locator('p').first()).toHaveText(LEGAL_TEXT.intro)
+      await expect(article.locator(':scope > div:last-child p').first()).toHaveText(
+        LEGAL_TEXT.intro,
+      )
 
       // Links: another site in a new tab, a published news in the same tab, a draft — text only
       const external = article.getByRole('link', { name: LEGAL_TEXT.external })
@@ -142,7 +158,7 @@ test.describe('legal documents', () => {
       ).toBeLessThanOrEqual(0)
 
       // The text column: 760 at most, inside the page container
-      const column = await article.locator('p').first().boundingBox()
+      const column = await article.locator(':scope > div:last-child p').first().boundingBox()
       expect(column!.width).toBeLessThanOrEqual(760)
 
       expect(await axe(page)).toEqual([])
@@ -195,6 +211,89 @@ test.describe('legal documents', () => {
     await expectSite404(page, '/cookies')
     await expectServed404(request, '/cookies')
     expect(errors).toEqual([])
+  })
+
+  test('all three documents: long titles, compact column, published footer links and drafts', async ({
+    page,
+  }) => {
+    await login(page)
+    const saved = await Promise.all(
+      ['legalPrivacy', 'legalCookies', 'legalOffer'].map(async (slug) => ({
+        slug,
+        doc: await (
+          await page.request.get(`${BASE}/api/globals/${slug}?draft=false&depth=0`)
+        ).json(),
+      })),
+    )
+    const longTitle =
+      'Политика конфиденциальности и обработки персональных данных пользователей сайта'
+    const save = async (slug: string, data: Record<string, unknown>, draft = false) => {
+      const response = await page.request.post(
+        `${BASE}/api/globals/${slug}${draft ? '?draft=true' : ''}`,
+        { data },
+      )
+      expect(response.ok(), await response.text()).toBe(true)
+    }
+    try {
+      for (const { slug } of saved) {
+        await save(slug, {
+          title: longTitle,
+          body: legalText(paragraph(LEGAL_TEXT.intro)),
+          _status: 'published',
+        })
+      }
+      await page.context().clearCookies()
+      for (const width of [390, 834, 1440]) {
+        await page.setViewportSize({ width, height: 900 })
+        for (const path of ['/privacy', '/cookies', '/offer']) {
+          await page.goto(`${BASE}${path}`)
+          await expect(page.locator('h1')).toHaveCount(1)
+          await expect(page.locator('h1')).toHaveText(longTitle)
+          expect(await fontSize(page, 'main article h1')).toBe(width < 768 ? 32 : 44)
+          expect(
+            await page.evaluate(() => document.documentElement.scrollWidth),
+          ).toBeLessThanOrEqual(width)
+          const a = (await page.locator('main h1').boundingBox())!
+          const b = (await page.locator('main article > div:last-child p').first().boundingBox())!
+          expect(Math.abs(a.x - b.x)).toBeLessThanOrEqual(1)
+          for (const [href, label] of [
+            ['/privacy', 'Конфиденциальность'],
+            ['/cookies', 'Cookies'],
+            ['/offer', 'Оферта'],
+          ]) {
+            await expect(page.locator(`footer a[href="${href}"]`)).toHaveCount(1)
+            await expect(page.locator(`footer a[href="${href}"]`)).toHaveText(label)
+          }
+          await page.screenshot({ path: `test-results/legal/${path.slice(1)}-long-${width}.png` })
+        }
+      }
+      // A draft-only document must not acquire a public page or a footer link.
+      await login(page)
+      await save('legalCookies', { _status: 'draft' })
+      await save(
+        'legalCookies',
+        { title: longTitle, body: legalText(paragraph(LEGAL_TEXT.intro)) },
+        true,
+      )
+      await page.context().clearCookies()
+      await expectSite404(page, '/cookies')
+      await expect(page.locator('footer a[href="/cookies"]')).toHaveCount(0)
+    } finally {
+      await login(page)
+      for (const { slug, doc } of saved) {
+        if (doc._status !== 'published') await save(slug, { _status: 'draft' })
+        await save(
+          slug,
+          {
+            title: doc.title ?? null,
+            body: doc.body ?? null,
+            _status: doc._status ?? 'draft',
+          },
+          doc._status !== 'published',
+        )
+      }
+      await page.context().clearCookies()
+    }
   })
 
   test('draft mode: an editor sees the draft, a visitor — the published document', async ({

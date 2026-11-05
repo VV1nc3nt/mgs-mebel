@@ -8,8 +8,9 @@ import { settle, tallPage, wheel } from '../helpers/scroll'
 // «О нас» in its real context: hero on the first screen, long enough to scroll with the
 // seedHome data. On an empty database it is short, so the @empty check of the dock's content
 // stays on /ui-kit.
-const URL = 'http://localhost:3000/about'
-const UI_KIT = 'http://localhost:3000/ui-kit'
+const BASE = process.env.E2E_BASE_URL || 'http://localhost:3000'
+const URL = `${BASE}/about`
+const UI_KIT = `${BASE}/ui-kit`
 const { layout, settings } = globals(() => 0)
 const EMPTY_DB = !!process.env.E2E_EMPTY_DB
 
@@ -227,6 +228,16 @@ test.describe('dock', () => {
     })
 
     test('a chosen messenger opens in a new tab and the choice closes', async ({ page }) => {
+      // The test checks the popup, without depending on a messenger's redirects or app launch.
+      await page
+        .context()
+        .route('https://**', (route) =>
+          route.fulfill({
+            status: 200,
+            contentType: 'text/html',
+            body: '<title>Messenger</title>',
+          }),
+        )
       await openChoice(page)
       const popup = page.context().waitForEvent('page')
       await logos(page).nth(1).click()

@@ -1,5 +1,5 @@
 import type { LayoutInput, Messenger, NavItem, SettingsInput } from './chrome'
-import type { LegalLink, LegalLinks } from './legal'
+import { LEGAL_KEYS, type LegalLink, type LegalLinks } from './legal'
 
 /*
  * Footer and cookie notice data (README of the footer §1, §2): plain values for the server
@@ -124,7 +124,11 @@ export function toFooter({
       ids: [inn && `ИНН ${inn}`, ogrn && `ОГРН ${ogrn}`].filter((v): v is string => !!v),
       address: text(requisites?.legalAddress),
     },
-    links: [legal.privacy, legal.offer].filter((v): v is LegalLink => !!v),
+    links: LEGAL_KEYS.flatMap((key) => {
+      const link = legal[key]
+      const labels = { privacy: 'Конфиденциальность', cookies: 'Cookies', offer: 'Оферта' }
+      return link ? [{ href: link.href, title: labels[key] }] : []
+    }),
   }
 }
 

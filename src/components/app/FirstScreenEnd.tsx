@@ -2,6 +2,8 @@
 export const FIRST_SCREEN_END_ID = 'first-screen-end'
 /** Id of the marker after the header, put by AppShell on every page. */
 export const HEADER_END_ID = 'header-end'
+/** Compact documents can show the footer on their first screen. */
+export const FOOTER_END_ID = 'footer-end'
 
 /**
  * Chromium does not paint the page until the HTML is parsed up to this marker, so a first frame

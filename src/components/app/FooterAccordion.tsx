@@ -7,13 +7,7 @@ import { FOOTER_TITLE } from './footerStyles'
 
 export type FooterSection = { key: string; title: string; content: ReactNode }
 
-/**
- * Footer columns «Меню», «Покупателям», «Салоны» (design: footer 2a / 1a). Below 768 — an
- * accordion: one open at a time, all closed at first; from 768 the same lists are plain columns
- * of the footer grid (`md:contents`). The links come from the server in `content`, so they are in
- * the HTML; the island only keeps which one is open. A closed panel is hidden below 768 only —
- * not by the `hidden` attribute: the same list is the column from 768.
- */
+/** Below 768 one open panel; wider screens show both lists. No JS: all links stay visible. */
 export function FooterAccordion({ sections }: { sections: FooterSection[] }) {
   const [open, setOpen] = useState(-1)
   const id = useId()
@@ -22,6 +16,13 @@ export function FooterAccordion({ sections }: { sections: FooterSection[] }) {
 
   return (
     <div className="flex flex-col border-b border-border md:contents">
+      <noscript>
+        <style>{`
+          [data-footer-column] > h2 > button { display: none; }
+          [data-footer-column] > h2 > span { display: block; }
+          [data-footer-panel] { display: block; }
+        `}</style>
+      </noscript>
       {sections.map(({ key, title, content }, i) => {
         const expanded = open === i
         const panelId = `${id}-${key}`
@@ -29,7 +30,10 @@ export function FooterAccordion({ sections }: { sections: FooterSection[] }) {
           <div
             key={key}
             data-footer-column={key}
-            className="flex flex-col border-t border-border md:gap-3.5 md:border-t-0"
+            className={cn(
+              'flex min-w-0 flex-col border-t border-border md:row-start-2 md:gap-3.5 md:border-t-0 xl:row-start-1',
+              key === 'menu' ? 'md:col-start-1 xl:col-start-2' : 'md:col-start-2 xl:col-start-3',
+            )}
           >
             <h2>
               <button
@@ -57,7 +61,11 @@ export function FooterAccordion({ sections }: { sections: FooterSection[] }) {
               </button>
               <span className={cn(FOOTER_TITLE, 'block max-md:hidden')}>{title}</span>
             </h2>
-            <div id={panelId} className={cn('pb-3 md:pb-0', !expanded && 'max-md:hidden')}>
+            <div
+              id={panelId}
+              data-footer-panel=""
+              className={cn('pb-3 md:pb-0', !expanded && 'max-md:hidden')}
+            >
               {content}
             </div>
           </div>

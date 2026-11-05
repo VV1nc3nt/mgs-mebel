@@ -10,7 +10,7 @@ import { layoutShifts, settle, tallPage, wheel } from '../helpers/scroll'
 // The only spec without the cookie choice made by the fixture (tests/helpers/test.ts)
 test.use({ consent: false })
 
-const BASE = 'http://localhost:3000'
+const BASE = process.env.E2E_BASE_URL || 'http://localhost:3000'
 const URL = `${BASE}/about`
 const EMPTY_DB = !!process.env.E2E_EMPTY_DB
 const { layout } = globals(() => 0)
