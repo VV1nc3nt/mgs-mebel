@@ -8,6 +8,7 @@ import { cn } from '@/lib/cn'
 import type { FooterData } from '@/lib/footer'
 import { FooterAccordion, type FooterSection } from './FooterAccordion'
 import { FOOTER_TITLE } from './footerStyles'
+import { FOOTER_END_ID } from './FirstScreenEnd'
 import { LogoMark } from './Logo'
 
 const currentYear = () =>
@@ -166,6 +167,7 @@ export function AppFooter({
           </div>
         )}
       </div>
+      <div id={FOOTER_END_ID} hidden />
     </footer>
   )
 }

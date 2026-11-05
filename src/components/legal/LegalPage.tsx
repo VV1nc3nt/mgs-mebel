@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 
 import { ARTICLE_COLUMN } from '@/components/article/articleStyles'
 import { ArticleRichText } from '@/components/article/ArticleRichText'
-import { FirstScreenEnd } from '@/components/app/FirstScreenEnd'
+import { FirstScreenEnd, FOOTER_END_ID } from '@/components/app/FirstScreenEnd'
 import { PreviewRefresh } from '@/components/app/PreviewRefresh'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { SectionLabel } from '@/components/ui/SectionLabel'
@@ -58,8 +58,9 @@ export async function LegalPage({ docKey }: { docKey: LegalKey }) {
             <h1 className="text-h2 wrap-anywhere hyphens-auto md:text-h2-md">{doc.title}</h1>
           </header>
         </div>
-        {/* The heading ends the first screen; the text grows below it and moves nothing above */}
         <FirstScreenEnd />
+        {/* A short document exposes the footer: its grid must be parsed before the first paint. */}
+        <link rel="expect" href={`#${FOOTER_END_ID}`} blocking="render" />
         <div className="page-container flex flex-col gap-6 pt-6 md:pt-8">
           <ArticleRichText data={doc.body} links={{ items, projects }} />
         </div>
