@@ -139,6 +139,21 @@ describe('AppFooter', () => {
     ).toBeTruthy()
   })
 
+  it('keeps configured buyer fields out of the footer and avoids duplicate legal links', () => {
+    const data = footerOf({
+      ...seed.layout,
+      footer: {
+        ...seed.layout.footer,
+        buyerLinks: [{ label: 'Повтор политики', href: '/privacy' }],
+      },
+    })
+    const { container } = render(<AppFooter footer={data} cookieSettings />)
+    expect(data.columns.buyers?.items).toHaveLength(1)
+    expect(container.querySelector('[data-footer-column="buyers"]')).toBeNull()
+    expect(container.querySelectorAll('a[href="/privacy"]')).toHaveLength(1)
+    expect(screen.queryByText('Повтор политики')).toBeNull()
+  })
+
   it('the menu accordion: one open at a time, the links stay in the DOM', () => {
     render(<AppFooter footer={footerOf()} cookieSettings />)
     const menu = screen.getByRole('button', { name: 'Меню' })

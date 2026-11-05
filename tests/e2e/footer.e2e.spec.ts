@@ -5,11 +5,10 @@ import { globals } from '../../src/seed/data/globals'
 import { e2eManager } from '../helpers/e2eEditor'
 import { E2E_REQUISITES } from '../helpers/e2eFooter'
 import { E2E_SALONS } from '../helpers/e2eHome'
-import { E2E_LEGAL } from '../helpers/e2eLegal'
 import { motionEnded } from '../helpers/motion'
 import { layoutShifts, settle, tallPage, wheel } from '../helpers/scroll'
 
-const BASE = 'http://localhost:3000'
+const BASE = process.env.E2E_BASE_URL || 'http://localhost:3000'
 // A page with the seedHome data, long enough for the dock
 const URL = `${BASE}/about`
 const EMPTY_DB = !!process.env.E2E_EMPTY_DB
@@ -66,17 +65,8 @@ test.describe('footer', () => {
       await expect(contacts(page)).toContainText(E2E_REQUISITES.hours)
       await expect(contactBlock(page)).toContainText(F.contact!.title!)
 
-      // Messengers: MAX · Telegram · WhatsApp, icons only, named, in a new tab
-      const messengers = contacts(page).getByRole('link', { name: /^(MAX|Telegram|WhatsApp)$/ })
-      await expect(messengers).toHaveCount(3)
-      expect(
-        await messengers.evaluateAll((els) => els.map((el) => el.getAttribute('aria-label'))),
-      ).toEqual(['MAX', 'Telegram', 'WhatsApp'])
-      for (const link of await messengers.all()) {
-        await expect(link).toHaveAttribute('target', '_blank')
-        await expect(link).toHaveAttribute('rel', 'noopener noreferrer')
-        expect((await link.textContent())?.trim()).toBe('')
-      }
+      // Messenger links live in the CTA chooser, with no duplicate row of icons.
+      await expect(contacts(page).locator(':scope > ul')).toHaveCount(0)
 
       // Columns: no buyer links in the data — no column; salons from the collection
       await expect(footer(page).getByRole('heading', { name: F.buyersTitle! })).toHaveCount(0)
@@ -92,38 +82,51 @@ test.describe('footer', () => {
       // Bottom: published documents (privacy, offer; cookies is empty), the settings button,
       // requisites of the e2e data instead of the copyright
       const bottomLinks = footer(page).locator('ul').last()
-      await expect(bottomLinks.getByRole('link')).toHaveText([
-        E2E_LEGAL.privacy.title,
-        E2E_LEGAL.offer.title,
-      ])
+      await expect(bottomLinks.getByRole('link')).toHaveText(['Конфиденциальность', 'Оферта'])
       await expect(footer(page).locator('a[href="/cookies"]')).toHaveCount(0)
-      await expect(bottomLinks.getByRole('button', { name: 'Настройки cookies' })).toBeVisible()
+      await expect(footer(page).getByRole('button', { name: 'Настройки cookies' })).toBeVisible()
       await expect(footer(page)).toContainText(`© ${YEAR} ${E2E_REQUISITES.company}`)
       await expect(footer(page)).toContainText(`ИНН ${E2E_REQUISITES.inn}`)
       await expect(footer(page)).toContainText(`ОГРН ${E2E_REQUISITES.ogrn}`)
       await expect(footer(page)).toContainText(E2E_REQUISITES.legalAddress)
       await expect(footer(page)).not.toContainText(F.copyright!)
 
-      // Order of the blocks (design: 2a below 768 by importance, 1a from 768)
+      // One row on desktop, two rows on tablet, brand / accordions / contacts on mobile.
       const brand = await top(footer(page).getByRole('img', { name: 'MGS MEBEL' }))
       const contact = await top(contactBlock(page))
       const phoneTop = await top(phone)
-      const menu = await top(footer(page).getByRole('heading', { name: F.menuTitle! }))
+      const menu = await top(column(page, 'menu'))
+      const salons = await top(column(page, 'salons'))
       const bottom = await top(bottomLinks)
       if (width < 768) {
-        expect([brand < phoneTop, phoneTop < contact, contact < menu, menu < bottom]).toEqual([
-          true,
-          true,
-          true,
-          true,
-        ])
+        expect(brand).toBeLessThan(menu)
+        expect(menu).toBeLessThan(salons)
+        expect(salons).toBeLessThan(phoneTop)
+        expect(phoneTop).toBeLessThan(contact)
+      } else if (width < 1280) {
+        expect(brand).toBeLessThan(menu)
+        expect(phoneTop).toBeLessThan(menu)
+        expect(Math.abs(menu - salons)).toBeLessThanOrEqual(1)
       } else {
-        expect([brand < contact, contact < menu, menu <= phoneTop, phoneTop < bottom]).toEqual([
-          true,
-          true,
-          true,
-          true,
+        const columns = await Promise.all([
+          footer(page).getByRole('img', { name: 'MGS MEBEL' }).boundingBox(),
+          column(page, 'menu').boundingBox(),
+          column(page, 'salons').boundingBox(),
+          contacts(page).boundingBox(),
         ])
+        for (let i = 1; i < columns.length; i++) {
+          expect(columns[i]!.x).toBeGreaterThan(columns[i - 1]!.x)
+          expect(Math.abs(columns[i]!.y - columns[0]!.y)).toBeLessThanOrEqual(1)
+        }
+      }
+      expect(Math.max(menu, salons, phoneTop, contact)).toBeLessThan(bottom)
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+        width,
+      )
+      for (const href of ['/privacy', '/offer']) {
+        const link = footer(page).locator(`a[href="${href}"]`)
+        await expect(link).toHaveCount(1)
+        expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(44)
       }
       // Column titles from 768 — accordion buttons below
       await expect(
@@ -158,10 +161,13 @@ test.describe('footer', () => {
     await expect(menu).toHaveAttribute('aria-expanded', 'false')
     await expect(salons).toHaveAttribute('aria-expanded', 'false')
     await expect(menuLink).toBeHidden()
-    await menu.click()
+    await menu.focus()
+    await page.keyboard.press('Enter')
     await expect(menu).toHaveAttribute('aria-expanded', 'true')
     await expect(menuLink).toBeVisible()
-    await salons.click()
+    expect((await menuLink.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+    await salons.focus()
+    await page.keyboard.press('Space')
     await expect(menu).toHaveAttribute('aria-expanded', 'false')
     await expect(salons).toHaveAttribute('aria-expanded', 'true')
     await expect(menuLink).toBeHidden()
@@ -178,6 +184,29 @@ test.describe('footer', () => {
     for (const href of ['/about', '/salons', '/works', '/catalogs', '/designers', '/news'])
       expect(footerHtml).toContain(`href="${href}"`)
     for (const name of E2E_SALONS) expect(footerHtml).toContain(name)
+  })
+
+  test('390: without JavaScript the accordion lists remain visible and usable', async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      javaScriptEnabled: false,
+      viewport: { width: 390, height: 844 },
+    })
+    try {
+      const page = await context.newPage()
+      await page.goto(URL)
+      const menu = column(page, 'menu').getByRole('link', { name: 'О нас', exact: true })
+      await expect(menu).toBeVisible()
+      await expect(column(page, 'salons').getByRole('link').first()).toBeVisible()
+      await expect(
+        footer(page).getByRole('button', { name: F.menuTitle!, exact: true }),
+      ).toBeHidden()
+      await menu.focus()
+      await expect(menu).toBeFocused()
+    } finally {
+      await context.close()
+    }
   })
 
   test('the contact block opens the choice of messengers in place', async ({ page }) => {

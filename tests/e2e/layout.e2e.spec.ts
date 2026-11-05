@@ -5,7 +5,7 @@ import { globals } from '../../src/seed/data/globals'
 import { news } from '../../src/seed/data/news'
 import { E2E_REQUISITES } from '../helpers/e2eFooter'
 
-const BASE = 'http://localhost:3000'
+const BASE = process.env.E2E_BASE_URL || 'http://localhost:3000'
 const WIDTHS = [390, 834, 1440] as const
 // Texts written by tests/helpers/seedChrome.ts (the same seed module).
 const { layout, settings } = globals(() => 0)
@@ -56,7 +56,7 @@ test.describe('layout: header and footer', () => {
         expect(errors).toEqual([])
       })
 
-      test('footer: slogan, hotline, socials, requisites', async ({ page }) => {
+      test('footer: slogan, hotline, contact chooser, requisites', async ({ page }) => {
         await page.goto(`${BASE}/salons`)
         const footer = page.locator('footer')
         await expect(footer.getByText(layout.footer!.sloganAccent!)).toHaveCSS(
@@ -67,16 +67,10 @@ test.describe('layout: header and footer', () => {
           footer.getByRole('link', { name: settings.contacts.hotlinePhone }),
         ).toHaveAttribute('href', 'tel:88001001658')
         const contacts = footer.getByRole('region', { name: 'Контакты' })
-        for (const [name, href] of [
-          ['MAX', settings.messengers!.max],
-          ['Telegram', settings.messengers!.telegram],
-          ['WhatsApp', settings.messengers!.whatsapp],
-        ] as const) {
-          const link = contacts.getByRole('link', { name, exact: true })
-          await expect(link).toHaveAttribute('href', href!)
-          await expect(link).toHaveAttribute('target', '_blank')
-          await expect(link).toHaveAttribute('rel', 'noopener noreferrer')
-        }
+        await expect(
+          contacts.getByRole('button', { name: 'Рассчитать проект — выбрать мессенджер' }),
+        ).toBeVisible()
+        await expect(contacts.locator(':scope > ul')).toHaveCount(0)
         const year = new Date().getFullYear()
         // The requisites of the e2e data replace the copyright
         await expect(footer).toContainText(`© ${year} ${E2E_REQUISITES.company}`)

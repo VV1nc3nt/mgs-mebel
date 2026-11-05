@@ -9,9 +9,10 @@ import { layoutShifts, settle, tallPage, wheel } from '../helpers/scroll'
 // Contact buttons with the choice of messengers (README of the buttons, variant «Сегменты»):
 // header CTA (≥1280) and hero CTA on «О нас» (the fixture sets the hero CTA), the card over the
 // salon map on «Салоны». The seed has all three messengers.
-const URL = 'http://localhost:3000/about'
-const SALONS = 'http://localhost:3000/salons'
-const UI_KIT = 'http://localhost:3000/ui-kit'
+const BASE = process.env.E2E_BASE_URL || 'http://localhost:3000'
+const URL = `${BASE}/about`
+const SALONS = `${BASE}/salons`
+const UI_KIT = `${BASE}/ui-kit`
 const EMPTY_DB = !!process.env.E2E_EMPTY_DB
 const { layout, salonsPage, settings } = globals(() => 0)
 const CTA = ABOUT_CTA
@@ -259,6 +260,16 @@ test.describe('contact buttons', () => {
     test.use({ viewport: { width: 1440, height: 900 } })
 
     test('a chosen messenger opens in a new tab and the choice closes', async ({ page }) => {
+      // The test checks the popup, without depending on a messenger's redirects or app launch.
+      await page
+        .context()
+        .route('https://**', (route) =>
+          route.fulfill({
+            status: 200,
+            contentType: 'text/html',
+            body: '<title>Messenger</title>',
+          }),
+        )
       await page.goto(URL)
       await settle(page)
       const c = chooser(page.locator('section').first())

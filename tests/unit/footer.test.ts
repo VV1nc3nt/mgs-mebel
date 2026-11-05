@@ -83,16 +83,27 @@ describe('toFooter', () => {
     expect(f.contacts.hours).toBe('9–21')
   })
 
-  it('legal links: privacy and offer, in this order, only published ones', () => {
+  it('legal links: short footer labels in document order, only available links', () => {
     const f = toFooter(
       input({
         legal: {
-          offer: { href: '/offer', title: 'Оферта' },
+          offer: { href: '/offer', title: 'Полное название публичной оферты' },
           cookies: { href: '/cookies', title: 'Cookies' },
         },
       }),
     )
-    expect(f.links).toEqual([{ href: '/offer', title: 'Оферта' }])
+    expect(f.links).toEqual([
+      { href: '/cookies', title: 'Cookies' },
+      { href: '/offer', title: 'Оферта' },
+    ])
+  })
+
+  it('keeps document titles unchanged when making the short privacy label', () => {
+    const legal = { privacy: { href: '/privacy', title: 'Политика конфиденциальности' } }
+    expect(toFooter(input({ legal })).links).toEqual([
+      { href: '/privacy', title: 'Конфиденциальность' },
+    ])
+    expect(legal.privacy.title).toBe('Политика конфиденциальности')
   })
 
   it('no contact button without messengers; no block without title and button', () => {

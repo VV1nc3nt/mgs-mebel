@@ -11,6 +11,9 @@ import { E2E_REVALIDATE_SECRET } from './tests/helpers/revalidate'
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
+const serverUrl = process.env.E2E_BASE_URL || 'http://localhost:3000'
+const serverPort = new URL(serverUrl).port || '3000'
+
 export default defineConfig({
   testDir: './tests/e2e',
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -40,7 +43,7 @@ export default defineConfig({
     // CI tests the production standalone build (the same server as the Docker image).
     command: process.env.CI ? 'node .next/standalone/server.js' : 'pnpm dev',
     reuseExistingServer: !process.env.CI,
-    url: 'http://localhost:3000',
-    env: { ENABLE_UI_KIT: 'true', PORT: '3000', REVALIDATE_SECRET: E2E_REVALIDATE_SECRET },
+    url: serverUrl,
+    env: { ENABLE_UI_KIT: 'true', PORT: serverPort, REVALIDATE_SECRET: E2E_REVALIDATE_SECRET },
   },
 })
