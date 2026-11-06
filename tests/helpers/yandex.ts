@@ -18,13 +18,13 @@ class YMap {
     attribution.textContent = 'Яндекс Карты ©';
     attribution.href = 'https://yandex.ru/maps/';
     attribution.dataset.mapAttribution = '';
-    attribution.style.cssText = 'position:absolute;top:8px;left:8px;min-height:44px;display:flex;align-items:center';
+    attribution.style.cssText = 'position:absolute;z-index:800;top:8px;left:8px;min-height:44px;display:flex;align-items:center';
     element.append(attribution);
   }
   addChild(child) {
     if (child.element) {
       const wrapper = document.createElement('div');
-      wrapper.style.cssText = 'position:absolute;left:' + (18 + (this.element.querySelectorAll("button").length * 20)) + '%;top:20%';
+      wrapper.style.cssText = 'position:absolute;z-index:600;left:' + (18 + (this.element.querySelectorAll("button").length * 20)) + '%;top:20%';
       wrapper.append(child.element); this.element.append(wrapper); this.markers.push(wrapper); this.positionMarkers();
     }
     if (child.onStateChanged) child.onStateChanged({ getLayerState: () => ({tilesReady:1}) });

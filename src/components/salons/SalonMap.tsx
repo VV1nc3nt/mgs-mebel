@@ -181,7 +181,7 @@ export function SalonMap({ salons, activeId, onPick }: Props) {
 
   return (
     <>
-      <div ref={root} className="absolute inset-x-0 top-16 bottom-0" data-salon-map />
+      <div ref={root} className="absolute inset-x-0 top-16 bottom-0 isolate" data-salon-map />
       {(!process.env.NEXT_PUBLIC_YMAPS_KEY ||
         failed ||
         !salons.some((s) => salonCoordinates(s.location))) && (

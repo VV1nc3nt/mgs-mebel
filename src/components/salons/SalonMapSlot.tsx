@@ -18,9 +18,9 @@ export function SalonMapSlot({ salons, activeId, onPick, hidden = false, childre
   return (
     <div
       data-salon-map-slot
-      className="relative h-map overflow-hidden rounded-media bg-map-bg md:h-tall-md xl:h-tall-xl"
+      className="relative isolate h-map overflow-hidden rounded-media bg-map-bg md:h-tall-md xl:h-tall-xl"
     >
-      <div className="absolute inset-0" hidden={hidden} inert={hidden}>
+      <div className="absolute inset-0 isolate" hidden={hidden} inert={hidden}>
         <SalonMap salons={salons} activeId={activeId} onPick={onPick} />
         {href && (
           <a
