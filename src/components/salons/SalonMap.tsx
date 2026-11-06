@@ -21,12 +21,14 @@ export function SalonMap({ salons, activeId, onPick }: Props) {
   const map = useRef<YMap | null>(null)
   const buttons = useRef(new Map<number, HTMLButtonElement>())
   const pick = useRef(onPick)
+  const selection = useRef(activeId)
   const [ready, setReady] = useState(false)
   const [failed, setFailed] = useState(false)
 
   useEffect(() => {
     pick.current = onPick
-  }, [onPick])
+    selection.current = activeId
+  }, [onPick, activeId])
   useEffect(() => {
     const element = root.current
     const key = process.env.NEXT_PUBLIC_YMAPS_KEY
@@ -74,6 +76,7 @@ export function SalonMap({ salons, activeId, onPick }: Props) {
           button.type = 'button'
           button.className = 'salon-map-pin'
           button.setAttribute('aria-label', salon.name)
+          button.setAttribute('aria-pressed', String(salon.id === selection.current))
           button.onclick = () => pick.current?.(salon.id)
           pins.set(salon.id, button)
           instance.addChild(new api.YMapMarker({ coordinates }, button))
