@@ -1,3 +1,4 @@
+import { stubYandex } from './yandex'
 import {
   test as base,
   expect,
@@ -40,6 +41,7 @@ export async function newConsentContext(
   options?: BrowserContextOptions,
 ): Promise<BrowserContext> {
   const context = await browser.newContext(options)
+  await stubYandex(context)
   await context.addInitScript(CONSENT_SCRIPT)
   return context
 }
@@ -47,6 +49,7 @@ export async function newConsentContext(
 export const test = base.extend<{ consent: boolean; noticeCheck: void }>({
   consent: [true, { option: true }],
   context: async ({ context, consent }, provide) => {
+    await stubYandex(context)
     if (consent) await context.addInitScript(CONSENT_SCRIPT)
     await provide(context)
   },

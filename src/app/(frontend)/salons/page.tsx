@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 
+import { PageAnalytics } from '@/components/analytics/PageAnalytics'
 import { FirstScreenEnd } from '@/components/app/FirstScreenEnd'
 import { PageHeading } from '@/components/app/PageHeading'
 import { PreviewRefresh } from '@/components/app/PreviewRefresh'
@@ -42,6 +43,7 @@ export default async function SalonsPage() {
 
   return (
     <>
+      <PageAnalytics path={PATH} />
       {pageName && (
         <JsonLd
           data={breadcrumbJsonLd([

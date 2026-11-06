@@ -133,7 +133,15 @@ export function SalonsExplorer({ salons, ctaLabel, messengers, listCaption }: Pr
         <h2 id="salons-map-title" className="sr-only">
           Салоны на карте
         </h2>
-        <SalonMapSlot salons={salons} activeId={current.id}>
+        <SalonMapSlot
+          salons={salons}
+          activeId={current.id}
+          hidden={view === 'list'}
+          onPick={(id) => {
+            const index = salons.findIndex((salon) => salon.id === id)
+            if (index >= 0) select(index)
+          }}
+        >
           {view === 'map' ? (
             <SalonPanel
               salon={current}

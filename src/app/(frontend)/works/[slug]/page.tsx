@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound, permanentRedirect, redirect } from 'next/navigation'
 
+import { PageAnalytics } from '@/components/analytics/PageAnalytics'
 import { FirstScreenEnd } from '@/components/app/FirstScreenEnd'
 import { PreviewRefresh } from '@/components/app/PreviewRefresh'
 import { JsonLd } from '@/components/seo/JsonLd'
@@ -79,6 +80,7 @@ export default async function WorkProjectPage({ params, searchParams }: Props) {
 
   return (
     <>
+      <PageAnalytics path={projectHrefOf(project.slug)} />
       <JsonLd
         data={breadcrumbJsonLd([
           { name: 'Главная', path: '/' },

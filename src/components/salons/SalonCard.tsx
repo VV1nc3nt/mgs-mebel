@@ -40,6 +40,7 @@ export function SalonCard({
 
   return (
     <div
+      data-salon-panel
       className={cn(
         'flex max-w-salon-card flex-col gap-4 rounded-card border border-divider bg-surface p-5',
         className,

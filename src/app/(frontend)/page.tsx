@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 
+import { PageAnalytics } from '@/components/analytics/PageAnalytics'
 import { FirstScreenEnd } from '@/components/app/FirstScreenEnd'
 import { PreviewRefresh } from '@/components/app/PreviewRefresh'
 import { HomeHero } from '@/components/home/HomeHero'
@@ -49,6 +50,7 @@ export default async function HomePage() {
 
   return (
     <>
+      <PageAnalytics path="/" />
       <HomeHero hero={home.hero} messengers={messengers} />
       <NewsSection section={home.news} news={news} />
       <FirstScreenEnd />

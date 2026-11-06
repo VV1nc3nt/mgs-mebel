@@ -17,9 +17,13 @@ RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
 # Build (no database access required)
 FROM base AS builder
 ARG NEXT_PUBLIC_SITE_URL
+ARG NEXT_PUBLIC_METRIKA_ID
+ARG NEXT_PUBLIC_METRIKA_ALLOWED_HOSTS
 ARG NEXT_PUBLIC_YMAPS_KEY
 ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL \
-    NEXT_PUBLIC_YMAPS_KEY=$NEXT_PUBLIC_YMAPS_KEY
+    NEXT_PUBLIC_YMAPS_KEY=$NEXT_PUBLIC_YMAPS_KEY \
+    NEXT_PUBLIC_METRIKA_ID=$NEXT_PUBLIC_METRIKA_ID \
+    NEXT_PUBLIC_METRIKA_ALLOWED_HOSTS=$NEXT_PUBLIC_METRIKA_ALLOWED_HOSTS
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN corepack enable && corepack install

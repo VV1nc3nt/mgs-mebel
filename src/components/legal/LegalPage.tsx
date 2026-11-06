@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
+import { PageAnalytics } from '@/components/analytics/PageAnalytics'
 import { ARTICLE_COLUMN } from '@/components/article/articleStyles'
 import { ArticleRichText } from '@/components/article/ArticleRichText'
 import { FirstScreenEnd, FOOTER_END_ID } from '@/components/app/FirstScreenEnd'
@@ -45,6 +46,7 @@ export async function LegalPage({ docKey }: { docKey: LegalKey }) {
 
   return (
     <>
+      <PageAnalytics path={path} />
       <JsonLd
         data={breadcrumbJsonLd([
           { name: 'Главная', path: '/' },

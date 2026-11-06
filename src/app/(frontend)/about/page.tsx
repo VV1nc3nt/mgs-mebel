@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 
+import { PageAnalytics } from '@/components/analytics/PageAnalytics'
 import { ExhibitionsSection } from '@/components/about/ExhibitionsSection'
 import { HardwareSection } from '@/components/about/HardwareSection'
 import { IntroSection } from '@/components/about/IntroSection'
@@ -44,6 +45,7 @@ export default async function AboutPage() {
 
   return (
     <>
+      <PageAnalytics path={PATH} />
       {pageName && (
         <JsonLd
           data={breadcrumbJsonLd([

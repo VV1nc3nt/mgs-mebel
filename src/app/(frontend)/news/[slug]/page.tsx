@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
+import { PageAnalytics } from '@/components/analytics/PageAnalytics'
 import { FirstScreenEnd } from '@/components/app/FirstScreenEnd'
 import { PreviewRefresh } from '@/components/app/PreviewRefresh'
 import { ArticleBlocks } from '@/components/news/ArticleBlocks'
@@ -82,6 +83,7 @@ export default async function NewsArticlePage({ params }: Props) {
 
   return (
     <>
+      <PageAnalytics path={path} />
       <JsonLd
         data={breadcrumbJsonLd([
           { name: 'Главная', path: '/' },

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 
+import { PageAnalytics } from '@/components/analytics/PageAnalytics'
 import { CatalogCard } from '@/components/catalogs/CatalogCard'
 import { ALL, CatalogsBrowser } from '@/components/catalogs/CatalogsBrowser'
 import { FirstScreenEnd } from '@/components/app/FirstScreenEnd'
@@ -51,6 +52,7 @@ export default async function CatalogsPage() {
 
   return (
     <>
+      <PageAnalytics path={PATH} />
       {pageName && (
         <JsonLd
           data={breadcrumbJsonLd([
