@@ -8,11 +8,13 @@ PR → CI (GitHub Actions) → merge в `main` → сборка Docker-обра�
 - Домен задаётся переменной `SITE_DOMAIN` в `/opt/mgs/.env` и используется в `Caddyfile`: поддомен клиента (`staging.<домен>`) или `staging.<ip-через-дефис>.sslip.io`, пока DNS недоступен.
 - Каталог `/opt/mgs`: `compose.yml`, `caddy/Caddyfile`, `backup.sh`, `seed.sh`, `.env` (только на сервере, в git не попадает), `backups/`, `seed-cache/` и `logs/` (демо-данные, см. ниже). `compose.yml`, `Caddyfile`, `backup.sh` и `seed.sh` берутся из `deploy/` и обновляются при каждом деплое; `.env` деплой не перезаписывает (меняет только строку `APP_TAG`).
 - Сервисы Compose:
-  - `caddy` — reverse proxy, автоматический HTTPS, Basic Auth на весь сайт (включая /admin), заголовок `X-Robots-Tag: noindex, nofollow`.
+  - `caddy` — reverse proxy, автоматический HTTPS, открытый доступ ко всему сайту (включая `/admin`), заголовок `X-Robots-Tag: noindex, nofollow`.
   - `app` — образ `ghcr.io/<owner>/<repo>:<tag>`, порт 3000 только во внутренней сети, том `media` для загруженных файлов.
   - `postgres` — официальный образ, volume `pgdata`, порт наружу не публикуется.
 - Файлы (media): по умолчанию на диске — Docker-том `media`. Если в `.env` задан `S3_BUCKET` (+ `S3_ENDPOINT`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`) — Payload пишет в S3 (Yandex Object Storage или своё S3, напр. Garage). Выбор для прода — позже, код должен поддерживать оба режима.
 - Бэкап: cron раз в сутки в `/opt/mgs/backups` — `pg_dump` и архив тома `media` (если файлы на диске), хранить 7 последних.
+
+Сайт тестовый, с демонстрационными материалами и документами. Индексация запрещена: `X-Robots-Tag: noindex, nofollow` сохраняется при каждом обновлении Caddyfile. Защищённые данные и операции, черновики и preview требуют соответствующей авторизации Payload; `POST /revalidate` — отдельного секрета. Публичные API доступны по действующим правилам приложения.
 
 ## Приложение
 - `next.config`: `output: 'standalone'`.
@@ -27,10 +29,10 @@ PR → CI (GitHub Actions) → merge в `main` → сборка Docker-обра�
 - `deploy-staging.yml` — на push в `main` после успешного CI, `environment: staging`, `concurrency: staging`:
   1. build + push образа с тегами `<sha>` и `staging` (кэш слоёв `type=gha`);
   2. SSH на сервер (`deploy/deploy.sh`): бэкап (`backup.sh`), синхронизация `compose.yml`/`Caddyfile`/`backup.sh` через `/opt/mgs/.incoming` + `mv` (изменился `compose.yml` → `docker compose up -d` всех сервисов, изменился `Caddyfile` → `caddy reload`), запомнить текущий `APP_TAG`, `docker compose pull app && docker compose up -d app`;
-  3. проверить `/healthz` изнутри контейнера (`docker compose exec -T app wget …`) и что `https://<SITE_DOMAIN>/` отвечает 401 (Basic Auth) — до 60 с; при провале — вернуть предыдущий тег и уронить job. Если предыдущего тега нет (первый деплой или `staging`), откатываться некуда — job падает, новая версия остаётся.
+  3. проверить `/healthz` изнутри контейнера (`docker compose exec -T app wget …`) и что `https://<SITE_DOMAIN>/` отвечает 200 без авторизации — до 60 с; при провале — вернуть предыдущий тег и уронить job. Если предыдущего тега нет (первый деплой или `staging`), откатываться некуда — job падает, новая версия остаётся.
 - `seed-staging.yml` — «Seed staging», только ручной запуск (`workflow_dispatch`), та же `concurrency: staging` — не пересекается с деплоем. Демо-данные, см. «Демо-данные на staging».
 - Секреты Environment `staging`: `SSH_HOST`, `SSH_USER`, `SSH_KEY`, `SSH_KNOWN_HOSTS`. Переменные: `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_YMAPS_KEY`.
-- Runtime-секреты (`DATABASE_URL`, `PAYLOAD_SECRET`, `REVALIDATE_SECRET`, `SITE_DOMAIN`, `S3_*` (опционально), логин/хэш Basic Auth) живут только в `/opt/mgs/.env`.
+- Runtime-секреты (`DATABASE_URL`, `PAYLOAD_SECRET`, `REVALIDATE_SECRET`, `SITE_DOMAIN`, `S3_*` (опционально)) живут только в `/opt/mgs/.env`.
 
 ## Первичная настройка сервера
 
@@ -59,11 +61,6 @@ PR → CI (GitHub Actions) → merge в `main` → сборка Docker-обра�
    - `PAYLOAD_SECRET`: `openssl rand -hex 32`.
    - `REVALIDATE_SECRET`: `openssl rand -hex 32` — сброс кэша данных сайта после seed (см. «Кэш данных сайта»); без него `seed.sh` завершается ошибкой.
    - `SITE_URL`: адрес сайта, например `https://staging.tmprl.ru`.
-   - Basic Auth: `BASIC_AUTH_USER` — логин; хэш пароля:
-     ```bash
-     docker run --rm caddy:2-alpine caddy hash-password --plaintext '<пароль>'
-     ```
-     записать в одинарных кавычках: `BASIC_AUTH_HASH='$2a$14$…'`.
    - `APP_TAG` оставить `staging` — дальше его ведёт деплой.
 6. **Доступ сервера к GHCR.** На GitHub: Settings → Developer settings → Personal access tokens (classic) → токен только со scope `read:packages`. На сервере от deploy:
    ```bash
@@ -78,9 +75,17 @@ PR → CI (GitHub Actions) → merge в `main` → сборка Docker-обра�
    - Variables: `NEXT_PUBLIC_SITE_URL` = `https://staging.tmprl.ru`, `NEXT_PUBLIC_YMAPS_KEY` = ключ Яндекс.Карт (можно пустым, пока карты нет).
 8. **Первый деплой.** Merge любого PR в `main` (или Actions → CI → Re-run на последнем коммите `main`). После зелёного CI запустится «Deploy staging»: соберёт образ, зальёт конфиги в `/opt/mgs`, поднимет caddy/app/postgres, применит миграции, проверит здоровье.
 9. **Проверка.**
-   - `https://staging.tmprl.ru/` просит логин/пароль; после входа открывается сайт, `/admin` — создание первого пользователя.
+   - `https://staging.tmprl.ru/`, публичные страницы, документы и медиа открываются без дополнительного пароля. `/admin` открывает штатный вход Payload (на новой пустой БД — создание первого пользователя); после входа действуют существующие права ролей.
    - `curl -sI https://staging.tmprl.ru/ | grep -i x-robots` → `noindex, nofollow`.
    - На сервере: `cd /opt/mgs && docker compose ps` — все сервисы `healthy`; `./backup.sh` — в `backups/` появились `db-*.dump` и `media-*.tar.gz`.
+
+### Переход с дополнительной парольной защиты
+
+После merge и успешного CI обычный деплой обновляет Compose и Caddyfile и открывает сайт на текущем домене. Вручную менять серверные конфиги или переписывать `/opt/mgs/.env` не требуется. Оставшиеся в нём `BASIC_AUTH_USER` / `BASIC_AUTH_HASH` больше не используются и не мешают деплою.
+
+Автоматический откат и ручной откат тега возвращают только образ приложения. Новые Compose и Caddyfile сохраняются: сайт остаётся открытым, индексация запрещена, healthcheck по-прежнему ожидает 200 от главной и успешный `/healthz` с проверкой БД. Для отката образа не запускайте старый `deploy.sh` и не возвращайте старые конфиги с парольной защитой.
+
+После деплоя проверить публичные страницы, документы, изображения, видео и REELS; штатный вход `/admin` без диалога пароля браузера; отказ защищённых API без сессии и права ролей после входа; защиту preview и `POST /revalidate`; заголовок `X-Robots-Tag` в публичных ответах и состояние сервисов. Проверки с записью выполнять только на отдельной тестовой БД и с отдельным каталогом медиа.
 
 ### Эксплуатация
 - Логи: `cd /opt/mgs && docker compose logs -f app`.

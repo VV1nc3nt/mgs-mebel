@@ -58,11 +58,11 @@ check_health() {
   while (( SECONDS < deadline )); do
     if docker compose exec -T app wget -qO- http://127.0.0.1:3000/healthz >/dev/null 2>&1; then
       code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "https://$SITE_DOMAIN/" || true)
-      if [[ "$code" == 401 ]]; then
-        echo "healthz: ok, https://$SITE_DOMAIN/: 401 (Basic Auth)"
+      if [[ "$code" == 200 ]]; then
+        echo "healthz: ok, https://$SITE_DOMAIN/: 200"
         return 0
       fi
-      echo "waiting: https://$SITE_DOMAIN/ returned '$code', expected 401"
+      echo "waiting: https://$SITE_DOMAIN/ returned '$code', expected 200"
     fi
     sleep 3
   done
@@ -94,6 +94,7 @@ fi
 echo "ERROR: $NEW_TAG failed to start or health check failed" >&2
 docker compose logs --tail 100 app >&2 || true
 
+# Configs stay at the new version during rollback: public access and noindex remain in effect.
 # 4. Roll back. "staging" is a moving tag (already points to the new image), so it is not a rollback target.
 if [[ -z "$PREV_TAG" || "$PREV_TAG" == "staging" || "$PREV_TAG" == "$NEW_TAG" ]]; then
   echo "No previous tag to roll back to; leaving $NEW_TAG in place." >&2
