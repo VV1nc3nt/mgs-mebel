@@ -32,6 +32,7 @@ import {
   ABOUT_CTA,
   E2E_NEWS_COUNT,
   E2E_SALONS,
+  E2E_SALON_LOCATIONS,
   HOME_DRAFT_TITLE,
   NEWS_DRAFT_SLUG,
   NEWS_DRAFT_TITLE,
@@ -419,11 +420,21 @@ try {
       collection: 'salons',
       where: { name: { equals: name } },
     })
-    if (totalDocs) continue
+    // Synthetic test coordinates only; production seed data and the owner's CMS are untouched.
+    const location = E2E_SALON_LOCATIONS[i]
+    if (totalDocs) {
+      await payload.update({
+        collection: 'salons',
+        where: { name: { equals: name } },
+        data: { location },
+      })
+      continue
+    }
     await payload.create({
       collection: 'salons',
       data: {
         ...salon,
+        location,
         order: i + 1,
         phone: i === E2E_SALONS.length - 1 ? null : salon.phone,
         reviewVideo: i === 0 || i === 2 ? videoId : null,

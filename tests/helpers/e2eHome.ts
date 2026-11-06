@@ -17,6 +17,12 @@ export const NEWS_DRAFT_SLUG = 'e2e-draft'
  */
 export const E2E_SALONS = ['Румянцево', 'Пражская', 'Авиамоторная', 'Химки'] as const
 
+/** Synthetic coordinates for SDK/JSON-LD tests, unrelated to the actual salon addresses. */
+export const E2E_SALON_LOCATIONS = E2E_SALONS.map((_, i) => ({
+  lat: 55.6 + i * 0.05,
+  lng: 37.4 + i * 0.1,
+}))
+
 /**
  * Hero CTA of «О нас» in the fixture: the seed leaves it empty (no button), the contact button
  * checks need one.

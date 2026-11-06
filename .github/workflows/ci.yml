@@ -14,6 +14,10 @@ concurrency:
 
 env:
   NEXT_TELEMETRY_DISABLED: 1
+  # All Yandex requests are intercepted by the shared browser fixture. Never a live key/ID.
+  NEXT_PUBLIC_YMAPS_KEY: ci-external-services-stub
+  NEXT_PUBLIC_METRIKA_ID: 7
+  NEXT_PUBLIC_METRIKA_ALLOWED_HOSTS: localhost
   # E2E specs per shard. Balance by file time from the log of the last green CI run on main
   # (list reporter: sum the test times of each spec file). Shard 1 also runs the 404 check, the
   # @empty pass and the cache drop: give it less.
@@ -40,6 +44,7 @@ env:
     tests/e2e/about.e2e.spec.ts
     tests/e2e/footer.e2e.spec.ts
     tests/e2e/cookies.e2e.spec.ts
+    tests/e2e/yandex.e2e.spec.ts
   E2E_SHARD_4: >-
     tests/e2e/menu.e2e.spec.ts
     tests/e2e/news-slug.e2e.spec.ts

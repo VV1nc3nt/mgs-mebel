@@ -1737,3 +1737,38 @@
     background: linear-gradient(transparent, rgb(0 0 0 / 55%));
   }
 }
+
+/* Map markers keep the shared hit area regardless of their visible dot. */
+.salon-map-pin {
+  position: absolute;
+  width: var(--spacing-hit);
+  height: var(--spacing-hit);
+  margin: calc(var(--spacing-hit) / -2) 0 0 calc(var(--spacing-hit) / -2);
+  cursor: pointer;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: transparent;
+}
+.salon-map-pin::after {
+  content: '';
+  width: calc(var(--spacing) * 4);
+  height: calc(var(--spacing) * 4);
+  border-radius: 50%;
+  background: var(--color-pin);
+  /* A 16px box scales to the 10px inactive dot; its visible halo stays 4px.
+     Keeping the layout box stable avoids CLS when the SDK becomes ready after a scroll. */
+  scale: 0.625;
+  box-shadow: 0 0 0 calc(var(--spacing) * 1.6) color-mix(in srgb, var(--color-pin) 20%, transparent);
+  transition:
+    background var(--motion-status-fade),
+    box-shadow var(--motion-status-fade),
+    scale var(--motion-status-fade);
+}
+.salon-map-pin[aria-pressed='true']::after {
+  scale: 1;
+  background: var(--color-accent);
+  box-shadow:
+    0 0 0 calc(var(--spacing) * 2) color-mix(in srgb, var(--color-accent) 20%, transparent),
+    0 0 0 calc(var(--spacing) * 4.5) color-mix(in srgb, var(--color-accent) 8%, transparent);
+}

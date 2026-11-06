@@ -248,6 +248,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: 4.5.2
         version: 4.5.2(supports-color@7.2.0)(vite@7.3.6(@types/node@22.19.9)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.77.4)(tsx@4.22.4))
+      '@yandex/ymaps3-types':
+        specifier: 1.0.21772363
+        version: 1.0.21772363(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)
       eslint:
         specifier: ^9.16.0
         version: 9.39.5(jiti@2.7.0)(supports-color@7.2.0)
@@ -2340,6 +2343,20 @@ packages:
 
   '@vitest/utils@4.0.18':
     resolution: {integrity: sha512-msMRKLMVLWygpK3u2Hybgi4MNjcYJvwTb0Ru09+fOyCXIgT5raYP041DRRdiJiI3k/2U6SEbAETB3YtBrUkCFA==}
+
+  '@yandex/ymaps3-types@1.0.21772363':
+    resolution: {integrity: sha512-YV6zsY0voVXpBrSK57bWtKAVeRvQYxhy+258KYIDS9Z/ZvXBF06TLbKdkp/gok0b7q/JXQgKL1jSZteUkHqqSQ==}
+    peerDependencies:
+      '@types/react': ^16.0.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      '@types/react-dom': ^16.0.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      '@vue/runtime-core': '3'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      '@types/react-dom':
+        optional: true
+      '@vue/runtime-core':
+        optional: true
 
   acorn-jsx@5.3.2:
     resolution: {integrity: sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==}
@@ -7004,6 +7021,11 @@ snapshots:
     dependencies:
       '@vitest/pretty-format': 4.0.18
       tinyrainbow: 3.1.1
+
+  '@yandex/ymaps3-types@1.0.21772363(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)':
+    optionalDependencies:
+      '@types/react': 19.2.14
+      '@types/react-dom': 19.2.3(@types/react@19.2.14)
 
   acorn-jsx@5.3.2(acorn@8.18.0):
     dependencies:

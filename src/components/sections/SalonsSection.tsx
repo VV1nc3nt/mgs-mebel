@@ -1,11 +1,7 @@
-import Link from 'next/link'
+import { HomeSalonMap } from '@/components/salons/HomeSalonMap'
 
-import { SalonMapSlot } from '@/components/salons/SalonMapSlot'
-import { SalonPanel } from '@/components/salons/SalonPanel'
 import { SectionHeading } from '@/components/ui/SectionHeading'
-import { segmentOverlayGroup, segmentOverlayItem } from '@/components/ui/segmentStyles'
 import type { Messenger } from '@/lib/chrome'
-import { cn } from '@/lib/cn'
 import type { SalonPin } from '@/lib/queries'
 import type { SectionSalons } from '@/payload-types'
 
@@ -44,21 +40,7 @@ export function SalonsSection({ section, salons, ctaLabel, messengers, idPrefix 
         className="page-container"
       />
       <div className="page-container">
-        <SalonMapSlot salons={salons} activeId={first.id}>
-          <div
-            role="group"
-            aria-label="Вид: карта или список"
-            className={cn('absolute top-4 right-4', segmentOverlayGroup)}
-          >
-            <span aria-current="true" className={segmentOverlayItem(true)}>
-              Карта
-            </span>
-            <Link href="/salons" className={segmentOverlayItem(false)}>
-              Список
-            </Link>
-          </div>
-          <SalonPanel salon={first} ctaLabel={ctaLabel} messengers={messengers} />
-        </SalonMapSlot>
+        <HomeSalonMap salons={salons} ctaLabel={ctaLabel} messengers={messengers} />
       </div>
     </section>
   )

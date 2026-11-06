@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 
+import { PageAnalytics } from '@/components/analytics/PageAnalytics'
 import { FirstScreenEnd } from '@/components/app/FirstScreenEnd'
 import { PreviewRefresh } from '@/components/app/PreviewRefresh'
 import { CapabilitiesSection } from '@/components/designers/CapabilitiesSection'
@@ -46,6 +47,7 @@ export default async function DesignersPage() {
 
   return (
     <>
+      <PageAnalytics path={PATH} />
       {pageName && (
         <JsonLd
           data={breadcrumbJsonLd([

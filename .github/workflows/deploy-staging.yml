@@ -52,6 +52,8 @@ jobs:
           build-args: |
             NEXT_PUBLIC_SITE_URL=${{ vars.NEXT_PUBLIC_SITE_URL }}
             NEXT_PUBLIC_YMAPS_KEY=${{ vars.NEXT_PUBLIC_YMAPS_KEY }}
+            NEXT_PUBLIC_METRIKA_ID=${{ vars.NEXT_PUBLIC_METRIKA_ID }}
+            NEXT_PUBLIC_METRIKA_ALLOWED_HOSTS=${{ vars.NEXT_PUBLIC_METRIKA_ALLOWED_HOSTS }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

@@ -3,7 +3,7 @@ import { expect, test, type Locator, type Page, newConsentContext } from '../hel
 
 import { globals } from '../../src/seed/data/globals'
 import { salons } from '../../src/seed/data/salons'
-import { E2E_SALONS } from '../helpers/e2eHome'
+import { E2E_SALONS, E2E_SALON_LOCATIONS } from '../helpers/e2eHome'
 import { expectShowSalonAtCorner } from '../helpers/salonMap'
 import { layoutShifts, settle } from '../helpers/scroll'
 import { armScrollEnd, swiper as swipeTrack } from '../helpers/swipe'
@@ -550,9 +550,15 @@ test.describe('salons', () => {
       expect(store.image).toMatch(/^http:\/\/localhost:3000\/api\/media\/file\//)
     }
     expect(new Set(stores.map((s) => s['@id'])).size).toBe(stores.length)
-    // The last one has no phone; the fixture has no coordinates and opening hours
+    // The last one has no phone; synthetic coordinates are present, no opening hours.
     expect(stores.at(-1).telephone).toBeUndefined()
-    expect(stores.some((s) => 'geo' in s || 'openingHours' in s)).toBe(false)
+    expect(stores.some((s) => 'openingHours' in s)).toBe(false)
+    for (const [i, store] of stores.entries())
+      expect(store.geo).toEqual({
+        '@type': 'GeoCoordinates',
+        latitude: E2E_SALON_LOCATIONS[i].lat,
+        longitude: E2E_SALON_LOCATIONS[i].lng,
+      })
   })
 
   test.describe('card videos without hover: the selected card plays', () => {
