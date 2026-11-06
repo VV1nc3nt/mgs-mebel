@@ -1,13 +1,12 @@
-import { test, expect, ACCEPTED, CONSENT_KEY } from '../helpers/test'
+import { test, expect, ACCEPTED, CONSENT_KEY, type Page } from '../helpers/test'
 import { e2eEditor } from '../helpers/e2eEditor'
 import { E2E_SALONS } from '../helpers/e2eHome'
 
 const BASE = process.env.E2E_BASE_URL || 'http://localhost:3000'
 const enabled = Boolean(process.env.NEXT_PUBLIC_YMAPS_KEY && process.env.NEXT_PUBLIC_METRIKA_ID)
-const calls = (page: import('@playwright/test').Page) =>
+const calls = (page: Page) =>
   page.evaluate(() => (window as unknown as { __metrikaCalls?: unknown[][] }).__metrikaCalls ?? [])
-const hits = async (page: import('@playwright/test').Page) =>
-  (await calls(page)).filter((call) => call[1] === 'hit')
+const hits = async (page: Page) => (await calls(page)).filter((call) => call[1] === 'hit')
 
 test.describe('Yandex integration', () => {
   test.skip(

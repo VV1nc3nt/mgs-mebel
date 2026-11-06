@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { YMap } from '@yandex/ymaps3-types'
 
 import { IconButton } from '@/components/ui/IconButton'
+import { BREAKPOINTS } from '@/lib/media'
 import { mapPanDelta, salonCoordinates, salonMapLocation, type MapSalon } from '@/lib/salonMap'
 import { loadYandexMaps } from '@/lib/yandexMaps'
 
@@ -40,6 +41,12 @@ export function SalonMap({ salons, activeId, onPick }: Props) {
     let changes: MutationObserver | undefined
     let tilesTimeout: ReturnType<typeof setTimeout> | undefined
     const pins = buttons.current
+    const margin = (): [number, number, number, number] => {
+      const panel = element.closest('[data-salon-map-slot]')?.querySelector('[data-salon-panel]')
+      const bottom = panel ? panel.getBoundingClientRect().height + 24 : 64
+      const right = window.innerWidth >= BREAKPOINTS.md ? 88 : 140
+      return [64, right, Math.max(0, Math.min(bottom, element.clientHeight - 100)), 40]
+    }
     const start = async () => {
       if (started) return
       started = true
@@ -49,6 +56,7 @@ export function SalonMap({ salons, activeId, onPick }: Props) {
         const instance = new api.YMap(element, {
           location: salonMapLocation(points.map(({ coordinates }) => coordinates)),
           theme: 'dark',
+          margin: margin(),
           copyrightsPosition: 'top left',
           distributionPosition: 'top left',
           behaviors: window.matchMedia('(pointer: fine)').matches
@@ -92,12 +100,7 @@ export function SalonMap({ salons, activeId, onPick }: Props) {
         // Keep geographical points above the actual card, without changing its layout.
         const fit = () => {
           if (element.clientHeight < 100 || !element.clientWidth) return
-          const panel = element
-            .closest('[data-salon-map-slot]')
-            ?.querySelector('[data-salon-panel]')
-          const bottom = panel ? panel.getBoundingClientRect().height + 24 : 64
-          const right = window.matchMedia('(min-width: 768px)').matches ? 88 : 140
-          instance.update({ margin: [64, right, Math.min(bottom, element.clientHeight - 100), 40] })
+          instance.update({ margin: margin() })
         }
         fit()
         resize = new ResizeObserver(fit)
@@ -159,7 +162,7 @@ export function SalonMap({ salons, activeId, onPick }: Props) {
       width,
       height,
       bottom,
-      window.matchMedia('(min-width: 768px)').matches ? 88 : 140,
+      window.innerWidth >= BREAKPOINTS.md ? 88 : 140,
     )
     if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return
     const center = projection.toWorldCoordinates([...instance.center])

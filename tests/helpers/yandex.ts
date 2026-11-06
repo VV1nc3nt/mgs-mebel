@@ -8,7 +8,7 @@ const MAPS = `
 window.__mapInstances = [];
 class YMap {
   constructor(element, props) {
-    this.element = element; this.props = props; this.zoom = props.location.zoom || 9;
+    this.element = element; this.props = props; this.markers = []; this.zoom = props.location.zoom || 9;
     this.center = [37.5,55.5];
     this.projection = { toWorldCoordinates: (p) => ({x:p[0],y:p[1]}), fromWorldCoordinates: (p) => [p.x,p.y] };
     this.bounds = props.location.bounds || [[36,54],[39,57]];
@@ -25,12 +25,19 @@ class YMap {
     if (child.element) {
       const wrapper = document.createElement('div');
       wrapper.style.cssText = 'position:absolute;left:' + (18 + (this.element.querySelectorAll("button").length * 20)) + '%;top:20%';
-      wrapper.append(child.element); this.element.append(wrapper);
+      wrapper.append(child.element); this.element.append(wrapper); this.markers.push(wrapper); this.positionMarkers();
     }
     if (child.onStateChanged) child.onStateChanged({ getLayerState: () => ({tilesReady:1}) });
     return this;
   }
-  update(props) { Object.assign(this.props, props); }
+  positionMarkers() {
+    const [top,right,bottom,left] = this.props.margin || [64,64,64,40];
+    this.markers.forEach((wrapper, i) => {
+      wrapper.style.left = (left + (this.element.clientWidth-left-right) * (i+0.5)/this.markers.length) + 'px';
+      wrapper.style.top = (top + Math.max(0,this.element.clientHeight-top-bottom)/2) + 'px';
+    });
+  }
+  update(props) { Object.assign(this.props, props); this.positionMarkers(); }
   setLocation(location) { if (location.zoom) this.zoom = location.zoom; this.lastLocation = location; }
   destroy() { this.destroyed = true; this.element.replaceChildren(); }
 }
