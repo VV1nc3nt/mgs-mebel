@@ -1,14 +1,10 @@
-# Staging: automatic HTTPS, whole site (including /admin and /healthz) behind Basic Auth, no indexing.
+# Staging: public access, automatic HTTPS, no indexing. CMS login is handled by Payload.
 # On the server this file lives in /opt/mgs/caddy/Caddyfile.
 
 {$SITE_DOMAIN} {
 	encode zstd gzip
 
 	header X-Robots-Tag "noindex, nofollow"
-
-	basic_auth {
-		{$BASIC_AUTH_USER} {$BASIC_AUTH_HASH}
-	}
 
 	# Uploads: catalog PDFs up to 100 MB (the app enforces per-type limits).
 	request_body {

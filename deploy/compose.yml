@@ -18,8 +18,6 @@ services:
       - '443:443/udp'
     environment:
       SITE_DOMAIN: ${SITE_DOMAIN:?SITE_DOMAIN is required}
-      BASIC_AUTH_USER: ${BASIC_AUTH_USER:?BASIC_AUTH_USER is required}
-      BASIC_AUTH_HASH: ${BASIC_AUTH_HASH:?BASIC_AUTH_HASH is required}
     volumes:
       # Directory mount: an updated Caddyfile (replaced via mv) is visible to `caddy reload`.
       - ./caddy:/etc/caddy:ro
